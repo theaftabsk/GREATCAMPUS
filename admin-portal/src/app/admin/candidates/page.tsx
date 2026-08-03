@@ -8,7 +8,9 @@ import {
   Eye,
   Printer,
   X,
-  Mic
+  Mic,
+  Volume2,
+  Trash2
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 
@@ -64,8 +66,27 @@ export default function AdminCandidatesPage() {
         fetchCandidates();
         setSelectedCandidate(data.candidate);
       }
-    } catch (err) {
+    } catch {
       alert("Failed to save simulation grade");
+    }
+  };
+
+  const handleDeleteCandidate = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to permanently delete candidate record for "${name}"?`)) return;
+
+    try {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/v1/candidates?id=${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("Candidate record deleted successfully!");
+        if (selectedCandidate?.id === id) setSelectedCandidate(null);
+        fetchCandidates();
+      }
+    } catch {
+      alert("Failed to delete candidate record");
     }
   };
 
@@ -99,7 +120,7 @@ export default function AdminCandidatesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900">Candidate Evaluation Directory</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Inspect full test answers, simulation responses, anti-cheat flags, and printable scorecards.</p>
+          <p className="text-sm text-slate-500 mt-0.5">Inspect full test answers, simulation voice recordings, anti-cheat flags, and manage/delete candidate records.</p>
         </div>
 
         <div className="flex items-center space-x-3">
@@ -139,7 +160,7 @@ export default function AdminCandidatesPage() {
                 <th className="py-4 px-6">Recommendation</th>
                 <th className="py-4 px-6">Anti-Cheat Flags</th>
                 <th className="py-4 px-6">Simulation Status</th>
-                <th className="py-4 px-6 text-right">Action</th>
+                <th className="py-4 px-6 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
@@ -196,8 +217,9 @@ export default function AdminCandidatesPage() {
                             Graded ({c.simulation.score}/30)
                           </span>
                         ) : (
-                          <span className="text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
-                            Pending HR Grade
+                          <span className="text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 flex items-center space-x-1 w-max">
+                            {c.simulation.audioUrl && <Volume2 className="w-3 h-3 text-indigo-600 animate-pulse" />}
+                            <span>Pending HR Grade</span>
                           </span>
                         )
                       ) : (
@@ -205,17 +227,26 @@ export default function AdminCandidatesPage() {
                       )}
                     </td>
                     <td className="py-4 px-6 text-right">
-                      <button
-                        onClick={() => {
-                          setSelectedCandidate(c);
-                          setSimScoreInput(c.simulation?.score || 0);
-                          setSimFeedbackInput(c.simulation?.feedback || "");
-                        }}
-                        className="px-4 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 transition-colors flex items-center space-x-1.5 ml-auto"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Inspect Scorecard</span>
-                      </button>
+                      <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={() => {
+                            setSelectedCandidate(c);
+                            setSimScoreInput(c.simulation?.score || 0);
+                            setSimFeedbackInput(c.simulation?.feedback || "");
+                          }}
+                          className="px-3 py-1.5 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 transition-colors flex items-center space-x-1"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Scorecard</span>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCandidate(c.id, c.name)}
+                          className="p-1.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
+                          title="Delete Candidate Record"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -235,6 +266,14 @@ export default function AdminCandidatesPage() {
               </span>
 
               <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handleDeleteCandidate(selectedCandidate.id, selectedCandidate.name)}
+                  className="px-3.5 py-2 bg-red-50 text-red-700 border border-red-200 font-bold text-xs rounded-xl hover:bg-red-100 transition-colors flex items-center space-x-1.5"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete Record</span>
+                </button>
+
                 <button
                   onClick={handlePrintScorecard}
                   className="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl hover:bg-slate-800 transition-colors flex items-center space-x-1.5"
@@ -294,9 +333,31 @@ export default function AdminCandidatesPage() {
                     <span>Section 7: Sales Simulation Evaluation</span>
                   </h3>
 
+                  {/* Candidate Voice Audio Player */}
+                  {selectedCandidate.simulation.audioUrl ? (
+                    <div className="bg-white p-4 rounded-2xl border border-indigo-200 space-y-2 shadow-sm">
+                      <div className="flex items-center space-x-2 text-xs font-extrabold text-indigo-900">
+                        <Volume2 className="w-4 h-4 text-indigo-600 animate-pulse" />
+                        <span>Candidate Recorded Voice Pitch Audio:</span>
+                      </div>
+                      <audio
+                        controls
+                        src={selectedCandidate.simulation.audioUrl}
+                        className="w-full h-10 rounded-xl outline-none"
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-slate-100/80 p-3 rounded-xl text-xs font-semibold text-slate-500 italic">
+                      No voice audio recording attached for this submission.
+                    </div>
+                  )}
+
                   {selectedCandidate.simulation.textResponse && (
-                    <div className="bg-white p-4 rounded-xl border border-indigo-100 text-sm text-slate-800 italic leading-relaxed">
-                      &quot;{selectedCandidate.simulation.textResponse}&quot;
+                    <div>
+                      <span className="text-xs font-bold uppercase text-slate-600 mb-1.5 block">Written Sales Pitch Response:</span>
+                      <div className="bg-white p-4 rounded-xl border border-indigo-100 text-sm text-slate-800 italic leading-relaxed">
+                        &quot;{selectedCandidate.simulation.textResponse}&quot;
+                      </div>
                     </div>
                   )}
 
@@ -325,7 +386,7 @@ export default function AdminCandidatesPage() {
 
                     <button
                       onClick={handleSaveSimulationGrade}
-                      className="mt-3 px-5 py-2 bg-indigo-600 text-white font-bold text-xs rounded-xl hover:bg-indigo-700 transition-colors"
+                      className="mt-3 px-5 py-2 bg-indigo-600 text-white font-bold text-xs rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
                     >
                       Save Simulation Grade & Feedback
                     </button>

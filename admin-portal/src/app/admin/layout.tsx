@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import {
   LayoutDashboard,
@@ -73,11 +74,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="p-6 space-y-8">
             
             <div className="pb-6 border-b border-slate-100">
-              <h2 className="font-black text-slate-900 text-xl leading-none tracking-tight">
-                GREAT<span className="text-blue-600">CAMPUS</span>
-              </h2>
-              <span className="text-[10px] font-extrabold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded border border-blue-100 mt-1.5 inline-block">
-                HR Admin Portal App
+              <Image
+                src="/niva-bupa-logo.svg"
+                alt="Niva Bupa Health Insurance"
+                width={130}
+                height={40}
+                style={{ height: "34px", width: "auto" }}
+                priority
+              />
+              <span className="text-[10px] font-extrabold uppercase text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200 mt-2 inline-block">
+                ARM Banca Assessment
               </span>
             </div>
 

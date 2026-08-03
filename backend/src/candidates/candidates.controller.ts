@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Query, Body, NotFoundException } from '@nestjs/common';
 import { CandidatesService } from './candidates.service';
 
 @Controller('api/v1/candidates')
@@ -42,5 +42,11 @@ export class CandidatesController {
   async gradeSimulation(@Body() body: { candidateId: string; score: number; feedback: string; gradedBy?: string }) {
     const candidate = await this.candidatesService.gradeSimulation(body.candidateId, body.score, body.feedback, body.gradedBy);
     return { success: true, candidate };
+  }
+
+  @Delete()
+  async deleteCandidate(@Query('id') id: string) {
+    await this.candidatesService.deleteCandidate(id);
+    return { success: true, message: 'Candidate record deleted successfully' };
   }
 }

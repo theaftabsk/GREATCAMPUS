@@ -150,4 +150,10 @@ export class CandidatesService {
       include: { simulation: true, proctoringLogs: true },
     });
   }
+
+  async deleteCandidate(id: string) {
+    return this.prisma.candidate.delete({
+      where: { id },
+    });
+  }
 }
