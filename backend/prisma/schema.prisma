@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id          String       @id @default(uuid())
+  name        String       @default("GREATCAMPUS")
+  slug        String       @unique @default("greatcampus")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  assessments Assessment[]
+  admins      Admin[]
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  username  String   @unique
+  password  String
+  name      String   @default("HR Administrator")
+  role      String   @default("ADMIN") // "SUPER_ADMIN", "ADMIN", "RECRUITER"
+  createdAt DateTime @default(now())
+}
+
+model Assessment {
+  id                  String      @id @default(uuid())
+  tenantId            String
+  tenant              Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title               String      @default("Assistant Relationship Manager – Banca Channel")
+  durationMins        Int         @default(65)
+  passingMarksPercent Float       @default(60)
+  negativeMarking     Boolean     @default(false)
+  questions           Question[]
+  candidates          Candidate[]
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+}
+
+model Question {
+  id            String       @id @default(uuid())
+  assessmentId  String
+  assessment    Assessment   @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  section       String       // e.g. "communication", "english", "reasoning", "maths", "banking", "sales"
+  sectionName   String       // e.g. "Communication & Customer Handling"
+  question      String
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctAnswer String       // "A", "B", "C", "D"
+  marks         Int          @default(1)
+  difficulty    String       @default("Medium")
+  submissions   Submission[]
+  createdAt     DateTime     @default(now())
+}
+
+model Candidate {
+  id                   String            @id @default(uuid())
+  assessmentId         String
+  assessment           Assessment        @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  name                 String
+  email                String
+  phone                String
+  referenceId          String            @unique
+  startedAt            DateTime          @default(now())
+  submittedAt          DateTime?
+  status               String            @default("COMPLETED")
+  score                Float             @default(0)
+  totalPossibleScore   Float             @default(60)
+  percentage           Float             @default(0)
+  hiringRecommendation String            @default("Pending Review")
+  tabSwitches          Int               @default(0)
+  fullscreenExits      Int               @default(0)
+  submissions          Submission[]
+  simulation           SimulationResponse?
+  proctoringLogs       ProctoringLog[]
+  createdAt            DateTime          @default(now())
+}
+
+model Submission {
+  id             String    @id @default(uuid())
+  candidateId    String
+  candidate      Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  questionId     String
+  question       Question  @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedOption String?
+  isCorrect      Boolean   @default(false)
+  timeTakenSec   Int       @default(0)
+}
+
+model SimulationResponse {
+  id           String    @id @default(uuid())
+  candidateId  String    @unique
+  candidate    Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  audioUrl     String?   
+  textResponse String?
+  score        Float     @default(0)
+  marksMax     Float     @default(30)
+  feedback     String?
+  gradedAt     DateTime?
+  gradedBy     String?
+  createdAt    DateTime  @default(now())
+}
+
+model ProctoringLog {
+  id          String    @id @default(uuid())
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  eventType   String    // "TAB_SWITCH", "FULLSCREEN_EXIT", "COPY_PASTE", "RIGHT_CLICK"
+  details     String?
+  timestamp   DateTime  @default(now())
+}
