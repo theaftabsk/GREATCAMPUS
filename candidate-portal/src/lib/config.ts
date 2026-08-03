@@ -5,5 +5,5 @@ export const getApiBaseUrl = () => {
   if (typeof window !== "undefined" && window.location.hostname === "localhost") {
     return "http://localhost:4000";
   }
-  return "https://greatcampus-backend.onrender.com";
+  return "https://greatcampus.onrender.com";
 };

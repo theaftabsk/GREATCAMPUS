@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Users, Award, CheckCircle2, TrendingUp, FileText } from "lucide-react";
+import { getApiBaseUrl } from "@/lib/config";
 
 export default function AdminOverviewDashboard() {
   const [candidates, setCandidates] = useState<any[]>([]);
@@ -10,13 +11,14 @@ export default function AdminOverviewDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const baseUrl = getApiBaseUrl();
     Promise.all([
-      fetch("http://localhost:4000/api/v1/candidates").then((r) => r.json()),
-      fetch("http://localhost:4000/api/v1/questions").then((r) => r.json()),
+      fetch(`${baseUrl}/api/v1/candidates`).then((r) => r.json()),
+      fetch(`${baseUrl}/api/v1/questions`).then((r) => r.json()),
     ])
       .then(([cRes, qRes]) => {
-        if (cRes.success) setCandidates(cRes.candidates);
-        if (qRes.success) setQuestions(qRes.questions);
+        if (cRes?.success) setCandidates(cRes.candidates || []);
+        if (qRes?.success) setQuestions(qRes.questions || []);
         setLoading(false);
       })
       .catch(() => setLoading(false));

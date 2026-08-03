@@ -9,6 +9,7 @@ import {
   Eye,
   X
 } from "lucide-react";
+import { getApiBaseUrl } from "@/lib/config";
 
 export default function AdminQuestionsPage() {
   const [questions, setQuestions] = useState<any[]>([]);
@@ -37,7 +38,8 @@ export default function AdminQuestionsPage() {
 
   const fetchQuestions = async () => {
     try {
-      const res = await fetch("http://localhost:4000/api/v1/questions");
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/v1/questions`);
       const data = await res.json();
       if (data.success) setQuestions(data.questions);
     } catch (err) {
@@ -54,7 +56,8 @@ export default function AdminQuestionsPage() {
   const handleSaveQuestion = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const url = "http://localhost:4000/api/v1/questions";
+      const baseUrl = getApiBaseUrl();
+      const url = `${baseUrl}/api/v1/questions`;
       const method = editingQ ? "PUT" : "POST";
       const body = editingQ ? { ...qFormData, id: editingQ.id } : qFormData;
 
@@ -78,7 +81,8 @@ export default function AdminQuestionsPage() {
   const handleDeleteQuestion = async (id: string) => {
     if (!confirm("Are you sure you want to delete this question?")) return;
     try {
-      const res = await fetch(`http://localhost:4000/api/v1/questions?id=${id}`, { method: "DELETE" });
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/v1/questions?id=${id}`, { method: "DELETE" });
       const data = await res.json();
       if (data.success) fetchQuestions();
     } catch (err) {
