@@ -10,6 +10,7 @@ import {
   X,
   Mic
 } from "lucide-react";
+import { getApiBaseUrl } from "@/lib/config";
 
 export default function AdminCandidatesPage() {
   const [candidates, setCandidates] = useState<any[]>([]);
@@ -26,7 +27,8 @@ export default function AdminCandidatesPage() {
 
   const fetchCandidates = async () => {
     try {
-      const res = await fetch("http://localhost:4000/api/v1/candidates");
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/v1/candidates`);
       const data = await res.json();
       if (data.success) setCandidates(data.candidates);
     } catch (err) {
@@ -44,7 +46,8 @@ export default function AdminCandidatesPage() {
     if (!selectedCandidate) return;
 
     try {
-      const res = await fetch("http://localhost:4000/api/v1/candidates/grade-simulation", {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/v1/candidates/grade-simulation`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

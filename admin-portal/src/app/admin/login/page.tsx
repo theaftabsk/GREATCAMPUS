@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { Lock } from "lucide-react";
+import { getApiBaseUrl } from "@/lib/config";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -17,7 +18,8 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:4000/api/v1/auth/admin-login", {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/v1/auth/admin-login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(adminUser),
@@ -30,8 +32,7 @@ export default function AdminLoginPage() {
       } else {
         setAuthError(data.message || "Invalid username or password");
       }
-    } catch (err) {
-      // Fallback local auth if backend is offline
+    } catch {
       if (adminUser.username === "admin" && adminUser.password === "admin123") {
         localStorage.setItem("banca_admin_token", "demo-token-2026");
         router.push("/admin");
