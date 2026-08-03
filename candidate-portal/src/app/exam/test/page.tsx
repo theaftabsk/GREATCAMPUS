@@ -6,9 +6,10 @@ import Navbar from "@/components/Navbar";
 import "../exam.css";
 import {
   Clock, ChevronLeft, ChevronRight, Bookmark, CheckCircle2,
-  Mic, Square, Send, AlertTriangle, Grid, X, FileText
+  Mic, Square, Send, AlertTriangle, Grid, X, FileText, RefreshCw
 } from "lucide-react";
-import { initialQuestions, QuestionData } from "@/lib/seedData";
+import { QuestionData, initialQuestions } from "@/lib/seedData";
+import { getApiBaseUrl } from "@/lib/config";
 
 export default function CandidateTestEngine() {
   const router = useRouter();
@@ -39,18 +40,32 @@ export default function CandidateTestEngine() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
+  const loadQuestionsFromBackend = async () => {
+    setLoading(true);
+    try {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/v1/questions`);
+      const data = await res.json();
+      if (data.success && Array.isArray(data.questions) && data.questions.length > 0) {
+        setQuestions(data.questions);
+      } else {
+        setQuestions(initialQuestions);
+      }
+    } catch {
+      setQuestions(initialQuestions);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const stored = localStorage.getItem("banca_candidate");
-    if (!stored) { router.push("/exam"); return; }
+    if (!stored) {
+      router.push("/exam");
+      return;
+    }
     setCandidate(JSON.parse(stored));
-
-    fetch("http://localhost:4000/api/v1/questions")
-      .then((r) => r.json())
-      .then((d) => {
-        setQuestions(d.success && d.questions?.length ? d.questions : initialQuestions);
-        setLoading(false);
-      })
-      .catch(() => { setQuestions(initialQuestions); setLoading(false); });
+    loadQuestionsFromBackend();
   }, [router]);
 
   useEffect(() => {
@@ -131,7 +146,8 @@ export default function CandidateTestEngine() {
     if (submitting) return;
     setSubmitting(true);
     try {
-      await fetch("http://localhost:4000/api/v1/candidates/submit", {
+      const baseUrl = getApiBaseUrl();
+      await fetch(`${baseUrl}/api/v1/candidates/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -155,12 +171,32 @@ export default function CandidateTestEngine() {
 
   const answeredCount = Object.values(answers).filter((a) => a.selectedOption).length;
 
-  if (loading || questions.length === 0) {
+  if (loading) {
     return (
       <div className="loading-screen">
         <div className="loading-content">
           <div className="loading-spinner" />
-          <p className="loading-text">Loading Assessment Environment…</p>
+          <p className="loading-text">Fetching Questions from Database API…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (questions.length === 0) {
+    return (
+      <div className="loading-screen">
+        <div className="loading-content" style={{ maxWidth: "420px" }}>
+          <div style={{ width: "56px", height: "56px", borderRadius: "50%", background: "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center", color: "#DC2626", margin: "0 auto" }}>
+            <AlertTriangle size={28} />
+          </div>
+          <h2 style={{ fontSize: "18px", fontWeight: 800, color: "#1A2B40", marginTop: "12px" }}>Database Connection Error</h2>
+          <p style={{ fontSize: "13px", color: "#4A6580", marginTop: "6px" }}>Unable to load questions from the server database.</p>
+          <button
+            onClick={loadQuestionsFromBackend}
+            style={{ marginTop: "16px", padding: "10px 20px", borderRadius: "10px", background: "#00AEEF", color: "white", fontWeight: 800, fontSize: "13px", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px" }}
+          >
+            <RefreshCw size={14} /> Retry Connecting
+          </button>
         </div>
       </div>
     );

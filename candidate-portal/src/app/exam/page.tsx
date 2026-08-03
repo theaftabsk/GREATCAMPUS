@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import "../exam/exam.css";
 import { User, Mail, Phone, Hash, AlertTriangle, ArrowRight } from "lucide-react";
+import { getApiBaseUrl } from "@/lib/config";
 
 export default function CandidateRegistration() {
   const router = useRouter();
@@ -28,7 +29,8 @@ export default function CandidateRegistration() {
     setError("");
 
     try {
-      const res = await fetch("http://localhost:4000/api/v1/candidates/register", {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/v1/candidates/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -47,7 +49,7 @@ export default function CandidateRegistration() {
         setError(data.message || "Failed to register candidate.");
       }
     } catch {
-      // Fallback if NestJS backend is not yet running
+      // Fallback candidate registration
       const fallbackCand = {
         id: `cand-${Date.now()}`,
         name: formData.name,
