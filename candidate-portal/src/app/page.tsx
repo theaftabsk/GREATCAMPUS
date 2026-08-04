@@ -4,7 +4,7 @@ import Navbar from "@/components/Navbar";
 import "./exam/exam.css";
 import {
   ArrowRight, ShieldCheck, Clock, CheckCircle2,
-  Award, Users, BarChart3, Lock, Mic, Heart
+  Award, Users, BarChart3, Lock, Mic, Heart, Volume2, Star
 } from "lucide-react";
 
 const sections = [
@@ -84,6 +84,13 @@ const features = [
     iconBg: "#EBF7FF",
     title: "Recommendation Engine",
     desc: "Automated decisioning: Strong Hire (85%+), Hire (70–84%), Maybe, or Reject.",
+  },
+  {
+    icon: Mic,
+    iconColor: "#7C3AED",
+    iconBg: "#F3E8FF",
+    title: "Role-Play Voice Pitch Engine",
+    desc: "3-5 minute live voice recording roleplay with instant HR committee audio review & grading.",
   },
   {
     icon: Users,
@@ -235,46 +242,97 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── SECTION 7 ROLEPLAY BANNER ── */}
+        {/* ── SECTION 7 ROLEPLAY BANNER (FULLY FILLED BALANCED LAYOUT) ── */}
         <section style={{
-          background: "linear-gradient(135deg, #003F72 0%, #0070B8 55%, #00AEEF 100%)",
-          borderRadius: "24px", padding: "clamp(24px,5vw,40px)",
+          background: "linear-gradient(135deg, #002D54 0%, #005A9C 55%, #0090C8 100%)",
+          borderRadius: "24px", padding: "clamp(24px,4vw,36px)",
           marginBottom: "48px", position: "relative", overflow: "hidden",
-          boxShadow: "0 12px 40px rgba(0,63,114,0.25)",
+          boxShadow: "0 12px 40px rgba(0,45,84,0.28)",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+          gap: "24px",
+          alignItems: "center"
         }}>
           <div style={{
-            position: "absolute", top: "-40px", right: "-40px",
-            width: "160px", height: "160px", borderRadius: "50%",
+            position: "absolute", top: "-50px", right: "-50px",
+            width: "200px", height: "200px", borderRadius: "50%",
             background: "rgba(247,148,29,0.18)",
           }} />
-          <div style={{ position: "relative", zIndex: 1, maxWidth: "640px" }}>
+
+          <div style={{ position: "relative", zIndex: 1 }}>
             <div style={{
               display: "inline-flex", alignItems: "center", gap: "6px",
               background: "rgba(247,148,29,0.25)", border: "1px solid rgba(247,148,29,0.45)",
-              color: "#FFD28A", fontSize: "10px", fontWeight: 800,
+              color: "#FFD28A", fontSize: "11px", fontWeight: 800,
               letterSpacing: "0.08em", textTransform: "uppercase",
-              padding: "5px 12px", borderRadius: "50px", marginBottom: "14px",
+              padding: "6px 14px", borderRadius: "50px", marginBottom: "14px",
             }}>
-              <Mic size={11} />
+              <Mic size={13} />
               Practical Assessment • 30 Marks
             </div>
-            <h3 style={{ fontSize: "clamp(18px,4vw,26px)", fontWeight: 900, color: "white", marginBottom: "10px" }}>
+            <h3 style={{ fontSize: "clamp(20px,4vw,28px)", fontWeight: 900, color: "white", marginBottom: "12px", lineHeight: 1.25 }}>
               Section 7: 5-Minute Practical Sales Simulation
             </h3>
-            <p style={{ fontSize: "clamp(12px,2.5vw,14px)", color: "rgba(255,255,255,0.8)", lineHeight: 1.7 }}>
-              Candidates complete a 3–5 minute roleplay scenario converting a Fixed Deposit walk-in
-              customer into a Health Insurance discussion. Evaluated on Clarity, Confidence, Need
-              Discovery, and Simple Explanation.
+            <p style={{ fontSize: "clamp(12px,2.5vw,14px)", color: "rgba(255,255,255,0.85)", lineHeight: 1.7, fontWeight: 500 }}>
+              Candidates conduct a 3–5 minute roleplay scenario converting a Fixed Deposit walk-in
+              customer into a Health Insurance discussion. Recorded live & evaluated by HR committee.
             </p>
           </div>
+
+          {/* Right Side Glassmorphic Scorecard Preview (Fills Empty Space) */}
+          <div style={{
+            position: "relative", zIndex: 1,
+            background: "rgba(255, 255, 255, 0.12)",
+            backdropFilter: "blur(12px)",
+            border: "1px solid rgba(255, 255, 255, 0.22)",
+            borderRadius: "20px", padding: "20px",
+            color: "white"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px", width: "100%" }}>
+              <span style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: "#FFD28A", display: "flex", alignItems: "center", gap: "6px" }}>
+                <Star size={13} /> 6 HR Evaluation Criteria (30 Pts)
+              </span>
+              <span style={{ fontSize: "10px", background: "rgba(255,255,255,0.2)", padding: "2px 8px", borderRadius: "10px", fontWeight: 700, marginLeft: "auto" }}>
+                5 Marks Each
+              </span>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "11px", fontWeight: 700 }}>
+              {[
+                "Communication Clarity", "Confidence & Presence",
+                "Customer Listening", "Questioning / Discovery",
+                "Sales Orientation", "Simple Explanation"
+              ].map((c) => (
+                <div key={c} style={{
+                  background: "rgba(255, 255, 255, 0.15)",
+                  padding: "8px 10px", borderRadius: "10px",
+                  display: "flex", alignItems: "center", gap: "6px"
+                }}>
+                  <CheckCircle2 size={13} color="#4ADE80" />
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{
+              marginTop: "14px", paddingTop: "12px",
+              borderTop: "1px solid rgba(255,255,255,0.15)",
+              display: "flex", alignItems: "center", gap: "8px",
+              fontSize: "11px", color: "rgba(255,255,255,0.9)", fontWeight: 600
+            }}>
+              <Volume2 size={15} color="#FFD28A" />
+              <span>Full Audio Recording saved to HR Admin Portal</span>
+            </div>
+          </div>
+
         </section>
 
-        {/* ── FEATURES STRIP ── */}
+        {/* ── FEATURES STRIP (BALANCED 4 COLUMNS) ── */}
         <section style={{ marginBottom: "56px" }}>
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-            gap: "14px",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: "16px",
           }}>
             {features.map((f) => (
               <div key={f.title} style={{
@@ -301,15 +359,21 @@ export default function Home() {
 
       </main>
 
-      {/* ── FOOTER ── */}
+      {/* ── PROMINENT FOOTER ── */}
       <footer style={{
         background: "white", borderTop: "1.5px solid #C8E8F8",
-        padding: "20px 16px", textAlign: "center",
+        padding: "28px 16px", textAlign: "center",
       }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginBottom: "6px" }}>
-          <Image src="/niva-bupa-logo.svg" alt="Niva Bupa" width={120} height={40} style={{ height: "36px", width: "auto" }} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginBottom: "10px" }}>
+          <Image
+            src="/niva-bupa-logo.svg"
+            alt="Niva Bupa Health Insurance"
+            width={220}
+            height={70}
+            style={{ height: "54px", width: "auto" }}
+          />
         </div>
-        <p style={{ fontSize: "11px", color: "#8BA4BE", fontWeight: 500 }}>
+        <p style={{ fontSize: "12px", color: "#64748B", fontWeight: 600 }}>
           © 2026 Niva Bupa Health Insurance • ARM Banca Channel Recruitment Assessment Platform
         </p>
       </footer>
