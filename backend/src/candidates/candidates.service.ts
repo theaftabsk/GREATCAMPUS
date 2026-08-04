@@ -1,9 +1,39 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class CandidatesService {
   constructor(private prisma: PrismaService) {}
+
+  private saveAudioFile(candidateId: string, audioData: string): string {
+    if (!audioData) return '';
+    if (!audioData.startsWith('data:audio/')) return audioData;
+
+    try {
+      const matches = audioData.match(/^data:audio\/([a-zA-Z0-9]+);base64,(.+)$/);
+      if (!matches || matches.length !== 3) return audioData;
+
+      const ext = matches[1] === 'mp4' ? 'mp4' : 'webm';
+      const base64Content = matches[2];
+      const buffer = Buffer.from(base64Content, 'base64');
+
+      const uploadDir = path.join(process.cwd(), 'uploads', 'recordings');
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
+
+      const filename = `voice_${candidateId}_${Date.now()}.${ext}`;
+      const filePath = path.join(uploadDir, filename);
+      fs.writeFileSync(filePath, buffer);
+
+      return `/uploads/recordings/${filename}`;
+    } catch (err) {
+      console.error('Failed to save audio file to disk:', err);
+      return audioData;
+    }
+  }
 
   private async getOrCreateAssessment() {
     let assessment = await this.prisma.assessment.findFirst();
@@ -100,16 +130,21 @@ export class CandidatesService {
     });
 
     if (simulation) {
+      let savedAudioUrl = simulation.audioData || null;
+      if (simulation.audioData && simulation.audioData.startsWith('data:audio/')) {
+        savedAudioUrl = this.saveAudioFile(candidate.id, simulation.audioData);
+      }
+
       await this.prisma.simulationResponse.upsert({
         where: { candidateId: candidate.id },
         update: {
           textResponse: simulation.textResponse,
-          audioUrl: simulation.audioData,
+          audioUrl: savedAudioUrl,
         },
         create: {
           candidateId: candidate.id,
           textResponse: simulation.textResponse,
-          audioUrl: simulation.audioData,
+          audioUrl: savedAudioUrl,
           score: 0,
           marksMax: 30,
         },

@@ -1,11 +1,23 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { json, urlencoded } from 'express';
+import * as express from 'express';
+import { join } from 'path';
+import * as fs from 'fs';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Increase payload limit to 50MB to support long audio voice base64 recordings
+  // Ensure uploads/recordings directory exists
+  const uploadDir = join(process.cwd(), 'uploads', 'recordings');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
+  // Serve static audio files
+  app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
+
+  // Increase payload limit to 50MB to support long audio voice uploads
   app.use(json({ limit: '50mb' }));
   app.use(urlencoded({ limit: '50mb', extended: true }));
 

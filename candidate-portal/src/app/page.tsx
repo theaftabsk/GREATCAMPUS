@@ -104,15 +104,15 @@ export default function Home() {
         {/* ── HERO ── */}
         <section style={{ textAlign: "center", padding: "52px 0 48px" }}>
 
-          {/* Logo Hero */}
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: "28px" }}>
+          {/* Prominent Center Hero Logo */}
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: "32px" }}>
             <Image
               src="/niva-bupa-logo.svg"
               alt="Niva Bupa Health Insurance"
-              width={200}
-              height={70}
+              width={280}
+              height={90}
               priority
-              style={{ height: "clamp(50px, 10vw, 70px)", width: "auto" }}
+              style={{ height: "clamp(64px, 12vw, 90px)", width: "auto" }}
             />
           </div>
 
@@ -120,19 +120,19 @@ export default function Home() {
           <div style={{
             display: "inline-flex", alignItems: "center", gap: "6px",
             background: "rgba(0,174,239,0.1)", border: "1.5px solid rgba(0,174,239,0.3)",
-            padding: "6px 16px", borderRadius: "50px",
-            fontSize: "11px", fontWeight: 700, color: "#003F72",
+            padding: "8px 20px", borderRadius: "50px",
+            fontSize: "12px", fontWeight: 800, color: "#003F72",
             letterSpacing: "0.06em", textTransform: "uppercase",
             marginBottom: "20px",
           }}>
-            <Heart size={12} color="#F7941D" fill="#F7941D" />
+            <Heart size={14} color="#F7941D" fill="#F7941D" />
             Banca Channel ARM Recruitment Assessment
           </div>
 
           <h1 style={{
-            fontSize: "clamp(26px, 6vw, 52px)", fontWeight: 900,
+            fontSize: "clamp(28px, 6vw, 54px)", fontWeight: 900,
             color: "#1A2B40", lineHeight: 1.2, letterSpacing: "-0.02em",
-            maxWidth: "780px", margin: "0 auto 16px",
+            maxWidth: "820px", margin: "0 auto 16px",
           }}>
             Evaluate High-Potential{" "}
             <span style={{ color: "#00AEEF" }}>
@@ -141,28 +141,28 @@ export default function Home() {
           </h1>
 
           <p style={{
-            fontSize: "clamp(13px, 2.5vw, 16px)", color: "#4A6580",
-            maxWidth: "620px", margin: "0 auto 32px", lineHeight: 1.7,
+            fontSize: "clamp(14px, 2.5vw, 17px)", color: "#4A6580",
+            maxWidth: "640px", margin: "0 auto 36px", lineHeight: 1.7, fontWeight: 500
           }}>
             Comprehensive multi-competency evaluation measuring customer handling, numerical reasoning,
             financial awareness, sales orientation, and practical role-play simulations.
           </p>
 
-          {/* CTA */}
+          {/* Large CTA Button */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
             <Link href="/exam" style={{
-              display: "inline-flex", alignItems: "center", gap: "8px",
-              padding: "15px 32px", borderRadius: "14px",
+              display: "inline-flex", alignItems: "center", gap: "10px",
+              padding: "18px 40px", borderRadius: "16px",
               background: "linear-gradient(135deg, #0090C8, #00AEEF)",
-              color: "white", fontWeight: 800, fontSize: "15px",
+              color: "white", fontWeight: 900, fontSize: "17px",
               textDecoration: "none",
-              boxShadow: "0 8px 24px rgba(0,174,239,0.35)",
+              boxShadow: "0 10px 30px rgba(0,174,239,0.4)",
               transition: "all 0.2s",
             }}>
               Begin Candidate Exam
-              <ArrowRight size={18} />
+              <ArrowRight size={20} />
             </Link>
-            <p style={{ fontSize: "11px", color: "#8BA4BE", fontWeight: 500 }}>
+            <p style={{ fontSize: "12px", color: "#8BA4BE", fontWeight: 700 }}>
               65 Minutes • 60 MCQs + Practical Simulation
             </p>
           </div>
@@ -307,7 +307,7 @@ export default function Home() {
         padding: "20px 16px", textAlign: "center",
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginBottom: "6px" }}>
-          <Image src="/niva-bupa-logo.svg" alt="Niva Bupa" width={90} height={32} style={{ height: "28px", width: "auto" }} />
+          <Image src="/niva-bupa-logo.svg" alt="Niva Bupa" width={120} height={40} style={{ height: "36px", width: "auto" }} />
         </div>
         <p style={{ fontSize: "11px", color: "#8BA4BE", fontWeight: 500 }}>
           © 2026 Niva Bupa Health Insurance • ARM Banca Channel Recruitment Assessment Platform
