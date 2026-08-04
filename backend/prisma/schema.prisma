@@ -98,8 +98,8 @@ model SimulationResponse {
   id           String    @id @default(uuid())
   candidateId  String    @unique
   candidate    Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  audioUrl     String?   
-  textResponse String?
+  audioUrl     String?   @db.Text
+  textResponse String?   @db.Text
   score        Float     @default(0)
   marksMax     Float     @default(30)
   feedback     String?

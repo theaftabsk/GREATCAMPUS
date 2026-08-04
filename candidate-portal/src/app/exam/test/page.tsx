@@ -6,7 +6,7 @@ import Navbar from "@/components/Navbar";
 import "../exam.css";
 import {
   Clock, ChevronLeft, ChevronRight, Bookmark, CheckCircle2,
-  Mic, Square, Send, AlertTriangle, Grid, X, FileText, RefreshCw
+  Mic, Square, Send, AlertTriangle, Grid, X, FileText, RefreshCw, Volume2
 } from "lucide-react";
 import { QuestionData, initialQuestions } from "@/lib/seedData";
 import { getApiBaseUrl } from "@/lib/config";
@@ -123,28 +123,54 @@ export default function CandidateTestEngine() {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream);
+      let options: MediaRecorderOptions = {};
+      if (typeof MediaRecorder !== "undefined") {
+        if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+          options = { mimeType: "audio/webm;codecs=opus" };
+        } else if (MediaRecorder.isTypeSupported("audio/webm")) {
+          options = { mimeType: "audio/webm" };
+        } else if (MediaRecorder.isTypeSupported("audio/mp4")) {
+          options = { mimeType: "audio/mp4" };
+        }
+      }
+      const mr = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mr;
       audioChunksRef.current = [];
       mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
       mr.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const mimeType = mr.mimeType || "audio/webm";
+        const blob = new Blob(audioChunksRef.current, { type: mimeType });
         const reader = new FileReader();
         reader.readAsDataURL(blob);
-        reader.onloadend = () => setAudioBase64(reader.result as string);
+        reader.onloadend = () => {
+          const res = reader.result as string;
+          setAudioBase64(res);
+        };
+        stream.getTracks().forEach((t) => t.stop());
       };
-      mr.start();
+      mr.start(1000);
       setRecording(true);
-    } catch { alert("Microphone permission required. You may type your response instead."); }
+    } catch {
+      alert("Microphone permission required. Please allow microphone access in your browser or type your response instead.");
+    }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && recording) { mediaRecorderRef.current.stop(); setRecording(false); }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      mediaRecorderRef.current.stop();
+      setRecording(false);
+    }
   };
 
   const handleSubmitExam = async () => {
     if (submitting) return;
     setSubmitting(true);
+
+    if (recording && mediaRecorderRef.current) {
+      stopRecording();
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
     try {
       const baseUrl = getApiBaseUrl();
       await fetch(`${baseUrl}/api/v1/candidates/submit`, {
@@ -350,7 +376,7 @@ export default function CandidateTestEngine() {
                 <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px" }}>
                   {!recording ? (
                     <button onClick={startRecording} className="sim-record-btn sim-record-btn--start">
-                      <Mic size={15} /> Start Recording
+                      <Mic size={15} /> {audioBase64 ? "Re-record Voice" : "Start Recording"}
                     </button>
                   ) : (
                     <button onClick={stopRecording} className="sim-record-btn sim-record-btn--stop">
@@ -363,6 +389,15 @@ export default function CandidateTestEngine() {
                     </div>
                   )}
                 </div>
+
+                {audioBase64 && (
+                  <div style={{ marginTop: "12px" }}>
+                    <p style={{ fontSize: "11px", fontWeight: 700, color: "#003F72", marginBottom: "4px" }}>
+                      Preview Recorded Voice:
+                    </p>
+                    <audio controls src={audioBase64} style={{ width: "100%", height: "36px" }} />
+                  </div>
+                )}
               </div>
 
               {/* Written Response */}
