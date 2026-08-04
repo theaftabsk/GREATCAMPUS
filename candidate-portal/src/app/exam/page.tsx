@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import "../exam/exam.css";
-import { User, Mail, Phone, Hash, AlertTriangle, ArrowRight } from "lucide-react";
+import { User, Mail, Phone, Hash, ArrowRight } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 
 export default function CandidateRegistration() {
@@ -86,22 +86,6 @@ export default function CandidateRegistration() {
 
           {/* Card Body */}
           <div className="exam-card-body">
-
-            {/* Instructions Notice */}
-            <div className="exam-notice">
-              <div className="exam-notice-icon">
-                <AlertTriangle size={18} />
-              </div>
-              <div>
-                <p className="exam-notice-title">Important — Read Before Starting</p>
-                <ul className="exam-notice-list">
-                  <li>Total Duration: <strong>65 Minutes</strong> (60 MCQs + Practical Sales Simulation).</li>
-                  <li>Do <strong>NOT</strong> switch tabs or minimize the browser. Proctoring is active.</li>
-                  <li>The exam auto-submits when the countdown timer reaches zero.</li>
-                  <li>Results are confidential — scores are reviewed by HR only.</li>
-                </ul>
-              </div>
-            </div>
 
             {/* Error */}
             {error && (
