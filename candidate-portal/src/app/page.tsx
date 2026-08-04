@@ -169,9 +169,6 @@ export default function Home() {
               Begin Candidate Exam
               <ArrowRight size={20} />
             </Link>
-            <p style={{ fontSize: "12px", color: "#8BA4BE", fontWeight: 700 }}>
-              65 Minutes • 60 MCQs + Practical Simulation
-            </p>
           </div>
 
         </section>
