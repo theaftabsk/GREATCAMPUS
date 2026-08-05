@@ -280,7 +280,7 @@ class ProductionDatabaseStore {
       startedAt: created.startedAt.toISOString(),
       status: "IN_PROGRESS",
       score: 0,
-      totalPossibleScore: 60,
+      totalPossibleScore: 30,
       percentage: 0,
       hiringRecommendation: "Pending Review",
       tabSwitches: 0,
@@ -324,12 +324,13 @@ class ProductionDatabaseStore {
       });
     }
 
-    const percentage = Math.max(0, Math.round((totalScore / (allQuestions.length || 60)) * 100));
+    const totalQuestionsCount = allQuestions.length || 30;
+    const percentage = Math.max(0, Math.round((totalScore / totalQuestionsCount) * 100));
 
     let recommendation: "Strong Hire" | "Hire" | "Maybe" | "Reject" = "Reject";
-    if (percentage >= 85) recommendation = "Strong Hire";
-    else if (percentage >= 70) recommendation = "Hire";
-    else if (percentage >= 55) recommendation = "Maybe";
+    if (totalScore >= 25 || percentage >= 85) recommendation = "Strong Hire";
+    else if (totalScore >= 18 || percentage >= 60) recommendation = "Hire";
+    else if (totalScore >= 10 || percentage >= 33.33) recommendation = "Maybe";
 
     await prisma.candidate.update({
       where: { id: candidate.id },
@@ -337,32 +338,30 @@ class ProductionDatabaseStore {
         submittedAt: new Date(),
         status: "COMPLETED",
         score: totalScore,
-        totalPossibleScore: allQuestions.length,
+        totalPossibleScore: totalQuestionsCount,
         percentage,
         hiringRecommendation: recommendation,
-        tabSwitches: antiCheatData?.tabSwitches || candidate.tabSwitches,
-        fullscreenExits: antiCheatData?.fullscreenExits || candidate.fullscreenExits,
+        tabSwitches: antiCheatData?.tabSwitches || 0,
+        fullscreenExits: antiCheatData?.fullscreenExits || 0,
       },
     });
 
-    if (simulation) {
+    if (simulation && (simulation.audioData || simulation.textResponse)) {
       await prisma.simulation.upsert({
         where: { candidateId: candidate.id },
         update: {
-          textResponse: simulation.textResponse,
           audioData: simulation.audioData,
+          textResponse: simulation.textResponse,
         },
         create: {
           candidateId: candidate.id,
-          textResponse: simulation.textResponse,
           audioData: simulation.audioData,
-          score: 0,
-          marksMax: 30,
+          textResponse: simulation.textResponse,
         },
       });
     }
 
-    if (antiCheatData?.logs) {
+    if (antiCheatData?.logs && antiCheatData.logs.length > 0) {
       for (const log of antiCheatData.logs) {
         await prisma.antiCheatLog.create({
           data: {
@@ -402,8 +401,8 @@ class ProductionDatabaseStore {
       const s = await prisma.settings.findUnique({ where: { id: "default" } });
       if (!s) {
         return {
-          examDurationMins: 65,
-          passingMarksPercent: 60,
+          examDurationMins: 15,
+          passingMarksPercent: 33.33,
           negativeMarking: false,
           shuffleQuestions: true,
           shuffleOptions: false,
@@ -423,8 +422,8 @@ class ProductionDatabaseStore {
       };
     } catch (err) {
       return {
-        examDurationMins: 65,
-        passingMarksPercent: 60,
+        examDurationMins: 15,
+        passingMarksPercent: 33.33,
         negativeMarking: false,
         shuffleQuestions: true,
         shuffleOptions: false,
@@ -445,8 +444,8 @@ class ProductionDatabaseStore {
       },
       create: {
         id: "default",
-        examDurationMins: newSettings.examDurationMins || 65,
-        passingMarksPercent: newSettings.passingMarksPercent || 60,
+        examDurationMins: newSettings.examDurationMins || 15,
+        passingMarksPercent: newSettings.passingMarksPercent || 33.33,
         negativeMarking: newSettings.negativeMarking || false,
         companyName: newSettings.companyName || "GREATCAMPUS Banca Assessment",
       },

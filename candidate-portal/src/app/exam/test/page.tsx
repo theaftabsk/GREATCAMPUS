@@ -22,7 +22,7 @@ export default function CandidateTestEngine() {
   const [answers, setAnswers] = useState<Record<string, { selectedOption: string | null; timeTakenSec: number }>>({});
   const [flagged, setFlagged] = useState<Record<string, boolean>>({});
 
-  const [timeLeftSec, setTimeLeftSec] = useState(3900);
+  const [timeLeftSec, setTimeLeftSec] = useState(900);
   const [timerWarning, setTimerWarning] = useState("");
 
   const [activeTab, setActiveTab] = useState<"mcq" | "simulation">("mcq");
@@ -73,9 +73,9 @@ export default function CandidateTestEngine() {
     const interval = setInterval(() => {
       setTimeLeftSec((prev) => {
         const next = prev - 1;
-        if (next === 1800) setTimerWarning("⚠️ 30 Minutes remaining!");
-        else if (next === 600) setTimerWarning("⚠️ 10 Minutes remaining!");
+        if (next === 600) setTimerWarning("⚠️ 10 Minutes remaining!");
         else if (next === 300) setTimerWarning("⚠️ 5 Minutes remaining!");
+        else if (next === 180) setTimerWarning("⚠️ 3 Minutes remaining!");
         else if (next === 60) setTimerWarning("🚨 CRITICAL: 1 Minute remaining!");
         else if (next <= 0) { clearInterval(interval); handleSubmitExam(); return 0; }
         return next;

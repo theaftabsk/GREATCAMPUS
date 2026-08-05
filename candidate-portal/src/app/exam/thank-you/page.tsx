@@ -42,11 +42,17 @@ export default function CandidateThankYou() {
             {/* Niva Bupa Logo */}
             <div style={{ display: "flex", justifyContent: "center", marginBottom: "28px" }}>
               <Image
-                src="/niva-bupa-logo.svg"
+                src="/niva-bupa-logo.png"
                 alt="Niva Bupa Health Insurance"
-                width={160}
-                height={56}
-                style={{ height: "clamp(40px, 8vw, 56px)", width: "auto" }}
+                width={210}
+                height={191}
+                style={{
+                  height: "clamp(54px, 10vw, 75px)",
+                  width: "auto",
+                  borderRadius: "14px",
+                  boxShadow: "0 6px 18px rgba(0, 160, 230, 0.22)",
+                  objectFit: "contain"
+                }}
               />
             </div>
 

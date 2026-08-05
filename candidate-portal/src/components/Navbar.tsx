@@ -17,11 +17,17 @@ export default function Navbar({ mode = "public", candidateName }: NavbarProps) 
         {/* Prominent Niva Bupa Logo */}
         <Link href="/" className="nb-logo-wrap" style={{ display: "flex", alignItems: "center", gap: "12px", textDecoration: "none" }}>
           <Image
-            src="/niva-bupa-logo.svg"
+            src="/niva-bupa-logo.png"
             alt="Niva Bupa Health Insurance"
-            width={200}
-            height={60}
-            style={{ height: "46px", width: "auto" }}
+            width={210}
+            height={191}
+            style={{
+              height: "clamp(48px, 6vw, 58px)",
+              width: "auto",
+              borderRadius: "10px",
+              boxShadow: "0 3px 12px rgba(0, 160, 230, 0.22)",
+              objectFit: "contain"
+            }}
             priority
           />
           <div className="nb-logo-divider hidden-mobile" style={{ height: "30px", width: "1.5px", background: "#CBD5E1", margin: "0 4px" }} />

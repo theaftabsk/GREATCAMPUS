@@ -75,11 +75,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             
             <div className="pb-6 border-b border-slate-100">
               <Image
-                src="/niva-bupa-logo.svg"
+                src="/niva-bupa-logo.png"
                 alt="Niva Bupa Health Insurance"
-                width={130}
-                height={40}
-                style={{ height: "34px", width: "auto" }}
+                width={210}
+                height={191}
+                style={{
+                  height: "48px",
+                  width: "auto",
+                  borderRadius: "10px",
+                  boxShadow: "0 3px 10px rgba(0, 160, 230, 0.2)",
+                  objectFit: "contain"
+                }}
                 priority
               />
               <span className="text-[10px] font-extrabold uppercase text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200 mt-2 inline-block">

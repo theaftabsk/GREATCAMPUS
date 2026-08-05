@@ -11,9 +11,9 @@ const sections = [
   {
     num: "01",
     weight: "20%",
-    time: "10 mins",
+    time: "2.5 mins",
     title: "Communication & Customer Handling",
-    desc: "10 Questions testing senior customer interaction, empathy, and active listening skills.",
+    desc: "5 Questions testing senior customer interaction, empathy, and active listening skills.",
     color: "#00AEEF",
     bg: "#EBF7FF",
     border: "#B3E0F9",
@@ -21,9 +21,9 @@ const sections = [
   {
     num: "02",
     weight: "15%",
-    time: "10 mins",
+    time: "2.5 mins",
     title: "Basic English",
-    desc: "10 Questions assessing practical business grammar, vocabulary, and professional phrasing.",
+    desc: "5 Questions assessing practical business grammar, vocabulary, and professional phrasing.",
     color: "#0090C8",
     bg: "#E0F2FE",
     border: "#7DD3FC",
@@ -31,9 +31,9 @@ const sections = [
   {
     num: "03",
     weight: "15%",
-    time: "10 mins",
+    time: "2.5 mins",
     title: "Mental Ability & Reasoning",
-    desc: "10 Questions evaluating series completion, coding-decoding, and logical problem solving.",
+    desc: "5 Questions evaluating series completion, coding-decoding, and logical problem solving.",
     color: "#F7941D",
     bg: "#FEF3E2",
     border: "#FCD38A",
@@ -41,9 +41,9 @@ const sections = [
   {
     num: "04",
     weight: "20%",
-    time: "15 mins",
+    time: "2.5 mins",
     title: "Basic Maths & Numerical Ability",
-    desc: "10 Questions focusing on practical conversion rates, percentage returns, and simple calculations.",
+    desc: "5 Questions focusing on practical conversion rates, percentage returns, and simple calculations.",
     color: "#003F72",
     bg: "#E8F0F8",
     border: "#9FC3DE",
@@ -51,9 +51,9 @@ const sections = [
   {
     num: "05",
     weight: "15%",
-    time: "10 mins",
+    time: "2.5 mins",
     title: "Banking & Financial Awareness",
-    desc: "10 Questions covering EMI, credit score, savings accounts, and basic life/health insurance concepts.",
+    desc: "5 Questions covering EMI, credit score, savings accounts, and basic life/health insurance concepts.",
     color: "#16A34A",
     bg: "#DCFCE7",
     border: "#86EFAC",
@@ -61,9 +61,9 @@ const sections = [
   {
     num: "06",
     weight: "15%",
-    time: "10 mins",
+    time: "2.5 mins",
     title: "Sales Orientation & Judgement",
-    desc: "10 Questions testing objection handling, targets mindset, and situational judgment in Banca environment.",
+    desc: "5 Questions testing objection handling, targets mindset, and situational judgment in Banca environment.",
     color: "#D97706",
     bg: "#FEF3C7",
     border: "#FCD34D",
@@ -114,12 +114,18 @@ export default function Home() {
           {/* Prominent Center Hero Logo */}
           <div style={{ display: "flex", justifyContent: "center", marginBottom: "32px" }}>
             <Image
-              src="/niva-bupa-logo.svg"
+              src="/niva-bupa-logo.png"
               alt="Niva Bupa Health Insurance"
-              width={280}
-              height={90}
+              width={210}
+              height={191}
               priority
-              style={{ height: "clamp(64px, 12vw, 90px)", width: "auto" }}
+              style={{
+                height: "clamp(90px, 18vw, 130px)",
+                width: "auto",
+                borderRadius: "18px",
+                boxShadow: "0 10px 30px rgba(0, 160, 230, 0.28)",
+                objectFit: "contain"
+              }}
             />
           </div>
 
@@ -180,10 +186,10 @@ export default function Home() {
           gap: "12px", marginBottom: "48px",
         }}>
           {[
-            { label: "Total Duration", value: "65 Min", color: "#00AEEF" },
-            { label: "MCQ Questions", value: "60 Qs", color: "#F7941D" },
-            { label: "Assessment Sections", value: "7 Sec", color: "#003F72" },
-            { label: "Simulation Marks", value: "30 Pts", color: "#16A34A" },
+            { label: "Total Duration", value: "15 Min", color: "#00AEEF" },
+            { label: "MCQ Questions", value: "30 Qs", color: "#F7941D" },
+            { label: "Passing Cutoff", value: "10 Correct", color: "#16A34A" },
+            { label: "Simulation Marks", value: "30 Pts", color: "#003F72" },
           ].map((s) => (
             <div key={s.label} style={{
               background: "white", border: "1.5px solid #C8E8F8",
@@ -201,7 +207,7 @@ export default function Home() {
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
             <Award size={20} color="#00AEEF" />
             <h2 style={{ fontSize: "clamp(16px, 3vw, 20px)", fontWeight: 800, color: "#1A2B40" }}>
-              Assessment Structure — 60 Questions | 60 Minutes
+              Assessment Structure — 30 Questions | 15 Minutes (Passing: 10 Correct Answers)
             </h2>
           </div>
 
@@ -363,11 +369,17 @@ export default function Home() {
       }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", marginBottom: "10px" }}>
           <Image
-            src="/niva-bupa-logo.svg"
+            src="/niva-bupa-logo.png"
             alt="Niva Bupa Health Insurance"
-            width={220}
-            height={70}
-            style={{ height: "54px", width: "auto" }}
+            width={210}
+            height={191}
+            style={{
+              height: "clamp(56px, 10vw, 75px)",
+              width: "auto",
+              borderRadius: "12px",
+              boxShadow: "0 4px 14px rgba(0, 160, 230, 0.18)",
+              objectFit: "contain"
+            }}
           />
         </div>
         <p style={{ fontSize: "12px", color: "#64748B", fontWeight: 600 }}>

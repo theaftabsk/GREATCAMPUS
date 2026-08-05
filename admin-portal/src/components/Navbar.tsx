@@ -26,11 +26,17 @@ export default function Navbar({ onMobileSidebarToggle }: NavbarProps) {
 
           <Link href="/admin" className="flex items-center space-x-3">
             <Image
-              src="/niva-bupa-logo.svg"
+              src="/niva-bupa-logo.png"
               alt="Niva Bupa Health Insurance"
-              width={140}
-              height={44}
-              style={{ height: "36px", width: "auto" }}
+              width={210}
+              height={191}
+              style={{
+                height: "46px",
+                width: "auto",
+                borderRadius: "8px",
+                boxShadow: "0 2px 8px rgba(0, 160, 230, 0.2)",
+                objectFit: "contain"
+              }}
               priority
             />
           </Link>

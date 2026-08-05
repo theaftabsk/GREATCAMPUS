@@ -4,10 +4,10 @@ import { useState } from "react";
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState({
-    examDurationMins: 65,
-    passingMarksPercent: 60,
+    examDurationMins: 15,
+    passingMarksPercent: 33.33,
     negativeMarking: false,
-    companyName: "GREATCAMPUS Banca Assessment",
+    companyName: "Niva Bupa Health Insurance - ARM Banca Assessment",
   });
 
   const handleSaveSettings = () => {

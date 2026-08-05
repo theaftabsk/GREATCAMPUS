@@ -108,12 +108,13 @@ export class CandidatesService {
       });
     }
 
-    const percentage = Math.max(0, Math.round((totalScore / (allQuestions.length || 60)) * 100));
+    const totalQuestionsCount = allQuestions.length || 30;
+    const percentage = Math.max(0, Math.round((totalScore / totalQuestionsCount) * 100));
 
     let recommendation: 'Strong Hire' | 'Hire' | 'Maybe' | 'Reject' = 'Reject';
-    if (percentage >= 85) recommendation = 'Strong Hire';
-    else if (percentage >= 70) recommendation = 'Hire';
-    else if (percentage >= 55) recommendation = 'Maybe';
+    if (totalScore >= 25 || percentage >= 85) recommendation = 'Strong Hire';
+    else if (totalScore >= 18 || percentage >= 60) recommendation = 'Hire';
+    else if (totalScore >= 10 || percentage >= 33.33) recommendation = 'Maybe';
 
     await this.prisma.candidate.update({
       where: { id: candidate.id },
