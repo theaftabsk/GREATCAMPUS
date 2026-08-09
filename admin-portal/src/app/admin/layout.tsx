@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import {
   LayoutDashboard,
@@ -11,7 +10,8 @@ import {
   FileText,
   Settings as SettingsIcon,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  ShieldAlert
 } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -54,12 +54,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 selection:bg-blue-500 selection:text-white">
       
-      {/* Sticky Header Navbar */}
+      {/* Fixed Header Navbar */}
       <Navbar onMobileSidebarToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)} />
 
       <div className="flex-1 flex w-full relative">
         
-        {/* Mobile Backdrop */}
+        {/* Mobile Sidebar Backdrop */}
         {mobileSidebarOpen && (
           <div
             onClick={() => setMobileSidebarOpen(false)}
@@ -69,29 +69,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Dedicated Fixed Left Sidebar */}
         <aside
-          className={`fixed lg:sticky top-16 h-[calc(100vh-4rem)] z-40 w-64 bg-white border-r border-slate-200 flex flex-col justify-between overflow-y-auto shrink-0 transform transition-transform duration-300 ${
+          className={`fixed top-16 left-0 bottom-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col justify-between overflow-y-auto shrink-0 transform transition-transform duration-300 ${
             mobileSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"
           }`}
         >
-          <div className="p-6 space-y-8">
+          <div className="p-5 space-y-6">
             
-            <div className="pb-6 border-b border-slate-100">
-              <Image
-                src="/niva-bupa-logo.png"
-                alt="Niva Bupa Health Insurance"
-                width={210}
-                height={191}
-                style={{
-                  height: "46px",
-                  width: "auto",
-                  borderRadius: "10px",
-                  boxShadow: "0 3px 10px rgba(0, 160, 230, 0.2)",
-                  objectFit: "contain"
-                }}
-                priority
-              />
-              <span className="text-[10px] font-extrabold uppercase text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200 mt-2 inline-block">
-                ARM Banca Assessment
+            {/* Sidebar Navigation Header Label */}
+            <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                Banca Navigation
+              </span>
+              <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                Live Portal
               </span>
             </div>
 
@@ -100,7 +90,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 href="/admin"
                 onClick={() => setMobileSidebarOpen(false)}
-                className={`w-full p-3 rounded-2xl text-left text-xs font-bold transition-all flex items-center justify-between ${
+                className={`w-full p-3 rounded-xl text-left text-xs font-bold transition-all flex items-center justify-between ${
                   pathname === "/admin"
                     ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
@@ -116,7 +106,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 href="/admin/assessments"
                 onClick={() => setMobileSidebarOpen(false)}
-                className={`w-full p-3 rounded-2xl text-left text-xs font-bold transition-all flex items-center justify-between ${
+                className={`w-full p-3 rounded-xl text-left text-xs font-bold transition-all flex items-center justify-between ${
                   pathname === "/admin/assessments"
                     ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
@@ -132,7 +122,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 href="/admin/candidates"
                 onClick={() => setMobileSidebarOpen(false)}
-                className={`w-full p-3 rounded-2xl text-left text-xs font-bold transition-all flex items-center justify-between ${
+                className={`w-full p-3 rounded-xl text-left text-xs font-bold transition-all flex items-center justify-between ${
                   pathname === "/admin/candidates"
                     ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
@@ -148,7 +138,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 href="/admin/questions"
                 onClick={() => setMobileSidebarOpen(false)}
-                className={`w-full p-3 rounded-2xl text-left text-xs font-bold transition-all flex items-center justify-between ${
+                className={`w-full p-3 rounded-xl text-left text-xs font-bold transition-all flex items-center justify-between ${
                   pathname === "/admin/questions"
                     ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
@@ -164,7 +154,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Link
                 href="/admin/settings"
                 onClick={() => setMobileSidebarOpen(false)}
-                className={`w-full p-3 rounded-2xl text-left text-xs font-bold transition-all flex items-center justify-between ${
+                className={`w-full p-3 rounded-xl text-left text-xs font-bold transition-all flex items-center justify-between ${
                   pathname === "/admin/settings"
                     ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
@@ -181,9 +171,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           </div>
 
-          <div className="p-4 border-t border-slate-100 bg-slate-50/50 m-4 rounded-2xl border flex items-center justify-between">
+          {/* Sidebar Footer User Info */}
+          <div className="p-4 border-t border-slate-100 bg-slate-50/50 m-4 rounded-xl border flex items-center justify-between">
             <div className="flex items-center space-x-2.5">
-              <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-extrabold flex items-center justify-center text-xs">
+              <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 font-extrabold flex items-center justify-center text-xs">
                 HR
               </div>
               <div>
@@ -203,9 +194,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         </aside>
 
-        {/* Main Content Body */}
-        <main className="flex-1 p-6 sm:p-8 min-w-0">
-          {children}
+        {/* Main Content Area (With Padding for Fixed Header & Sidebar) */}
+        <main className="flex-1 lg:pl-64 pt-16 min-h-screen w-full">
+          <div className="w-full">
+            {children}
+          </div>
         </main>
 
       </div>
