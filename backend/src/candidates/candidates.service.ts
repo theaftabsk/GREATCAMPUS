@@ -49,6 +49,7 @@ export class CandidatesService {
       const latestAttempt = cand.attempts[0] || null;
       let subjectBreakdown: Record<string, { subjectName: string; correct: number; total: number; percentage: number }> = {};
       let sectionBreakdown: Record<string, { sectionName: string; subjectName: string; correct: number; total: number }> = {};
+      let questionAudit: any[] = [];
 
       if (latestAttempt) {
         // Build subject and section performance breakdown
@@ -79,7 +80,7 @@ export class CandidatesService {
           item.percentage = item.total > 0 ? Math.round((item.correct / item.total) * 100) : 0;
         });
 
-        var questionAudit = latestAttempt.attemptQuestions.map((aq) => {
+        questionAudit = latestAttempt.attemptQuestions.map((aq) => {
           const q = aq.question;
           const sub = latestAttempt.submissions.find((s) => s.questionId === q.id);
           const selected = sub?.selectedOption || null;
