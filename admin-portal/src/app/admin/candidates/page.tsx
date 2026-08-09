@@ -481,6 +481,55 @@ export default function AdminCandidatesPage() {
                 </div>
               )}
 
+              {/* Question-by-Question Response Audit Table */}
+              {selectedCandidate.attempt?.questionAudit?.length > 0 && (
+                <div className="space-y-3 pt-4 border-t border-slate-100">
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center justify-between">
+                    <span>Question-by-Question Submission Audit ({selectedCandidate.attempt.questionAudit.length} Questions)</span>
+                  </h3>
+                  <div className="border border-slate-200 rounded-xl overflow-hidden max-h-64 overflow-y-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-100 text-slate-600 font-bold uppercase text-[10px] sticky top-0">
+                        <tr>
+                          <th className="p-2.5">Q#</th>
+                          <th className="p-2.5">Question Text</th>
+                          <th className="p-2.5">Candidate Answer</th>
+                          <th className="p-2.5">Correct Answer</th>
+                          <th className="p-2.5 text-right">Result</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-slate-800">
+                        {selectedCandidate.attempt.questionAudit.map((qa: any) => (
+                          <tr key={qa.questionOrder} className={qa.isCorrect ? "bg-emerald-50/30" : qa.selectedOption ? "bg-red-50/20" : "bg-slate-50/50"}>
+                            <td className="p-2.5 font-bold text-slate-500">Q{qa.questionOrder}</td>
+                            <td className="p-2.5 font-medium max-w-xs truncate" title={qa.questionText}>{qa.questionText}</td>
+                            <td className="p-2.5">
+                              {qa.selectedOption ? (
+                                <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${qa.isCorrect ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
+                                  Option {qa.selectedOption}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 italic">Unanswered</span>
+                              )}
+                            </td>
+                            <td className="p-2.5 font-bold text-emerald-700">Option {qa.correctAnswer}</td>
+                            <td className="p-2.5 text-right">
+                              {qa.isCorrect ? (
+                                <span className="text-emerald-600 font-extrabold flex items-center justify-end gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> +1</span>
+                              ) : qa.selectedOption ? (
+                                <span className="text-red-600 font-bold flex items-center justify-end gap-1"><X className="w-3.5 h-3.5" /> 0</span>
+                              ) : (
+                                <span className="text-slate-400 font-bold">0</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               {/* Proctoring Timeline */}
               {selectedCandidate.attempt?.proctoringLogs?.length > 0 && (
                 <div className="space-y-3 pt-4 border-t border-slate-100">

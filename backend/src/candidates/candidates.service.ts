@@ -78,6 +78,27 @@ export class CandidatesService {
           const item = subjectBreakdown[k];
           item.percentage = item.total > 0 ? Math.round((item.correct / item.total) * 100) : 0;
         });
+
+        var questionAudit = latestAttempt.attemptQuestions.map((aq) => {
+          const q = aq.question;
+          const sub = latestAttempt.submissions.find((s) => s.questionId === q.id);
+          const selected = sub?.selectedOption || null;
+          const isCorrect = sub?.isCorrect || false;
+          return {
+            questionOrder: aq.questionOrder,
+            questionText: q.question,
+            subjectName: q.section.subject.name,
+            sectionName: q.section.name,
+            optionA: q.optionA,
+            optionB: q.optionB,
+            optionC: q.optionC,
+            optionD: q.optionD,
+            selectedOption: selected,
+            correctAnswer: q.correctAnswer,
+            isCorrect,
+            marks: aq.marks,
+          };
+        });
       }
 
       return {
@@ -108,6 +129,7 @@ export class CandidatesService {
               durationMins: latestAttempt.durationMinsSnapshot,
               subjectBreakdown: Object.values(subjectBreakdown),
               sectionBreakdown: Object.values(sectionBreakdown),
+              questionAudit: questionAudit || [],
               proctoringLogs: latestAttempt.proctoringLogs,
             }
           : null,
@@ -374,7 +396,7 @@ export class CandidatesService {
   // --- SUBMIT EXAM ---
   async submitExam(
     attemptId: string,
-    answers: Record<string, { selectedOption: string | null; timeTakenSec: number }>
+    answers: Record<string, any>
   ) {
     const attempt = await this.prisma.examAttempt.findUnique({
       where: { id: attemptId },
@@ -396,11 +418,26 @@ export class CandidatesService {
     let totalScore = 0;
     let totalPossibleScore = 0;
 
+    const checkAnswerMatch = (selected: string | null, correctAnswer: string): boolean => {
+      if (!selected || !correctAnswer) return false;
+      const selNorm = selected.trim().toUpperCase().replace(/^OPTION\s+/, '');
+      const corNorm = correctAnswer.trim().toUpperCase().replace(/^OPTION\s+/, '');
+      return selNorm === corNorm;
+    };
+
     for (const aq of attempt.attemptQuestions) {
       const q = aq.question;
-      const selected = answers[q.id]?.selectedOption || null;
-      const isCorrect = selected === q.correctAnswer;
-      const timeTaken = answers[q.id]?.timeTakenSec || 0;
+      const ansObj = answers[q.id] || answers[aq.id] || answers[aq.questionId];
+      let selected: string | null = null;
+
+      if (typeof ansObj === 'string') {
+        selected = ansObj;
+      } else if (ansObj && typeof ansObj === 'object') {
+        selected = ansObj.selectedOption || null;
+      }
+
+      const isCorrect = checkAnswerMatch(selected, q.correctAnswer);
+      const timeTaken = (ansObj && typeof ansObj === 'object' && ansObj.timeTakenSec) ? ansObj.timeTakenSec : 0;
 
       totalPossibleScore += aq.marks;
       if (isCorrect) totalScore += aq.marks;
