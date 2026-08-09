@@ -135,6 +135,12 @@ export class AssessmentsService {
     const tenant = await this.getOrCreateTenant();
     const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + '-' + Date.now().toString().slice(-4);
 
+    // Deactivate all existing assessments so ONLY 1 SINGLE ACTIVE EXAM exists!
+    await this.prisma.assessment.updateMany({
+      where: { status: 'ACTIVE' },
+      data: { status: 'ARCHIVED' },
+    });
+
     return this.prisma.assessment.create({
       data: {
         tenantId: tenant.id,
@@ -144,6 +150,7 @@ export class AssessmentsService {
         durationMins: data.durationMins ?? 60,
         passingPercentage: data.passingPercentage ?? 50,
         maxProctorWarnings: data.maxProctorWarnings ?? 3,
+        status: 'ACTIVE',
       },
     });
   }
@@ -159,6 +166,14 @@ export class AssessmentsService {
       status?: string;
     }
   ) {
+    if (data.status === 'ACTIVE') {
+      // Deactivate all other assessments
+      await this.prisma.assessment.updateMany({
+        where: { id: { not: id } },
+        data: { status: 'ARCHIVED' },
+      });
+    }
+
     return this.prisma.assessment.update({
       where: { id },
       data,
