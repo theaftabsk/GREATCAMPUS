@@ -55,21 +55,22 @@ export class CandidatesService {
         for (const aq of latestAttempt.attemptQuestions) {
           const subName = aq.question.section.subject.name;
           const secName = aq.question.section.name;
+          const secKey = `${subName}___${secName}`;
 
           if (!subjectBreakdown[subName]) {
             subjectBreakdown[subName] = { subjectName: subName, correct: 0, total: 0, percentage: 0 };
           }
-          if (!sectionBreakdown[secName]) {
-            sectionBreakdown[secName] = { sectionName: secName, subjectName: subName, correct: 0, total: 0 };
+          if (!sectionBreakdown[secKey]) {
+            sectionBreakdown[secKey] = { sectionName: secName, subjectName: subName, correct: 0, total: 0 };
           }
 
           subjectBreakdown[subName].total += 1;
-          sectionBreakdown[secName].total += 1;
+          sectionBreakdown[secKey].total += 1;
 
           const submission = latestAttempt.submissions.find((s) => s.questionId === aq.questionId);
           if (submission && submission.isCorrect) {
             subjectBreakdown[subName].correct += 1;
-            sectionBreakdown[secName].correct += 1;
+            sectionBreakdown[secKey].correct += 1;
           }
         }
 

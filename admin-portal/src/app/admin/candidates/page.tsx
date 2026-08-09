@@ -406,17 +406,44 @@ export default function AdminCandidatesPage() {
                 </div>
                 <div>
                   <span className="text-slate-400 text-[10px] uppercase font-bold block">Status</span>
-                  <strong className="text-slate-900">{selectedCandidate.status}</strong>
+                  <span className={`inline-block font-black px-2 py-0.5 rounded text-[10px] uppercase ${
+                    selectedCandidate.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' :
+                    selectedCandidate.status === 'DISQUALIFIED' ? 'bg-red-100 text-red-700' :
+                    selectedCandidate.status === 'IN_PROGRESS' ? 'bg-amber-100 text-amber-700' : 'bg-slate-200 text-slate-700'
+                  }`}>
+                    {selectedCandidate.status}
+                  </span>
                 </div>
                 <div>
                   <span className="text-slate-400 text-[10px] uppercase font-bold block">Total Score</span>
-                  <strong className="text-blue-600 font-extrabold text-sm">{selectedCandidate.attempt?.score || 0} / {selectedCandidate.attempt?.totalPossibleScore || 0}</strong>
+                  <strong className="text-blue-600 font-extrabold text-sm">{selectedCandidate.attempt?.score || 0} / {selectedCandidate.attempt?.totalPossibleScore || 60}</strong>
                 </div>
                 <div>
                   <span className="text-slate-400 text-[10px] uppercase font-bold block">Percentage</span>
                   <strong className="text-slate-900">{selectedCandidate.attempt?.percentage || 0}%</strong>
                 </div>
               </div>
+
+              {/* Status Banner Info */}
+              {selectedCandidate.status === 'IN_PROGRESS' && (
+                <div className="bg-amber-50 border border-amber-200 text-amber-800 p-3 rounded-xl text-xs font-bold flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                  <span>Candidate is currently taking the exam test in real time. Final scorecard will update upon submission.</span>
+                </div>
+              )}
+
+              {selectedCandidate.status === 'DISQUALIFIED' && (
+                <div className="bg-red-50 border border-red-200 text-red-800 p-3 rounded-xl text-xs font-bold flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>Candidate DISQUALIFIED for exceeding max proctoring warnings ({selectedCandidate.attempt?.warningCount || 3}/3 Warnings).</span>
+                </div>
+              )}
+
+              {selectedCandidate.status === 'NOT_STARTED' && (
+                <div className="bg-slate-100 border border-slate-200 text-slate-700 p-3 rounded-xl text-xs font-bold">
+                  Candidate has been assigned to this exam paper, but has not logged in to start the session yet.
+                </div>
+              )}
 
               {/* Subject Breakdown */}
               {selectedCandidate.attempt?.subjectBreakdown?.length > 0 && (
@@ -443,8 +470,8 @@ export default function AdminCandidatesPage() {
                 <div className="space-y-3">
                   <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Section Accuracy Breakdown</h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-                    {selectedCandidate.attempt.sectionBreakdown.map((sec: any) => (
-                      <div key={sec.sectionName} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    {selectedCandidate.attempt.sectionBreakdown.map((sec: any, idx: number) => (
+                      <div key={`${sec.subjectName}-${sec.sectionName}-${idx}`} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
                         <div className="text-[10px] text-slate-400 truncate">{sec.subjectName}</div>
                         <div className="font-bold text-slate-800 truncate">{sec.sectionName}</div>
                         <div className="text-blue-600 font-extrabold text-xs mt-1">{sec.correct} / {sec.total} Correct</div>
