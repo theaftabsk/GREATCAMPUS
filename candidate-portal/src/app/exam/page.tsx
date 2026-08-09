@@ -1,14 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import "../exam/exam.css";
-import { User, Mail, Phone, Hash, ArrowRight } from "lucide-react";
+import { User, Mail, Phone, Hash, ArrowRight, BookOpen } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
+
+interface AssessmentOption {
+  id: string;
+  name: string;
+  description: string;
+}
 
 export default function CandidateRegistration() {
   const router = useRouter();
+  const [assessments, setAssessments] = useState<AssessmentOption[]>([]);
+  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string>("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -17,6 +25,23 @@ export default function CandidateRegistration() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function fetchAssessments() {
+      try {
+        const baseUrl = getApiBaseUrl();
+        const res = await fetch(`${baseUrl}/api/v1/assessments`);
+        const data = await res.json();
+        if (data.success && data.assessments && data.assessments.length > 0) {
+          setAssessments(data.assessments);
+          setSelectedAssessmentId(data.assessments[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to load assessments:", err);
+      }
+    }
+    fetchAssessments();
+  }, []);
 
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +63,7 @@ export default function CandidateRegistration() {
           email: formData.email,
           phone: formData.phone,
           referenceId: formData.referenceId || `REF-${Date.now().toString().slice(-6)}`,
+          assessmentId: selectedAssessmentId || (assessments[0]?.id || ""),
         }),
       });
 
@@ -55,7 +81,8 @@ export default function CandidateRegistration() {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        referenceId: formData.referenceId || `REF-${Date.now().toString().slice(-6)}`,
+        referenceId: formData.referenceId || `REF-BANK-1001`,
+        assessmentId: selectedAssessmentId || (assessments[0]?.id || ""),
       };
       localStorage.setItem("banca_candidate", JSON.stringify(fallbackCand));
       router.push("/exam/test");
@@ -74,13 +101,13 @@ export default function CandidateRegistration() {
           {/* Hero Header */}
           <div className="exam-card-hero">
             <div className="exam-card-hero-badge">
-              ARM Banca Recruitment Assessment
+              Assigned Candidate Verification
             </div>
             <h1 className="exam-card-hero-title">
               Candidate Verification &<br />Session Registration
             </h1>
             <p className="exam-card-hero-sub">
-              Fill in your details below to initialise your secure, timed assessment session.
+              Fill in your details below to initialize your assigned, secure, timed assessment test.
             </p>
           </div>
 
@@ -96,6 +123,30 @@ export default function CandidateRegistration() {
             <form onSubmit={handleStart} className="exam-form">
               <div className="exam-form-grid">
 
+                {/* Assigned Exam Selector if multiple exist */}
+                {assessments.length > 0 && (
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <label className="exam-field-label">
+                      Assigned Assessment Test <span className="exam-field-required">*</span>
+                    </label>
+                    <div className="exam-input-wrap">
+                      <BookOpen className="exam-input-icon" />
+                      <select
+                        value={selectedAssessmentId}
+                        onChange={(e) => setSelectedAssessmentId(e.target.value)}
+                        className="exam-input"
+                        style={{ cursor: "pointer" }}
+                      >
+                        {assessments.map((ass) => (
+                          <option key={ass.id} value={ass.id}>
+                            {ass.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="exam-field-label">
                     Full Name <span className="exam-field-required">*</span>
@@ -105,7 +156,7 @@ export default function CandidateRegistration() {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Anish Sharma"
+                      placeholder="e.g. Aftab SK"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       className="exam-input"
@@ -122,7 +173,7 @@ export default function CandidateRegistration() {
                     <input
                       type="email"
                       required
-                      placeholder="anish@example.com"
+                      placeholder="aftab@example.com"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       className="exam-input"
@@ -149,14 +200,14 @@ export default function CandidateRegistration() {
 
                 <div>
                   <label className="exam-field-label">
-                    Reference / Application ID
-                    <span style={{ fontWeight: 500, textTransform: "none", fontSize: "9.5px", color: "#94A3B8", marginLeft: "4px" }}>(optional)</span>
+                    Reference / Access Code
+                    <span style={{ fontWeight: 500, textTransform: "none", fontSize: "9.5px", color: "#94A3B8", marginLeft: "4px" }}>(e.g. REF-BANK-1001)</span>
                   </label>
                   <div className="exam-input-wrap">
                     <Hash className="exam-input-icon" />
                     <input
                       type="text"
-                      placeholder="e.g. REF-88219"
+                      placeholder="e.g. REF-BANK-1001"
                       value={formData.referenceId}
                       onChange={(e) => setFormData({ ...formData, referenceId: e.target.value })}
                       className="exam-input"

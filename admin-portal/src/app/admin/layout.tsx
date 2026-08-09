@@ -112,6 +112,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </Link>
 
               <Link
+                href="/admin/assessments"
+                onClick={() => setMobileSidebarOpen(false)}
+                className={`w-full p-3 rounded-2xl text-left text-xs font-bold transition-all flex items-center justify-between ${
+                  pathname === "/admin/assessments"
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <FileText className="w-4 h-4" />
+                  <span>Exams & Assessments</span>
+                </div>
+                {pathname === "/admin/assessments" && <ChevronRight className="w-4 h-4" />}
+              </Link>
+
+              <Link
                 href="/admin/candidates"
                 onClick={() => setMobileSidebarOpen(false)}
                 className={`w-full p-3 rounded-2xl text-left text-xs font-bold transition-all flex items-center justify-between ${

@@ -2,37 +2,64 @@
 
 import { useState, useEffect } from "react";
 import {
-  Search,
-  AlertTriangle,
-  CheckCircle2,
-  Eye,
-  Printer,
-  X,
-  Mic,
-  Volume2,
-  Trash2
+  Search, Plus, Eye, Printer, Trash2, X, BookOpen, AlertTriangle,
+  CheckCircle2, ShieldAlert, FileText, UserPlus, Layers, ShieldCheck
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 
+interface AssessmentOption {
+  id: string;
+  name: string;
+}
+
 export default function AdminCandidatesPage() {
+  const [assessments, setAssessments] = useState<AssessmentOption[]>([]);
+  const [selectedAssessmentId, setSelectedAssessmentId] = useState<string>("");
   const [candidates, setCandidates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState("");
-  const [recommendationFilter, setRecommendationFilter] = useState("ALL");
 
-  // Selected candidate scorecard modal
+  // Modals
+  const [showAddCandidateModal, setShowAddCandidateModal] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<any | null>(null);
-  const [simScoreInput, setSimScoreInput] = useState(0);
-  const [simFeedbackInput, setSimFeedbackInput] = useState("");
 
-  const fetchCandidates = async () => {
+  // Add Candidate Form
+  const [candForm, setCandForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    referenceId: "",
+    assessmentId: "",
+  });
+
+  const loadAssessments = async () => {
     try {
       const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/v1/candidates`);
+      const res = await fetch(`${baseUrl}/api/v1/assessments`);
       const data = await res.json();
-      if (data.success) setCandidates(data.candidates);
+      if (data.success && Array.isArray(data.assessments)) {
+        setAssessments(data.assessments);
+        if (data.assessments.length > 0 && !candForm.assessmentId) {
+          setCandForm((p) => ({ ...p, assessmentId: data.assessments[0].id }));
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load assessments:", err);
+    }
+  };
+
+  const fetchCandidates = async () => {
+    setLoading(true);
+    try {
+      const baseUrl = getApiBaseUrl();
+      let url = `${baseUrl}/api/v1/candidates`;
+      if (selectedAssessmentId) url += `?assessmentId=${selectedAssessmentId}`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.success) setCandidates(data.candidates || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -41,369 +68,425 @@ export default function AdminCandidatesPage() {
   };
 
   useEffect(() => {
-    fetchCandidates();
+    loadAssessments();
   }, []);
 
-  const handleSaveSimulationGrade = async () => {
-    if (!selectedCandidate) return;
+  useEffect(() => {
+    fetchCandidates();
+  }, [selectedAssessmentId]);
+
+  const handleCreateCandidate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!candForm.name || !candForm.email || !candForm.assessmentId) {
+      alert("Please fill in candidate name, email, and select an assigned exam.");
+      return;
+    }
 
     try {
       const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/v1/candidates/grade-simulation`, {
+      const res = await fetch(`${baseUrl}/api/v1/candidates/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          candidateId: selectedCandidate.id,
-          score: simScoreInput,
-          feedback: simFeedbackInput,
-          gradedBy: "HR Admin",
+          name: candForm.name,
+          email: candForm.email,
+          phone: candForm.phone,
+          referenceId: candForm.referenceId || `REF-${Date.now().toString().slice(-6)}`,
+          assessmentId: candForm.assessmentId,
         }),
       });
 
       const data = await res.json();
       if (data.success) {
-        alert("Simulation evaluation saved successfully!");
+        setShowAddCandidateModal(false);
+        setCandForm({ name: "", email: "", phone: "", referenceId: "", assessmentId: assessments[0]?.id || "" });
         fetchCandidates();
-        setSelectedCandidate(data.candidate);
       }
-    } catch {
-      alert("Failed to save simulation grade");
+    } catch (err) {
+      alert("Failed to register candidate.");
     }
   };
 
   const handleDeleteCandidate = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to permanently delete candidate record for "${name}"?`)) return;
-
+    if (!confirm(`Are you sure you want to delete candidate record for "${name}"?`)) return;
     try {
       const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/v1/candidates?id=${id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(`${baseUrl}/api/v1/candidates/${id}`, { method: "DELETE" });
       const data = await res.json();
       if (data.success) {
-        alert("Candidate record deleted successfully!");
         if (selectedCandidate?.id === id) setSelectedCandidate(null);
         fetchCandidates();
       }
-    } catch {
-      alert("Failed to delete candidate record");
+    } catch (err) {
+      alert("Failed to delete candidate.");
     }
   };
 
-  const handlePrintScorecard = () => {
-    window.print();
-  };
-
   const filteredCandidates = candidates.filter((c) => {
-    const matchesSearch =
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.referenceId.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesFilter =
-      recommendationFilter === "ALL" || c.hiringRecommendation === recommendationFilter;
-
-    return matchesSearch && matchesFilter;
+    const term = searchTerm.toLowerCase();
+    return (
+      c.name.toLowerCase().includes(term) ||
+      c.email.toLowerCase().includes(term) ||
+      c.referenceId.toLowerCase().includes(term)
+    );
   });
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="p-8 space-y-8 max-w-7xl mx-auto">
+
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-slate-900">Candidate Evaluation Directory</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Inspect full test answers, simulation voice recordings, anti-cheat flags, and manage/delete candidate records.</p>
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
+            <UserPlus className="w-7 h-7 text-blue-600" />
+            Candidate Assessment Evaluation
+          </h1>
+          <p className="text-xs text-slate-500 mt-1 font-medium">
+            Assign Candidates to Exams, inspect Subject/Section performance, and audit proctoring logs.
+          </p>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <button
+          onClick={() => setShowAddCandidateModal(true)}
+          className="inline-flex items-center space-x-2 bg-blue-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl hover:bg-blue-700 transition shadow-lg shadow-blue-500/20"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Assign Candidate to Exam</span>
+        </button>
+      </div>
+
+      {/* Filters Bar */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <div>
+          <label className="font-bold text-slate-700 block mb-1">Filter by Exam / Assessment</label>
+          <select
+            value={selectedAssessmentId}
+            onChange={(e) => setSelectedAssessmentId(e.target.value)}
+            className="w-full p-2.5 rounded-xl border border-slate-200 font-semibold text-slate-800 outline-none"
+          >
+            <option value="">All Exams</option>
+            {assessments.map((a) => (
+              <option key={a.id} value={a.id}>{a.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="font-bold text-slate-700 block mb-1">Search Candidate</label>
           <div className="relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             <input
               type="text"
-              placeholder="Search candidate name or ref ID..."
+              placeholder="Search by Name, Email, or Reference ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none w-60"
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-800 outline-none"
             />
           </div>
-
-          <select
-            value={recommendationFilter}
-            onChange={(e) => setRecommendationFilter(e.target.value)}
-            className="px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-700 outline-none"
-          >
-            <option value="ALL">All Recommendations</option>
-            <option value="Strong Hire">Strong Hire</option>
-            <option value="Hire">Hire</option>
-            <option value="Maybe">Maybe</option>
-            <option value="Reject">Reject</option>
-          </select>
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200 text-xs font-extrabold uppercase text-slate-500">
-              <tr>
-                <th className="py-4 px-6">Candidate Details</th>
-                <th className="py-4 px-6">Ref ID</th>
-                <th className="py-4 px-6">Score</th>
-                <th className="py-4 px-6">Recommendation</th>
-                <th className="py-4 px-6">Anti-Cheat Flags</th>
-                <th className="py-4 px-6">Simulation Status</th>
-                <th className="py-4 px-6 text-right">Actions</th>
+      {/* Candidates Table */}
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-xs text-slate-500 font-bold mt-2">Loading Candidate Evaluations...</p>
+        </div>
+      ) : filteredCandidates.length === 0 ? (
+        <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-xs text-slate-500 space-y-3">
+          <Layers className="w-8 h-8 text-slate-300 mx-auto" />
+          <p className="font-bold">No candidates found.</p>
+        </div>
+      ) : (
+        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px] font-extrabold tracking-wider">
+                <th className="p-4">Candidate & Ref ID</th>
+                <th className="p-4">Assigned Exam</th>
+                <th className="p-4">Exam Status</th>
+                <th className="p-4">Score / Percentage</th>
+                <th className="p-4">Proctor Warnings</th>
+                <th className="p-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-medium">
-              {filteredCandidates.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="py-12 text-center text-slate-400 font-semibold">
-                    No candidate records submitted yet. As candidates complete tests, they appear here live!
-                  </td>
-                </tr>
-              ) : (
-                filteredCandidates.map((c) => (
-                  <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-4 px-6">
-                      <p className="font-bold text-slate-900">{c.name}</p>
-                      <p className="text-xs text-slate-500">{c.email} • {c.phone}</p>
+            <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+              {filteredCandidates.map((c) => {
+                const attempt = c.attempt;
+                const status = c.status;
+
+                return (
+                  <tr key={c.id} className="hover:bg-slate-50 transition">
+                    <td className="p-4">
+                      <div className="font-bold text-slate-900">{c.name}</div>
+                      <div className="text-[11px] text-slate-400">{c.email} | <strong className="text-blue-600">{c.referenceId}</strong></div>
                     </td>
-                    <td className="py-4 px-6 font-mono text-xs text-slate-700 font-bold">{c.referenceId}</td>
-                    <td className="py-4 px-6">
-                      <span className="font-extrabold text-slate-900 text-base">{c.percentage}%</span>
-                      <span className="text-xs text-slate-400 block">({c.score}/{c.totalPossibleScore})</span>
+
+                    <td className="p-4">
+                      <span className="font-bold text-slate-800">{c.assessment?.name}</span>
                     </td>
-                    <td className="py-4 px-6">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-bold border inline-block ${
-                          c.hiringRecommendation === "Strong Hire"
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : c.hiringRecommendation === "Hire"
-                            ? "bg-blue-50 text-blue-700 border-blue-200"
-                            : c.hiringRecommendation === "Maybe"
-                            ? "bg-amber-50 text-amber-700 border-amber-200"
-                            : "bg-red-50 text-red-700 border-red-200"
-                        }`}
+
+                    <td className="p-4">
+                      {status === "COMPLETED" ? (
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                          COMPLETED
+                        </span>
+                      ) : status === "IN_PROGRESS" ? (
+                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+                          IN_PROGRESS
+                        </span>
+                      ) : status === "DISQUALIFIED" ? (
+                        <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded">
+                          DISQUALIFIED
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                          REGISTERED
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="p-4">
+                      {attempt && attempt.submittedAt ? (
+                        <div>
+                          <strong className="text-sm text-slate-900">{attempt.score}/{attempt.totalPossibleScore}</strong>
+                          <span className="text-xs text-slate-500 ml-1">({attempt.percentage}%)</span>
+                          {attempt.isPassed ? (
+                            <span className="ml-2 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">PASSED</span>
+                          ) : (
+                            <span className="ml-2 text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">FAILED</span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 italic">Not Submitted</span>
+                      )}
+                    </td>
+
+                    <td className="p-4">
+                      {attempt ? (
+                        <span className={`inline-flex items-center gap-1 font-bold ${attempt.warningCount > 0 ? "text-red-600" : "text-slate-600"}`}>
+                          <ShieldAlert className="w-3.5 h-3.5" />
+                          {attempt.warningCount} / {attempt.maxProctorWarnings}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">0</span>
+                      )}
+                    </td>
+
+                    <td className="p-4 text-right space-x-2">
+                      <button
+                        onClick={() => setSelectedCandidate(c)}
+                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg font-bold text-xs inline-flex items-center gap-1"
                       >
-                        {c.hiringRecommendation}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      {c.tabSwitches > 0 || c.fullscreenExits > 0 ? (
-                        <span className="inline-flex items-center space-x-1 bg-red-50 text-red-700 border border-red-200 px-2.5 py-1 rounded-lg text-xs font-bold">
-                          <AlertTriangle className="w-3.5 h-3.5" />
-                          <span>Tab: {c.tabSwitches} | Fullscreen: {c.fullscreenExits}</span>
-                        </span>
-                      ) : (
-                        <span className="text-xs text-emerald-600 font-semibold flex items-center space-x-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Clean Session</span>
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-4 px-6 text-xs font-semibold">
-                      {c.simulation ? (
-                        c.simulation.score > 0 ? (
-                          <span className="text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                            Graded ({c.simulation.score}/30)
-                          </span>
-                        ) : (
-                          <span className="text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200 flex items-center space-x-1 w-max">
-                            {c.simulation.audioUrl && <Volume2 className="w-3 h-3 text-indigo-600 animate-pulse" />}
-                            <span>Pending HR Grade</span>
-                          </span>
-                        )
-                      ) : (
-                        <span className="text-slate-400">No Response</span>
-                      )}
-                    </td>
-                    <td className="py-4 px-6 text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <button
-                          onClick={() => {
-                            setSelectedCandidate(c);
-                            setSimScoreInput(c.simulation?.score || 0);
-                            setSimFeedbackInput(c.simulation?.feedback || "");
-                          }}
-                          className="px-3 py-1.5 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 transition-colors flex items-center space-x-1"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Scorecard</span>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCandidate(c.id, c.name)}
-                          className="p-1.5 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 transition-colors"
-                          title="Delete Candidate Record"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                        <Eye className="w-4 h-4" /> View Report
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCandidate(c.id, c.name)}
+                        className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg inline-flex items-center"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
-                ))
-              )}
+                );
+              })}
             </tbody>
           </table>
         </div>
-      </div>
+      )}
 
+      {/* ASSIGN CANDIDATE MODAL */}
+      {showAddCandidateModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-6">
+            <h2 className="text-lg font-extrabold text-slate-900">Assign Candidate to Exam</h2>
+
+            <form onSubmit={handleCreateCandidate} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Select Assigned Exam *</label>
+                <select
+                  required
+                  value={candForm.assessmentId}
+                  onChange={(e) => setCandForm({ ...candForm, assessmentId: e.target.value })}
+                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-bold text-blue-600 outline-none"
+                >
+                  {assessments.map((a) => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Candidate Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Aftab SK"
+                  value={candForm.name}
+                  onChange={(e) => setCandForm({ ...candForm, name: e.target.value })}
+                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-medium outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="aftab@example.com"
+                  value={candForm.email}
+                  onChange={(e) => setCandForm({ ...candForm, email: e.target.value })}
+                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-medium outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Mobile Number</label>
+                <input
+                  type="tel"
+                  placeholder="+91 98765 43210"
+                  value={candForm.phone}
+                  onChange={(e) => setCandForm({ ...candForm, phone: e.target.value })}
+                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-medium outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Reference / Access Code (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. REF-BANK-1001"
+                  value={candForm.referenceId}
+                  onChange={(e) => setCandForm({ ...candForm, referenceId: e.target.value })}
+                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-medium outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCandidateModal(false)}
+                  className="px-4 py-2 text-slate-600 font-bold text-xs hover:bg-slate-100 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 shadow-md"
+                >
+                  Create & Assign Candidate
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DETAILED SCORECARD / ANALYTICS DRAWER */}
       {selectedCandidate && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto print:p-0 print:bg-white print:static">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-8 relative print:max-h-none print:shadow-none print:border-none print:rounded-none">
-            
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-6 print:hidden">
-              <span className="text-xs font-extrabold uppercase text-blue-700 bg-blue-50 px-3 py-1 rounded-lg">
-                Official Candidate Assessment Scorecard
-              </span>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-end p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full h-full max-h-[95vh] p-6 shadow-2xl flex flex-col justify-between overflow-y-auto space-y-6">
 
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => handleDeleteCandidate(selectedCandidate.id, selectedCandidate.name)}
-                  className="px-3.5 py-2 bg-red-50 text-red-700 border border-red-200 font-bold text-xs rounded-xl hover:bg-red-100 transition-colors flex items-center space-x-1.5"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>Delete Record</span>
-                </button>
-
-                <button
-                  onClick={handlePrintScorecard}
-                  className="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl hover:bg-slate-800 transition-colors flex items-center space-x-1.5"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>Print PDF Report</span>
-                </button>
-
-                <button
-                  onClick={() => setSelectedCandidate(null)}
-                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                >
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div>
+                  <h2 className="text-lg font-extrabold text-slate-900">{selectedCandidate.name}</h2>
+                  <p className="text-xs text-slate-500">Ref: <strong className="text-blue-600">{selectedCandidate.referenceId}</strong> | {selectedCandidate.email}</p>
+                </div>
+                <button onClick={() => setSelectedCandidate(null)} className="p-1.5 text-slate-400 hover:text-slate-600">
                   <X className="w-5 h-5" />
                 </button>
               </div>
-            </div>
 
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-6">
+              {/* Assessment Summary Banner */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                 <div>
-                  <h2 className="text-2xl font-black text-slate-900">{selectedCandidate.name}</h2>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Email: {selectedCandidate.email} | Mobile: {selectedCandidate.phone} | Ref ID: <strong className="text-slate-800">{selectedCandidate.referenceId}</strong>
-                  </p>
+                  <span className="text-slate-400 text-[10px] uppercase font-bold block">Assigned Exam</span>
+                  <strong className="text-slate-900">{selectedCandidate.assessment?.name}</strong>
                 </div>
-
-                <div className="mt-4 sm:mt-0 text-left sm:text-right">
-                  <span className="text-3xl font-black text-blue-600">{selectedCandidate.percentage}%</span>
-                  <span className="text-xs text-slate-400 block font-semibold">({selectedCandidate.score}/{selectedCandidate.totalPossibleScore} Marks)</span>
+                <div>
+                  <span className="text-slate-400 text-[10px] uppercase font-bold block">Status</span>
+                  <strong className="text-slate-900">{selectedCandidate.status}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] uppercase font-bold block">Total Score</span>
+                  <strong className="text-blue-600 font-extrabold text-sm">{selectedCandidate.attempt?.score || 0} / {selectedCandidate.attempt?.totalPossibleScore || 0}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-400 text-[10px] uppercase font-bold block">Percentage</span>
+                  <strong className="text-slate-900">{selectedCandidate.attempt?.percentage || 0}%</strong>
                 </div>
               </div>
 
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-bold uppercase text-slate-500">Automated Recommendation</span>
-                  <p className="text-lg font-extrabold text-slate-900">{selectedCandidate.hiringRecommendation}</p>
-                </div>
-                <span
-                  className={`px-4 py-1.5 rounded-full text-xs font-extrabold uppercase border ${
-                    selectedCandidate.hiringRecommendation === "Strong Hire"
-                      ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                      : selectedCandidate.hiringRecommendation === "Hire"
-                      ? "bg-blue-100 text-blue-800 border-blue-300"
-                      : selectedCandidate.hiringRecommendation === "Maybe"
-                      ? "bg-amber-100 text-amber-800 border-amber-300"
-                      : "bg-red-100 text-red-800 border-red-300"
-                  }`}
-                >
-                  {selectedCandidate.hiringRecommendation}
-                </span>
-              </div>
-
-              {selectedCandidate.simulation && (
-                <div className="p-6 bg-indigo-50/60 border border-indigo-200 rounded-2xl space-y-4">
-                  <h3 className="font-extrabold text-slate-900 text-base flex items-center space-x-2">
-                    <Mic className="w-5 h-5 text-indigo-600" />
-                    <span>Section 7: Sales Simulation Evaluation</span>
-                  </h3>
-
-                  {/* Candidate Voice Audio Player */}
-                  {selectedCandidate.simulation.audioUrl ? (
-                    <div className="bg-white p-4 rounded-2xl border border-indigo-200 space-y-2 shadow-sm">
-                      <div className="flex items-center space-x-2 text-xs font-extrabold text-indigo-900">
-                        <Volume2 className="w-4 h-4 text-indigo-600 animate-pulse" />
-                        <span>Candidate Recorded Voice Pitch Audio:</span>
+              {/* Subject Breakdown */}
+              {selectedCandidate.attempt?.subjectBreakdown?.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Subject Performance Breakdown</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {selectedCandidate.attempt.subjectBreakdown.map((sb: any) => (
+                      <div key={sb.subjectName} className="p-3 bg-white border border-slate-200 rounded-xl space-y-1 text-xs">
+                        <div className="flex justify-between font-bold text-slate-800">
+                          <span>{sb.subjectName}</span>
+                          <span className="text-blue-600">{sb.correct} / {sb.total}</span>
+                        </div>
+                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                          <div className="bg-blue-600 h-full rounded-full" style={{ width: `${sb.percentage}%` }} />
+                        </div>
                       </div>
-                      <audio
-                        controls
-                        src={selectedCandidate.simulation.audioUrl}
-                        className="w-full h-10 rounded-xl outline-none"
-                      />
-                    </div>
-                  ) : (
-                    <div className="bg-slate-100/80 p-3 rounded-xl text-xs font-semibold text-slate-500 italic">
-                      No voice audio recording attached for this submission.
-                    </div>
-                  )}
-
-                  {selectedCandidate.simulation.textResponse && (
-                    <div>
-                      <span className="text-xs font-bold uppercase text-slate-600 mb-1.5 block">Written Sales Pitch Response:</span>
-                      <div className="bg-white p-4 rounded-xl border border-indigo-100 text-sm text-slate-800 italic leading-relaxed">
-                        &quot;{selectedCandidate.simulation.textResponse}&quot;
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="pt-2 print:hidden">
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs font-bold uppercase text-slate-700">HR Score out of 30 Marks:</label>
-                      <span className="font-extrabold text-indigo-700 text-base">{simScoreInput} / 30 Marks</span>
-                    </div>
-
-                    <input
-                      type="range"
-                      min={0}
-                      max={30}
-                      value={simScoreInput}
-                      onChange={(e) => setSimScoreInput(Number(e.target.value))}
-                      className="w-full accent-indigo-600"
-                    />
-
-                    <textarea
-                      rows={2}
-                      placeholder="Add HR feedback for interview committee..."
-                      value={simFeedbackInput}
-                      onChange={(e) => setSimFeedbackInput(e.target.value)}
-                      className="w-full mt-3 p-3 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 outline-none"
-                    ></textarea>
-
-                    <button
-                      onClick={handleSaveSimulationGrade}
-                      className="mt-3 px-5 py-2 bg-indigo-600 text-white font-bold text-xs rounded-xl hover:bg-indigo-700 transition-colors shadow-sm"
-                    >
-                      Save Simulation Grade & Feedback
-                    </button>
+                    ))}
                   </div>
                 </div>
               )}
 
-              <div className="p-4 bg-red-50/50 border border-red-200 rounded-2xl text-xs">
-                <h4 className="font-bold text-red-900 mb-1 flex items-center space-x-1.5">
-                  <AlertTriangle className="w-4 h-4 text-red-600" />
-                  <span>Proctoring & Anti-Cheat Audit Logs</span>
-                </h4>
-                <p className="text-red-700">
-                  Tab Switches Detected: <strong>{selectedCandidate.tabSwitches}</strong> | Fullscreen Exits: <strong>{selectedCandidate.fullscreenExits}</strong>
-                </p>
-              </div>
+              {/* Section Breakdown */}
+              {selectedCandidate.attempt?.sectionBreakdown?.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Section Accuracy Breakdown</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                    {selectedCandidate.attempt.sectionBreakdown.map((sec: any) => (
+                      <div key={sec.sectionName} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                        <div className="text-[10px] text-slate-400 truncate">{sec.subjectName}</div>
+                        <div className="font-bold text-slate-800 truncate">{sec.sectionName}</div>
+                        <div className="text-blue-600 font-extrabold text-xs mt-1">{sec.correct} / {sec.total} Correct</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
+              {/* Proctoring Timeline */}
+              {selectedCandidate.attempt?.proctoringLogs?.length > 0 && (
+                <div className="space-y-3 pt-4 border-t border-slate-100">
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-red-500" />
+                    Proctoring Audit Log ({selectedCandidate.attempt.proctoringLogs.length} Events)
+                  </h3>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {selectedCandidate.attempt.proctoringLogs.map((log: any, lIdx: number) => (
+                      <div key={lIdx} className="p-2.5 bg-red-50 border border-red-100 rounded-xl text-xs flex items-center justify-between text-red-800">
+                        <span><strong>{log.eventType}:</strong> {log.details || "Violation logged"}</span>
+                        <span className="text-[10px] text-red-400">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+              <button
+                onClick={() => window.print()}
+                className="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl inline-flex items-center gap-2"
+              >
+                <Printer className="w-4 h-4" /> Print Scorecard
+              </button>
+
+              <button
+                onClick={() => setSelectedCandidate(null)}
+                className="px-4 py-2 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl"
+              >
+                Close Report
+              </button>
             </div>
 
           </div>

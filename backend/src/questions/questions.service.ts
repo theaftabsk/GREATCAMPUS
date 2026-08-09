@@ -1,57 +1,82 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class QuestionsService {
   constructor(private prisma: PrismaService) {}
 
-  private async getOrCreateAssessment() {
-    let assessment = await this.prisma.assessment.findFirst();
-    if (!assessment) {
-      const tenant = await this.prisma.tenant.findUnique({ where: { slug: 'greatcampus' } }) ||
-        await this.prisma.tenant.create({ data: { name: 'GREATCAMPUS', slug: 'greatcampus' } });
+  async getQuestions(sectionId?: string, subjectId?: string, assessmentId?: string) {
+    let whereClause: any = {};
 
-      assessment = await this.prisma.assessment.create({
-        data: {
-          title: 'Assistant Relationship Manager – Banca Channel',
-          tenantId: tenant.id,
-        },
-      });
+    if (sectionId) {
+      whereClause.sectionId = sectionId;
+    } else if (subjectId) {
+      whereClause.section = { subjectId };
+    } else if (assessmentId) {
+      whereClause.section = { subject: { assessmentId } };
     }
-    return assessment;
-  }
 
-  async getQuestions() {
-    const assessment = await this.getOrCreateAssessment();
-
-    const qList = await this.prisma.question.findMany({
-      where: { assessmentId: assessment.id },
+    return this.prisma.question.findMany({
+      where: whereClause,
+      include: {
+        section: {
+          include: {
+            subject: {
+              include: {
+                assessment: true,
+              },
+            },
+          },
+        },
+      },
       orderBy: { createdAt: 'asc' },
     });
-
-    return qList;
   }
 
-  async addQuestion(data: any) {
-    const assessment = await this.getOrCreateAssessment();
+  async addQuestion(data: {
+    sectionId: string;
+    question: string;
+    optionA: string;
+    optionB: string;
+    optionC: string;
+    optionD: string;
+    correctAnswer: string;
+    marks?: number;
+  }) {
+    const section = await this.prisma.subjectSection.findUnique({ where: { id: data.sectionId } });
+    if (!section) {
+      throw new NotFoundException(`Section not found for ID: ${data.sectionId}`);
+    }
+
     return this.prisma.question.create({
       data: {
-        assessmentId: assessment.id,
-        section: data.section,
-        sectionName: data.sectionName,
+        sectionId: data.sectionId,
         question: data.question,
         optionA: data.optionA,
         optionB: data.optionB,
         optionC: data.optionC,
         optionD: data.optionD,
         correctAnswer: data.correctAnswer,
-        marks: data.marks || 1,
-        difficulty: data.difficulty || 'Medium',
+        marks: data.marks ?? 1,
+      },
+      include: {
+        section: { include: { subject: true } },
       },
     });
   }
 
-  async updateQuestion(id: string, data: any) {
+  async updateQuestion(
+    id: string,
+    data: {
+      question?: string;
+      optionA?: string;
+      optionB?: string;
+      optionC?: string;
+      optionD?: string;
+      correctAnswer?: string;
+      marks?: number;
+    }
+  ) {
     return this.prisma.question.update({
       where: { id },
       data,

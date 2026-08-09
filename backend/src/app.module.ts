@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { QuestionsModule } from './questions/questions.module';
 import { CandidatesModule } from './candidates/candidates.module';
 import { ProctoringModule } from './proctoring/proctoring.module';
+import { AssessmentsModule } from './assessments/assessments.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -16,6 +17,7 @@ import { AppService } from './app.service';
     QuestionsModule,
     CandidatesModule,
     ProctoringModule,
+    AssessmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,52 +1,65 @@
-import { Controller, Get, Post, Delete, Query, Body, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Query, Param } from '@nestjs/common';
 import { CandidatesService } from './candidates.service';
 
 @Controller('api/v1/candidates')
 export class CandidatesController {
-  constructor(private candidatesService: CandidatesService) {}
+  constructor(private readonly candidatesService: CandidatesService) {}
 
   @Get()
-  async getCandidates() {
-    const candidates = await this.candidatesService.getCandidates();
+  async getCandidates(@Query('assessmentId') assessmentId?: string) {
+    const candidates = await this.candidatesService.getCandidates(assessmentId);
     return { success: true, candidates };
   }
 
   @Post('register')
-  async register(@Body() body: { name: string; email: string; phone: string; referenceId: string }) {
+  async registerCandidate(
+    @Body()
+    body: {
+      name: string;
+      email: string;
+      phone: string;
+      assessmentId: string;
+      referenceId?: string;
+    }
+  ) {
     const candidate = await this.candidatesService.registerCandidate(body);
     return { success: true, candidate };
   }
 
-  @Post('submit')
-  async submit(@Body() body: any) {
-    const candidate = await this.candidatesService.submitExam(
-      body.candidateId,
-      body.answers,
-      body.simulation,
-      body.antiCheatData
-    );
+  @Post('start-exam')
+  async startExamSession(@Body() body: { candidateIdentifier: string }) {
+    const data = await this.candidatesService.startExamSession(body.candidateIdentifier);
+    return { success: true, ...data };
+  }
 
-    if (!candidate) {
-      throw new NotFoundException('Candidate record not found');
+  @Post('submit-exam')
+  async submitExam(
+    @Body()
+    body: {
+      attemptId: string;
+      answers: Record<string, { selectedOption: string | null; timeTakenSec: number }>;
     }
-
-    return {
-      success: true,
-      message: 'Assessment submitted successfully. The HR team will review your result.',
-      candidateId: candidate.id,
-      referenceId: candidate.referenceId,
-    };
+  ) {
+    const attempt = await this.candidatesService.submitExam(body.attemptId, body.answers);
+    return { success: true, attempt };
   }
 
-  @Post('grade-simulation')
-  async gradeSimulation(@Body() body: { candidateId: string; score: number; feedback: string; gradedBy?: string }) {
-    const candidate = await this.candidatesService.gradeSimulation(body.candidateId, body.score, body.feedback, body.gradedBy);
-    return { success: true, candidate };
+  @Post('log-proctoring')
+  async logProctoringEvent(
+    @Body()
+    body: {
+      attemptId: string;
+      eventType: string;
+      details?: string;
+    }
+  ) {
+    const result = await this.candidatesService.logProctoringEvent(body.attemptId, body.eventType, body.details);
+    return { success: true, ...result };
   }
 
-  @Delete()
-  async deleteCandidate(@Query('id') id: string) {
+  @Delete(':id')
+  async deleteCandidate(@Param('id') id: string) {
     await this.candidatesService.deleteCandidate(id);
-    return { success: true, message: 'Candidate record deleted successfully' };
+    return { success: true, message: 'Candidate deleted' };
   }
 }

@@ -6,190 +6,222 @@ import Navbar from "@/components/Navbar";
 import "../exam.css";
 import {
   Clock, ChevronLeft, ChevronRight, Bookmark, CheckCircle2,
-  Mic, Square, Send, AlertTriangle, Grid, X, FileText, RefreshCw, Volume2
+  AlertTriangle, Grid, X, FileText, ShieldAlert, BookOpen, AlertOctagon
 } from "lucide-react";
-import { QuestionData, initialQuestions } from "@/lib/seedData";
 import { getApiBaseUrl } from "@/lib/config";
+
+interface ExamQuestion {
+  attemptQuestionId: string;
+  id: string;
+  subjectId: string;
+  subjectName: string;
+  sectionId: string;
+  sectionName: string;
+  question: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  marks: number;
+  selectedOption: string | null;
+}
 
 export default function CandidateTestEngine() {
   const router = useRouter();
 
   const [candidate, setCandidate] = useState<any>(null);
-  const [questions, setQuestions] = useState<QuestionData[]>([]);
+  const [attemptId, setAttemptId] = useState<string>("");
+  const [assessmentName, setAssessmentName] = useState<string>("Assessment Test");
+  const [questions, setQuestions] = useState<ExamQuestion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const [currentIdx, setCurrentIdx] = useState(0);
   const [answers, setAnswers] = useState<Record<string, { selectedOption: string | null; timeTakenSec: number }>>({});
   const [flagged, setFlagged] = useState<Record<string, boolean>>({});
 
-  const [timeLeftSec, setTimeLeftSec] = useState(900);
+  const [timeLeftSec, setTimeLeftSec] = useState(3600); // 60 mins default
   const [timerWarning, setTimerWarning] = useState("");
 
-  const [activeTab, setActiveTab] = useState<"mcq" | "simulation">("mcq");
-  const [simulationText, setSimulationText] = useState("");
-  const [recording, setRecording] = useState(false);
-  const [audioBase64, setAudioBase64] = useState<string | null>(null);
-
-  const [tabSwitches, setTabSwitches] = useState(0);
-  const [fullscreenExits, setFullscreenExits] = useState(0);
-  const [antiCheatLogs, setAntiCheatLogs] = useState<Array<{ eventType: string; details?: string }>>([]);
+  // Proctoring States
+  const [warningCount, setWarningCount] = useState(0);
+  const [maxProctorWarnings, setMaxProctorWarnings] = useState(3);
+  const [warningModalMsg, setWarningModalMsg] = useState<string | null>(null);
+  const [disqualified, setDisqualified] = useState(false);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-
-  const loadQuestionsFromBackend = async () => {
-    setLoading(true);
-    try {
-      const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/v1/questions`);
-      const data = await res.json();
-      if (data.success && Array.isArray(data.questions) && data.questions.length > 0) {
-        setQuestions(data.questions);
-      } else {
-        setQuestions(initialQuestions);
-      }
-    } catch {
-      setQuestions(initialQuestions);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Initialize Exam Session
   useEffect(() => {
     const stored = localStorage.getItem("banca_candidate");
     if (!stored) {
       router.push("/exam");
       return;
     }
-    setCandidate(JSON.parse(stored));
-    loadQuestionsFromBackend();
+    const cand = JSON.parse(stored);
+    setCandidate(cand);
+    initializeExamSession(cand.referenceId || cand.email || cand.id);
   }, [router]);
 
+  const initializeExamSession = async (identifier: string) => {
+    setLoading(true);
+    setError("");
+    try {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/v1/candidates/start-exam`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ candidateIdentifier: identifier }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setAttemptId(data.attemptId);
+        setAssessmentName(data.assessmentName);
+        setQuestions(data.questions || []);
+        setTimeLeftSec((data.durationMins || 60) * 60);
+        setMaxProctorWarnings(data.maxProctorWarnings || 3);
+        setWarningCount(data.warningCount || 0);
+
+        // Pre-fill answers if returning to active session
+        const initAnswers: Record<string, { selectedOption: string | null; timeTakenSec: number }> = {};
+        data.questions.forEach((q: ExamQuestion) => {
+          if (q.selectedOption) {
+            initAnswers[q.id] = { selectedOption: q.selectedOption, timeTakenSec: 0 };
+          }
+        });
+        setAnswers(initAnswers);
+      } else {
+        setError(data.message || "Failed to initialize exam session.");
+      }
+    } catch (err: any) {
+      console.error("Failed to connect to backend:", err);
+      setError("Network connection error. Please ensure the backend server is running.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Timer Countdown
   useEffect(() => {
-    if (loading || timeLeftSec <= 0) return;
+    if (loading || disqualified || timeLeftSec <= 0) return;
     const interval = setInterval(() => {
       setTimeLeftSec((prev) => {
         const next = prev - 1;
         if (next === 600) setTimerWarning("⚠️ 10 Minutes remaining!");
         else if (next === 300) setTimerWarning("⚠️ 5 Minutes remaining!");
-        else if (next === 180) setTimerWarning("⚠️ 3 Minutes remaining!");
         else if (next === 60) setTimerWarning("🚨 CRITICAL: 1 Minute remaining!");
-        else if (next <= 0) { clearInterval(interval); handleSubmitExam(); return 0; }
+        else if (next <= 0) {
+          clearInterval(interval);
+          handleSubmitExam();
+          return 0;
+        }
         return next;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [loading]);
+  }, [loading, disqualified]);
 
-  useEffect(() => {
-    const onVis = () => {
-      if (document.hidden) {
-        setTabSwitches((p) => p + 1);
-        setAntiCheatLogs((p) => [...p, { eventType: "TAB_SWITCH", details: new Date().toLocaleTimeString() }]);
-      }
-    };
-    const onFs = () => {
-      if (!document.fullscreenElement) {
-        setFullscreenExits((p) => p + 1);
-        setAntiCheatLogs((p) => [...p, { eventType: "FULLSCREEN_EXIT", details: new Date().toLocaleTimeString() }]);
-      }
-    };
-    const noCtx = (e: MouseEvent) => { e.preventDefault(); setAntiCheatLogs((p) => [...p, { eventType: "RIGHT_CLICK" }]); };
-    const noClip = (e: ClipboardEvent) => { e.preventDefault(); setAntiCheatLogs((p) => [...p, { eventType: "COPY_PASTE" }]); };
-
-    document.addEventListener("visibilitychange", onVis);
-    document.addEventListener("fullscreenchange", onFs);
-    document.addEventListener("contextmenu", noCtx);
-    document.addEventListener("copy", noClip);
-    document.addEventListener("paste", noClip);
-    return () => {
-      document.removeEventListener("visibilitychange", onVis);
-      document.removeEventListener("fullscreenchange", onFs);
-      document.removeEventListener("contextmenu", noCtx);
-      document.removeEventListener("copy", noClip);
-      document.removeEventListener("paste", noClip);
-    };
-  }, []);
-
-  const fmt = (s: number) => `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
-
-  const handleSelectOption = (qId: string, opt: string) => {
-    setAnswers((p) => ({ ...p, [qId]: { selectedOption: opt, timeTakenSec: (p[qId]?.timeTakenSec || 0) + 5 } }));
-  };
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      let options: MediaRecorderOptions = {};
-      if (typeof MediaRecorder !== "undefined") {
-        if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
-          options = { mimeType: "audio/webm;codecs=opus" };
-        } else if (MediaRecorder.isTypeSupported("audio/webm")) {
-          options = { mimeType: "audio/webm" };
-        } else if (MediaRecorder.isTypeSupported("audio/mp4")) {
-          options = { mimeType: "audio/mp4" };
-        }
-      }
-      const mr = new MediaRecorder(stream, options);
-      mediaRecorderRef.current = mr;
-      audioChunksRef.current = [];
-      mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
-      mr.onstop = () => {
-        const mimeType = mr.mimeType || "audio/webm";
-        const blob = new Blob(audioChunksRef.current, { type: mimeType });
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onloadend = () => {
-          const res = reader.result as string;
-          setAudioBase64(res);
-        };
-        stream.getTracks().forEach((t) => t.stop());
-      };
-      mr.start(1000);
-      setRecording(true);
-    } catch {
-      alert("Microphone permission required. Please allow microphone access in your browser or type your response instead.");
-    }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      mediaRecorderRef.current.stop();
-      setRecording(false);
-    }
-  };
-
-  const handleSubmitExam = async () => {
-    if (submitting) return;
-    setSubmitting(true);
-
-    if (recording && mediaRecorderRef.current) {
-      stopRecording();
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
+  // Real-Time Proctoring Event Logger & Listener
+  const reportProctoringViolation = async (eventType: string, details?: string) => {
+    if (!attemptId || disqualified) return;
 
     try {
       const baseUrl = getApiBaseUrl();
-      await fetch(`${baseUrl}/api/v1/candidates/submit`, {
+      const res = await fetch(`${baseUrl}/api/v1/candidates/log-proctoring`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attemptId, eventType, details }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setWarningCount(data.warningCount);
+        if (data.disqualified) {
+          setDisqualified(true);
+          setWarningModalMsg(null);
+        } else {
+          setWarningModalMsg(data.message);
+        }
+      }
+    } catch (err) {
+      console.error("Proctoring log error:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (loading || !attemptId || disqualified) return;
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        reportProctoringViolation("TAB_SWITCH", `Tab switch detected at ${new Date().toLocaleTimeString()}`);
+      }
+    };
+
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        reportProctoringViolation("FULLSCREEN_EXIT", `Fullscreen exit detected at ${new Date().toLocaleTimeString()}`);
+      }
+    };
+
+    const onContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      reportProctoringViolation("RIGHT_CLICK", "Right click attempted.");
+    };
+
+    const onCopyPaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      reportProctoringViolation("COPY_PASTE", `Copy/Paste attempted: ${e.type}`);
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    document.addEventListener("contextmenu", onContextMenu);
+    document.addEventListener("copy", onCopyPaste);
+    document.addEventListener("paste", onCopyPaste);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      document.removeEventListener("contextmenu", onContextMenu);
+      document.removeEventListener("copy", onCopyPaste);
+      document.removeEventListener("paste", onCopyPaste);
+    };
+  }, [loading, attemptId, disqualified]);
+
+  const fmt = (s: number) =>
+    `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
+
+  const handleSelectOption = (qId: string, opt: string) => {
+    setAnswers((p) => ({
+      ...p,
+      [qId]: { selectedOption: opt, timeTakenSec: (p[qId]?.timeTakenSec || 0) + 5 },
+    }));
+  };
+
+  const handleSubmitExam = async () => {
+    if (submitting || !attemptId) return;
+    setSubmitting(true);
+
+    try {
+      const baseUrl = getApiBaseUrl();
+      await fetch(`${baseUrl}/api/v1/candidates/submit-exam`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          candidateId: candidate?.id,
+          attemptId,
           answers,
-          simulation: { textResponse: simulationText, audioData: audioBase64 || undefined },
-          antiCheatData: { tabSwitches, fullscreenExits, logs: antiCheatLogs },
         }),
       });
-    } catch {}
+    } catch (err) {
+      console.error("Exam submission error:", err);
+    }
     localStorage.removeItem("banca_candidate");
     router.push("/exam/thank-you");
   };
 
   const qStatus = (qId: string, idx: number) => {
-    if (idx === currentIdx && activeTab === "mcq") return "current";
+    if (idx === currentIdx) return "current";
     if (flagged[qId]) return "flagged";
     if (answers[qId]?.selectedOption) return "answered";
     return "unvisited";
@@ -202,26 +234,52 @@ export default function CandidateTestEngine() {
       <div className="loading-screen">
         <div className="loading-content">
           <div className="loading-spinner" />
-          <p className="loading-text">Fetching Questions from Database API…</p>
+          <p className="loading-text">Initialising Randomized Question Attempt…</p>
         </div>
       </div>
     );
   }
 
-  if (questions.length === 0) {
+  // DISQUALIFIED SCREEN
+  if (disqualified) {
+    return (
+      <div className="loading-screen" style={{ background: "#FEF2F2" }}>
+        <div className="loading-content" style={{ maxWidth: "480px", background: "white", padding: "32px", borderRadius: "16px", boxShadow: "0 20px 40px rgba(220,38,38,0.15)", textAlign: "center" }}>
+          <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "#FEE2E2", color: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+            <AlertOctagon size={36} />
+          </div>
+          <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#991B1B", marginBottom: "8px" }}>EXAM DISQUALIFIED</h2>
+          <p style={{ fontSize: "14px", color: "#7F1D1D", lineHeight: 1.5, marginBottom: "20px" }}>
+            You have exceeded the maximum allowed proctoring violations (<strong>{maxProctorWarnings}/{maxProctorWarnings} Warnings</strong>). Your session has been auto-submitted and flagged for HR review.
+          </p>
+          <button
+            onClick={() => {
+              localStorage.removeItem("banca_candidate");
+              router.push("/");
+            }}
+            style={{ padding: "12px 24px", background: "#DC2626", color: "white", fontWeight: 700, borderRadius: "10px", border: "none", cursor: "pointer" }}
+          >
+            Return to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || questions.length === 0) {
     return (
       <div className="loading-screen">
-        <div className="loading-content" style={{ maxWidth: "420px" }}>
+        <div className="loading-content" style={{ maxWidth: "480px" }}>
           <div style={{ width: "56px", height: "56px", borderRadius: "50%", background: "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center", color: "#DC2626", margin: "0 auto" }}>
             <AlertTriangle size={28} />
           </div>
-          <h2 style={{ fontSize: "18px", fontWeight: 800, color: "#1A2B40", marginTop: "12px" }}>Database Connection Error</h2>
-          <p style={{ fontSize: "13px", color: "#4A6580", marginTop: "6px" }}>Unable to load questions from the server database.</p>
+          <h2 style={{ fontSize: "18px", fontWeight: 800, color: "#1A2B40", marginTop: "12px" }}>Exam Configuration Error</h2>
+          <p style={{ fontSize: "13px", color: "#4A6580", marginTop: "6px" }}>{error || "No questions found for this exam."}</p>
           <button
-            onClick={loadQuestionsFromBackend}
-            style={{ marginTop: "16px", padding: "10px 20px", borderRadius: "10px", background: "#00AEEF", color: "white", fontWeight: 800, fontSize: "13px", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px" }}
+            onClick={() => initializeExamSession(candidate?.referenceId || candidate?.email)}
+            style={{ marginTop: "16px", padding: "10px 20px", borderRadius: "10px", background: "#00AEEF", color: "white", fontWeight: 800, fontSize: "13px", border: "none", cursor: "pointer" }}
           >
-            <RefreshCw size={14} /> Retry Connecting
+            Retry Loading Exam
           </button>
         </div>
       </div>
@@ -230,44 +288,51 @@ export default function CandidateTestEngine() {
 
   const currentQ = questions[currentIdx];
 
+  // Group questions by Subject
+  const uniqueSubjects = Array.from(new Set(questions.map((q) => q.subjectName)));
+
   return (
     <div className="test-page">
       <Navbar mode="candidate" candidateName={candidate?.name} />
 
-      {/* Sub-bar */}
+      {/* Sub-bar Header */}
       <div className="test-subbar">
         <div className="test-subbar-inner">
 
-          <div className="test-tab-group">
-            <button
-              onClick={() => setActiveTab("mcq")}
-              className={`test-tab-btn test-tab-btn--mcq ${activeTab === "mcq" ? "active" : ""}`}
-            >
-              <FileText size={14} />
-              <span>MCQs ({answeredCount}/{questions.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("simulation")}
-              className={`test-tab-btn test-tab-btn--sim ${activeTab === "simulation" ? "active" : ""}`}
-            >
-              <Mic size={14} />
-              <span>Sec 7: Simulation</span>
-            </button>
+          {/* Assessment Title & Subject Info */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "#00AEEF", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <BookOpen size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: "14px", fontWeight: 800, color: "#1E293B" }}>{assessmentName}</div>
+              <div style={{ fontSize: "12px", color: "#64748B" }}>
+                {currentQ.subjectName} ➔ <strong style={{ color: "#00AEEF" }}>{currentQ.sectionName}</strong>
+              </div>
+            </div>
           </div>
 
-          <div className="test-status-group">
-            {tabSwitches > 0 && (
-              <div className="test-antichat-badge">
-                <AlertTriangle size={11} />
-                <span>Tab: {tabSwitches}</span>
-              </div>
-            )}
-            <div className={`test-timer ${timeLeftSec <= 300 ? "test-timer--critical" : ""}`}>
-              <Clock size={14} />
+          {/* Right Stats & Timer */}
+          <div className="test-subbar-right">
+            {/* Proctoring Warning Indicator */}
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", background: warningCount > 0 ? "#FEF2F2" : "#F1F5F9", padding: "6px 12px", borderRadius: "8px", border: `1px solid ${warningCount > 0 ? "#FCA5A5" : "#E2E8F0"}` }}>
+              <ShieldAlert size={16} color={warningCount > 0 ? "#DC2626" : "#64748B"} />
+              <span style={{ fontSize: "12px", fontWeight: 700, color: warningCount > 0 ? "#DC2626" : "#475569" }}>
+                Warnings: {warningCount}/{maxProctorWarnings}
+              </span>
+            </div>
+
+            {/* Timer */}
+            <div className={`test-timer ${timeLeftSec <= 300 ? "danger" : ""}`}>
+              <Clock size={16} />
               <span>{fmt(timeLeftSec)}</span>
             </div>
-            <button className="test-palette-toggle" onClick={() => setPaletteOpen(true)}>
-              <Grid size={14} />
+
+            <button
+              onClick={() => setPaletteOpen(!paletteOpen)}
+              className="test-palette-toggle"
+            >
+              <Grid size={16} />
               <span>Palette</span>
             </button>
           </div>
@@ -275,208 +340,189 @@ export default function CandidateTestEngine() {
         </div>
       </div>
 
+      {/* Timer Warning Banner */}
       {timerWarning && (
-        <div className="test-warning-banner">
-          <AlertTriangle size={14} />
-          <span>{timerWarning}</span>
+        <div style={{ background: "#FEF2F2", borderBottom: "1px solid #FCA5A5", color: "#991B1B", padding: "8px 16px", textTransform: "uppercase", letterSpacing: "0.5px", fontSize: "12px", fontWeight: 800, textAlign: "center" }}>
+          {timerWarning}
         </div>
       )}
 
-      <div className="test-content-area">
+      {/* Main Grid */}
+      <main className="test-body">
+        <div className="test-layout">
 
-        {/* MCQ Tab */}
-        {activeTab === "mcq" && (
-          <div className="question-card">
-            <div className="question-card-header">
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span className="question-section-badge">{currentQ.sectionName}</span>
-                <span className="question-counter">Q{currentIdx + 1} / {questions.length}</span>
+          {/* Left Column: Question Card */}
+          <div className="test-main-col">
+            <div className="test-card">
+
+              {/* Header */}
+              <div className="test-card-header">
+                <div>
+                  <span className="test-q-badge">Question {currentIdx + 1} of {questions.length}</span>
+                  <span style={{ marginLeft: "8px", fontSize: "12px", fontWeight: 700, color: "#64748B", background: "#F1F5F9", padding: "2px 8px", borderRadius: "4px" }}>
+                    {currentQ.sectionName}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setFlagged((p) => ({ ...p, [currentQ.id]: !p[currentQ.id] }))}
+                  className={`test-flag-btn ${flagged[currentQ.id] ? "flagged" : ""}`}
+                >
+                  <Bookmark size={14} />
+                  <span>{flagged[currentQ.id] ? "Marked for Review" : "Mark for Review"}</span>
+                </button>
               </div>
-              <button
-                className={`question-flag-btn ${flagged[currentQ.id || ""] ? "question-flag-btn--on" : "question-flag-btn--off"}`}
-                onClick={() => setFlagged((p) => ({ ...p, [currentQ.id || ""]: !p[currentQ.id || ""] }))}
-              >
-                <Bookmark size={13} />
-                <span>{flagged[currentQ.id || ""] ? "Flagged" : "Flag"}</span>
-              </button>
-            </div>
 
-            <div className="question-text">
-              Q{currentIdx + 1}. {currentQ.question}
-            </div>
+              {/* Question Text */}
+              <div className="test-q-body">
+                <h3 className="test-q-text">{currentQ.question}</h3>
 
-            <div className="options-list">
-              {(["A", "B", "C", "D"] as const).map((key) => {
-                const textMap: Record<string, string> = {
-                  A: currentQ.optionA, B: currentQ.optionB, C: currentQ.optionC, D: currentQ.optionD,
-                };
-                const isSelected = answers[currentQ.id || ""]?.selectedOption === key;
-                return (
-                  <div
-                    key={key}
-                    className={`option-item ${isSelected ? "option-item--selected" : ""}`}
-                    onClick={() => handleSelectOption(currentQ.id || "", key)}
-                  >
-                    <div className="option-key">{key}</div>
-                    <span className="option-text">{textMap[key]}</span>
-                  </div>
-                );
-              })}
-            </div>
+                {/* Options List */}
+                <div className="test-options-list">
+                  {[
+                    { key: "A", val: currentQ.optionA },
+                    { key: "B", val: currentQ.optionB },
+                    { key: "C", val: currentQ.optionC },
+                    { key: "D", val: currentQ.optionD },
+                  ].map((opt) => {
+                    const isSel = answers[currentQ.id]?.selectedOption === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        onClick={() => handleSelectOption(currentQ.id, opt.key)}
+                        className={`test-option-btn ${isSel ? "selected" : ""}`}
+                      >
+                        <span className="test-opt-key">{opt.key}</span>
+                        <span className="test-opt-val">{opt.val}</span>
+                        {isSel && <CheckCircle2 size={18} className="test-opt-check" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-            <div className="question-nav-row">
-              <button
-                disabled={currentIdx === 0}
-                onClick={() => setCurrentIdx((p) => p - 1)}
-                className="nav-btn nav-btn--outline"
-              >
-                <ChevronLeft size={16} /> Prev
-              </button>
+              {/* Navigation Footer */}
+              <div className="test-card-footer">
+                <button
+                  disabled={currentIdx === 0}
+                  onClick={() => setCurrentIdx((p) => Math.max(0, p - 1))}
+                  className="test-nav-btn"
+                >
+                  <ChevronLeft size={16} />
+                  <span>Previous</span>
+                </button>
 
-              <div style={{ display: "flex", gap: "8px" }}>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "#64748B" }}>
+                  Answered: <strong style={{ color: "#00AEEF" }}>{answeredCount}</strong> / {questions.length}
+                </div>
+
                 {currentIdx < questions.length - 1 ? (
-                  <button onClick={() => setCurrentIdx((p) => p + 1)} className="nav-btn nav-btn--primary">
-                    Next <ChevronRight size={16} />
+                  <button
+                    onClick={() => setCurrentIdx((p) => Math.min(questions.length - 1, p + 1))}
+                    className="test-nav-btn primary"
+                  >
+                    <span>Next Question</span>
+                    <ChevronRight size={16} />
                   </button>
                 ) : (
-                  <button onClick={() => setActiveTab("simulation")} className="nav-btn nav-btn--violet">
-                    Simulation <ChevronRight size={16} />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Simulation Tab */}
-        {activeTab === "simulation" && (
-          <div className="sim-card">
-            <div className="sim-card-header">
-              <span className="sim-section-badge">Section 7 • Practical Roleplay (30 Marks)</span>
-              <h2 className="sim-title">Banca ARM Customer Pitch Simulation</h2>
-            </div>
-
-            <div className="sim-card-body">
-              <div className="sim-scenario-box">
-                <div className="sim-scenario-label">
-                  <FileText size={14} />
-                  Roleplay Scenario Context
-                </div>
-                <p className="sim-scenario-text">
-                  "You are an Assistant Relationship Manager at a bank branch. A customer has walked in to open a ₹5 Lakh Fixed Deposit for 3 years. During your conversation, you learn that the customer has a family but does not have adequate health insurance. Initiate a conversation to discover the customer's protection needs and introduce the relevance of Niva Bupa health insurance."
-                </p>
-              </div>
-
-              {/* Audio Recording */}
-              <div className="sim-option-block">
-                <div className="sim-option-title">
-                  <Mic size={14} />
-                  Option A: Record Voice Response (3–5 Minutes)
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px" }}>
-                  {!recording ? (
-                    <button onClick={startRecording} className="sim-record-btn sim-record-btn--start">
-                      <Mic size={15} /> {audioBase64 ? "Re-record Voice" : "Start Recording"}
-                    </button>
-                  ) : (
-                    <button onClick={stopRecording} className="sim-record-btn sim-record-btn--stop">
-                      <Square size={15} /> Stop Recording
-                    </button>
-                  )}
-                  {audioBase64 && (
-                    <div className="sim-audio-done">
-                      <CheckCircle2 size={14} /> Audio Recorded ✓
-                    </div>
-                  )}
-                </div>
-
-                {audioBase64 && (
-                  <div style={{ marginTop: "12px" }}>
-                    <p style={{ fontSize: "11px", fontWeight: 700, color: "#003F72", marginBottom: "4px" }}>
-                      Preview Recorded Voice:
-                    </p>
-                    <audio controls src={audioBase64} style={{ width: "100%", height: "36px" }} />
-                  </div>
-                )}
-              </div>
-
-              {/* Written Response */}
-              <div>
-                <label className="exam-field-label" style={{ marginBottom: "8px", display: "block" }}>
-                  Option B: Written Sales Pitch Script
-                </label>
-                <textarea
-                  className="sim-textarea"
-                  rows={5}
-                  placeholder="Type how you would pitch Niva Bupa health insurance to this customer…"
-                  value={simulationText}
-                  onChange={(e) => setSimulationText(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="sim-submit-row">
-              <button onClick={handleSubmitExam} disabled={submitting} className="sim-submit-btn">
-                <Send size={18} />
-                {submitting ? "Submitting…" : "Final Submit Exam"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Question Palette */}
-        {paletteOpen && (
-          <div className="palette-overlay" onClick={() => setPaletteOpen(false)} />
-        )}
-        <div className={`palette-drawer ${paletteOpen ? "open" : ""}`}>
-          <div className="palette-card" style={{ height: "100%", borderRadius: 0 }}>
-            <div className="palette-card-header">
-              <span className="palette-card-title">
-                <Grid size={15} /> Question Palette
-              </span>
-              <button className="palette-close-btn hidden-desktop" onClick={() => setPaletteOpen(false)}>
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="palette-legend">
-              {[
-                { color: "#00AEEF", label: `Current` },
-                { color: "#16A34A", label: `Done (${answeredCount})` },
-                { color: "#F7941D", label: `Flagged (${Object.values(flagged).filter(Boolean).length})` },
-                { color: "#CBD5E1", label: "Unvisited" },
-              ].map((l) => (
-                <div key={l.label} className="palette-legend-item">
-                  <span className="legend-dot" style={{ background: l.color }} />
-                  <span>{l.label}</span>
-                </div>
-              ))}
-            </div>
-
-            <div className="palette-grid">
-              {questions.map((q, idx) => {
-                const s = qStatus(q.id || "", idx);
-                return (
                   <button
-                    key={q.id || idx}
-                    className={`palette-q-btn palette-q-btn--${s}`}
-                    onClick={() => { setActiveTab("mcq"); setCurrentIdx(idx); setPaletteOpen(false); }}
+                    onClick={handleSubmitExam}
+                    disabled={submitting}
+                    className="test-submit-btn"
                   >
-                    {idx + 1}
+                    {submitting ? "Submitting…" : "Submit Assessment"}
                   </button>
-                );
-              })}
-            </div>
+                )}
+              </div>
 
-            <div className="palette-submit-area">
-              <button className="palette-submit-btn" onClick={handleSubmitExam} disabled={submitting}>
-                <Send size={14} /> Submit Exam
-              </button>
             </div>
+          </div>
+
+          {/* Right Column: Question Palette */}
+          <div className={`test-sidebar ${paletteOpen ? "open" : ""}`}>
+            <div className="test-palette-card">
+              <div className="test-palette-header">
+                <div>
+                  <h4 style={{ fontSize: "14px", fontWeight: 800, color: "#1E293B" }}>Question Palette</h4>
+                  <p style={{ fontSize: "11px", color: "#64748B" }}>Jump directly to any section question</p>
+                </div>
+                <button onClick={() => setPaletteOpen(false)} className="test-palette-close">
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Subjects & Sections Breakdown */}
+              <div className="test-palette-grid" style={{ maxHeight: "calc(100vh - 220px)", overflowY: "auto", paddingRight: "4px" }}>
+                {uniqueSubjects.map((subName) => {
+                  const subQuestions = questions.filter((q) => q.subjectName === subName);
+                  return (
+                    <div key={subName} style={{ marginBottom: "16px" }}>
+                      <div style={{ fontSize: "12px", fontWeight: 800, color: "#00AEEF", marginBottom: "8px", textTransform: "uppercase" }}>
+                        {subName}
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "6px" }}>
+                        {questions.map((q, idx) => {
+                          if (q.subjectName !== subName) return null;
+                          const st = qStatus(q.id, idx);
+                          return (
+                            <button
+                              key={q.id}
+                              onClick={() => {
+                                setCurrentIdx(idx);
+                                setPaletteOpen(false);
+                              }}
+                              className={`test-q-item ${st}`}
+                            >
+                              {idx + 1}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={{ marginTop: "16px", paddingTop: "12px", borderTop: "1px solid #E2E8F0" }}>
+                <button
+                  onClick={handleSubmitExam}
+                  disabled={submitting}
+                  className="test-submit-btn"
+                  style={{ width: "100%", justifyContent: "center" }}
+                >
+                  {submitting ? "Submitting…" : "Finish & Submit Exam"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </main>
+
+      {/* PROCTORING WARNING MODAL */}
+      {warningModalMsg && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(15, 23, 42, 0.75)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ background: "white", maxWidth: "420px", width: "100%", borderRadius: "16px", padding: "24px", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", textAlign: "center" }}>
+            <div style={{ width: "56px", height: "56px", borderRadius: "50%", background: "#FEF2F2", color: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+              <ShieldAlert size={32} />
+            </div>
+            <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#1E293B" }}>Proctoring Warning</h3>
+            <p style={{ fontSize: "13px", color: "#475569", marginTop: "8px", lineHeight: 1.5 }}>
+              {warningModalMsg}
+            </p>
+            <div style={{ marginTop: "16px", padding: "10px", background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: "8px", fontSize: "12px", fontWeight: 700, color: "#92400E" }}>
+              Warning Count: {warningCount} / {maxProctorWarnings}
+            </div>
+            <button
+              onClick={() => setWarningModalMsg(null)}
+              style={{ marginTop: "20px", width: "100%", padding: "10px", background: "#00AEEF", color: "white", fontWeight: 800, borderRadius: "10px", border: "none", cursor: "pointer" }}
+            >
+              I Understand & Resume Test
+            </button>
           </div>
         </div>
+      )}
 
-      </div>
     </div>
   );
 }
