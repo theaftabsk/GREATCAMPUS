@@ -3,11 +3,11 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 const nivaBupaQuestions = [
-  // SECTION 1 – COMMUNICATION & COMPREHENSION (Q1-Q10)
+  // SECTION 1 – COMMUNICATION & COMPREHENSION (Q1-Q10) -> Pick 5 Random
   {
     subjectName: "Section 1: Communication & Comprehension",
     sectionName: "Communication & Comprehension",
-    questionsToAsk: 10,
+    questionsToAsk: 5,
     questions: [
       {
         question: `A customer says: "I already have ₹5 lakh of health insurance from my employer. Why should I consider another policy?" Which response demonstrates the strongest consultative approach?`,
@@ -92,11 +92,11 @@ const nivaBupaQuestions = [
     ],
   },
 
-  // SECTION 2 – ADVANCED ENGLISH (Q11-Q20)
+  // SECTION 2 – ADVANCED ENGLISH (Q11-Q20) -> Pick 5 Random
   {
     subjectName: "Section 2: Advanced English",
     sectionName: "Advanced English",
-    questionsToAsk: 10,
+    questionsToAsk: 5,
     questions: [
       {
         question: `Choose the grammatically correct sentence.`,
@@ -181,11 +181,11 @@ const nivaBupaQuestions = [
     ],
   },
 
-  // SECTION 3 – MENTAL ABILITY & REASONING (Q21-Q30)
+  // SECTION 3 – MENTAL ABILITY & REASONING (Q21-Q30) -> Pick 5 Random
   {
     subjectName: "Section 3: Mental Ability & Reasoning",
     sectionName: "Mental Ability & Reasoning",
-    questionsToAsk: 10,
+    questionsToAsk: 5,
     questions: [
       {
         question: `Find the next number: 5, 11, 23, 47, 95, ?`,
@@ -270,11 +270,11 @@ const nivaBupaQuestions = [
     ],
   },
 
-  // SECTION 4 – APPLIED MATHEMATICAL REASONING (Q31-Q40)
+  // SECTION 4 – APPLIED MATHEMATICAL REASONING (Q31-Q40) -> Pick 5 Random
   {
     subjectName: "Section 4: Applied Mathematical Reasoning",
     sectionName: "Applied Mathematical Reasoning",
-    questionsToAsk: 10,
+    questionsToAsk: 5,
     questions: [
       {
         question: `An advisor contacts 240 prospects. Of these, 60% agree to a meeting. Of those who meet, 25% submit a proposal. Finally, 80% of submitted proposals are converted. How many policies are converted?`,
@@ -359,11 +359,11 @@ const nivaBupaQuestions = [
     ],
   },
 
-  // SECTION 5 – SALES ORIENTATION & JOB READINESS (Q41-Q50)
+  // SECTION 5 – SALES ORIENTATION & JOB READINESS (Q41-Q50) -> Pick 5 Random
   {
     subjectName: "Section 5: Sales Orientation & Job Readiness",
     sectionName: "Sales Orientation & Job Readiness",
-    questionsToAsk: 10,
+    questionsToAsk: 5,
     questions: [
       {
         question: `You approach 30 prospects. Only three agree to continue the conversation. What should you examine first?`,
@@ -448,7 +448,7 @@ const nivaBupaQuestions = [
     ],
   },
 
-  // SECTION 6 – APPLIED INSURANCE AWARENESS (Q51-Q55)
+  // SECTION 6 – APPLIED INSURANCE AWARENESS (Q51-Q55) -> Pick 5 Random
   {
     subjectName: "Section 6: Applied Insurance Awareness",
     sectionName: "Applied Insurance Awareness",
@@ -515,8 +515,8 @@ async function seedNivaBupa() {
     where: { slug: 'niva-bupa-aum-assessment' },
     update: {
       name: 'Niva Bupa Health Insurance - Agency Unit Manager Assessment',
-      description: 'Graduate & Post-Graduate Assessment for Niva Bupa Agency Unit Manager role covering Communication, Advanced English, Reasoning, Applied Math, Sales Orientation, and Insurance Awareness.',
-      durationMins: 20,
+      description: '30 Random Questions per attempt from a pool of 55 questions covering Communication, Advanced English, Reasoning, Applied Math, Sales Orientation, and Insurance Awareness.',
+      durationMins: 30,
       passingPercentage: 50.0,
       maxProctorWarnings: 3,
       status: 'ACTIVE',
@@ -525,8 +525,8 @@ async function seedNivaBupa() {
       tenantId: tenant.id,
       name: 'Niva Bupa Health Insurance - Agency Unit Manager Assessment',
       slug: 'niva-bupa-aum-assessment',
-      description: 'Graduate & Post-Graduate Assessment for Niva Bupa Agency Unit Manager role covering Communication, Advanced English, Reasoning, Applied Math, Sales Orientation, and Insurance Awareness.',
-      durationMins: 20,
+      description: '30 Random Questions per attempt from a pool of 55 questions covering Communication, Advanced English, Reasoning, Applied Math, Sales Orientation, and Insurance Awareness.',
+      durationMins: 30,
       passingPercentage: 50.0,
       maxProctorWarnings: 3,
       status: 'ACTIVE',
@@ -578,10 +578,10 @@ async function seedNivaBupa() {
       totalQuestionsInserted++;
     }
 
-    console.log(`  ➕ Subject added: "${group.subjectName}" with ${group.questions.length} questions.`);
+    console.log(`  ➕ Subject added: "${group.subjectName}" (Pool: ${group.questions.length}, Ask: ${group.questionsToAsk})`);
   }
 
-  console.log(`🎉 Complete! Total ${totalQuestionsInserted} questions added successfully into 6 sections!`);
+  console.log(`🎉 Complete! Total ${totalQuestionsInserted} pool questions added. Each candidate will receive 30 random questions in 30 minutes!`);
 }
 
 seedNivaBupa()

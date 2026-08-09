@@ -3,11 +3,11 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 const nivaBupaArmQuestions = [
-  // SECTION 1 – COMMUNICATION & CUSTOMER HANDLING (Q1-Q10)
+  // SECTION 1 – COMMUNICATION & CUSTOMER HANDLING (Q1-Q10) -> Pick 5 Random
   {
     subjectName: "Section 1: Communication & Customer Handling",
     sectionName: "Communication & Customer Handling",
-    questionsToAsk: 10,
+    questionsToAsk: 5,
     questions: [
       {
         question: `A bank customer says:\n"I came to discuss my fixed deposit. I don't want another sales pitch."\nWhat is the most effective response?`,
@@ -92,11 +92,11 @@ const nivaBupaArmQuestions = [
     ],
   },
 
-  // SECTION 2 – ADVANCED ENGLISH (Q11-Q20)
+  // SECTION 2 – ADVANCED ENGLISH (Q11-Q20) -> Pick 5 Random
   {
     subjectName: "Section 2: Advanced English",
     sectionName: "Advanced English",
-    questionsToAsk: 10,
+    questionsToAsk: 5,
     questions: [
       {
         question: `Choose the sentence that is grammatically correct.`,
@@ -181,11 +181,11 @@ const nivaBupaArmQuestions = [
     ],
   },
 
-  // SECTION 3 – MENTAL ABILITY & REASONING (Q21-Q30)
+  // SECTION 3 – MENTAL ABILITY & REASONING (Q21-Q30) -> Pick 5 Random
   {
     subjectName: "Section 3: Mental Ability & Reasoning",
     sectionName: "Mental Ability & Reasoning",
-    questionsToAsk: 10,
+    questionsToAsk: 5,
     questions: [
       {
         question: `Find the next number:\n7, 15, 31, 63, 127, ?`,
@@ -270,11 +270,11 @@ const nivaBupaArmQuestions = [
     ],
   },
 
-  // SECTION 4 – ADVANCED NUMERICAL & MATHEMATICAL REASONING (Q31-Q40)
+  // SECTION 4 – ADVANCED NUMERICAL & MATHEMATICAL REASONING (Q31-Q40) -> Pick 5 Random
   {
     subjectName: "Section 4: Advanced Numerical & Mathematical Reasoning",
     sectionName: "Advanced Numerical & Mathematical Reasoning",
-    questionsToAsk: 10,
+    questionsToAsk: 5,
     questions: [
       {
         question: `An RM contacts 240 customers.\n• 75% are successfully reached.\n• 60% of those reached agree to a meeting.\n• 40% of meetings result in proposals.\n• 75% of proposals convert.\nHow many policies are expected?`,
@@ -359,11 +359,11 @@ const nivaBupaArmQuestions = [
     ],
   },
 
-  // SECTION 5 – BANKING & FINANCIAL AWARENESS (Q41-Q50)
+  // SECTION 5 – BANKING & FINANCIAL AWARENESS (Q41-Q50) -> Pick 5 Random
   {
     subjectName: "Section 5: Banking & Financial Awareness",
     sectionName: "Banking & Financial Awareness",
-    questionsToAsk: 10,
+    questionsToAsk: 5,
     questions: [
       {
         question: `A customer keeps ₹5 lakh in a savings account and asks why the bank may still recommend a fixed deposit for part of the amount.\nWhat is the most appropriate explanation?`,
@@ -448,11 +448,11 @@ const nivaBupaArmQuestions = [
     ],
   },
 
-  // SECTION 6 – SALES ORIENTATION & SITUATIONAL JUDGEMENT (Q51-Q60)
+  // SECTION 6 – SALES ORIENTATION & SITUATIONAL JUDGEMENT (Q51-Q60) -> Pick 5 Random
   {
     subjectName: "Section 6: Sales Orientation & Situational Judgement",
     sectionName: "Sales Orientation & Situational Judgement",
-    questionsToAsk: 10,
+    questionsToAsk: 5,
     questions: [
       {
         question: `You are given 40 eligible customers. After contacting 30, only three show interest.\nWhat should you examine first?`,
@@ -555,8 +555,8 @@ async function seedNivaBupaArm() {
     where: { slug: 'niva-bupa-arm-banca-assessment' },
     update: {
       name: 'Niva Bupa Health Insurance - Assistant Relationship Manager Assessment',
-      description: 'Advanced Graduate & Post-Graduate Assessment for Assistant Relationship Manager (Banca Channel) role covering Communication, Advanced English, Reasoning, Numerical Reasoning, Banking & Financial Awareness, and Situational Judgement.',
-      durationMins: 20,
+      description: '30 Random Questions per attempt from a pool of 60 questions covering Communication, Advanced English, Reasoning, Numerical Reasoning, Banking & Financial Awareness, and Situational Judgement.',
+      durationMins: 30,
       passingPercentage: 50.0,
       maxProctorWarnings: 3,
       status: 'ACTIVE',
@@ -565,8 +565,8 @@ async function seedNivaBupaArm() {
       tenantId: tenant.id,
       name: 'Niva Bupa Health Insurance - Assistant Relationship Manager Assessment',
       slug: 'niva-bupa-arm-banca-assessment',
-      description: 'Advanced Graduate & Post-Graduate Assessment for Assistant Relationship Manager (Banca Channel) role covering Communication, Advanced English, Reasoning, Numerical Reasoning, Banking & Financial Awareness, and Situational Judgement.',
-      durationMins: 20,
+      description: '30 Random Questions per attempt from a pool of 60 questions covering Communication, Advanced English, Reasoning, Numerical Reasoning, Banking & Financial Awareness, and Situational Judgement.',
+      durationMins: 30,
       passingPercentage: 50.0,
       maxProctorWarnings: 3,
       status: 'ACTIVE',
@@ -618,10 +618,10 @@ async function seedNivaBupaArm() {
       totalQuestionsInserted++;
     }
 
-    console.log(`  ➕ Subject added: "${group.subjectName}" with ${group.questions.length} questions.`);
+    console.log(`  ➕ Subject added: "${group.subjectName}" (Pool: ${group.questions.length}, Ask: ${group.questionsToAsk})`);
   }
 
-  console.log(`🎉 Complete! Total ${totalQuestionsInserted} questions added successfully into 6 sections!`);
+  console.log(`🎉 Complete! Total ${totalQuestionsInserted} pool questions added. Each candidate will receive 30 random questions in 30 minutes!`);
 }
 
 seedNivaBupaArm()
