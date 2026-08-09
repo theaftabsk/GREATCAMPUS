@@ -10,60 +10,60 @@ import {
 const sections = [
   {
     num: "01",
-    weight: "20%",
-    time: "2.5 mins",
-    title: "Communication & Customer Handling",
-    desc: "5 Questions testing senior customer interaction, empathy, and active listening skills.",
+    module: "AUM Module",
+    time: "5 mins",
+    title: "Communication & Advanced English",
+    desc: "10 Questions evaluating senior customer interaction, empathy, and professional vocabulary.",
     color: "#00AEEF",
     bg: "#EBF7FF",
     border: "#B3E0F9",
   },
   {
     num: "02",
-    weight: "15%",
-    time: "2.5 mins",
-    title: "Basic English",
-    desc: "5 Questions assessing practical business grammar, vocabulary, and professional phrasing.",
+    module: "AUM Module",
+    time: "5 mins",
+    title: "Mental Ability & Applied Math",
+    desc: "10 Questions evaluating series completion, conversion rates, and logical reasoning.",
     color: "#0090C8",
     bg: "#E0F2FE",
     border: "#7DD3FC",
   },
   {
     num: "03",
-    weight: "15%",
-    time: "2.5 mins",
-    title: "Mental Ability & Reasoning",
-    desc: "5 Questions evaluating series completion, coding-decoding, and logical problem solving.",
+    module: "AUM Module",
+    time: "5 mins",
+    title: "Sales Readiness & Insurance Awareness",
+    desc: "10 Questions assessing objection handling, targets mindset, and insurance policy awareness.",
     color: "#F7941D",
     bg: "#FEF3E2",
     border: "#FCD38A",
   },
   {
     num: "04",
-    weight: "20%",
-    time: "2.5 mins",
-    title: "Basic Maths & Numerical Ability",
-    desc: "5 Questions focusing on practical conversion rates, percentage returns, and simple calculations.",
+    module: "ARM Banca Module",
+    time: "5 mins",
+    title: "Customer Handling & English",
+    desc: "10 Questions evaluating consultative objection handling, active listening, and grammar.",
     color: "#003F72",
     bg: "#E8F0F8",
     border: "#9FC3DE",
   },
   {
     num: "05",
-    weight: "15%",
-    time: "2.5 mins",
-    title: "Banking & Financial Awareness",
-    desc: "5 Questions covering EMI, credit score, savings accounts, and basic life/health insurance concepts.",
+    module: "ARM Banca Module",
+    time: "5 mins",
+    title: "Numerical Reasoning & Banking",
+    desc: "10 Questions covering EMI calculations, returns, savings accounts, and financial concepts.",
     color: "#16A34A",
     bg: "#DCFCE7",
     border: "#86EFAC",
   },
   {
     num: "06",
-    weight: "15%",
-    time: "2.5 mins",
-    title: "Sales Orientation & Judgement",
-    desc: "5 Questions testing objection handling, targets mindset, and situational judgment in Banca environment.",
+    module: "ARM Banca Module",
+    time: "5 mins",
+    title: "Sales Orientation & Situational Judgement",
+    desc: "10 Questions testing Banca branch walk-in conversion, relationship management, and sales ethics.",
     color: "#D97706",
     bg: "#FEF3C7",
     border: "#FCD34D",
@@ -139,7 +139,7 @@ export default function Home() {
             marginBottom: "20px",
           }}>
             <Heart size={14} color="#F7941D" fill="#F7941D" />
-            Banca Channel ARM Recruitment Assessment
+            Banca Channel ARM & AUM Recruitment Assessment
           </div>
 
           <h1 style={{
@@ -147,17 +147,17 @@ export default function Home() {
             color: "#1A2B40", lineHeight: 1.2, letterSpacing: "-0.02em",
             maxWidth: "820px", margin: "0 auto 16px",
           }}>
-            Evaluate High-Potential{" "}
+            Niva Bupa Health Insurance Assessment{" "}
             <span style={{ color: "#00AEEF" }}>
-              Assistant Relationship Managers
+              (AUM + ARM Banca Modules)
             </span>
           </h1>
 
           <p style={{
             fontSize: "clamp(14px, 2.5vw, 17px)", color: "#4A6580",
-            maxWidth: "640px", margin: "0 auto 36px", lineHeight: 1.7, fontWeight: 500
+            maxWidth: "680px", margin: "0 auto 36px", lineHeight: 1.7, fontWeight: 500
           }}>
-            Comprehensive multi-competency evaluation measuring customer handling, numerical reasoning,
+            Comprehensive 2-module assessment measuring customer handling, numerical reasoning,
             financial awareness, sales orientation, and practical role-play simulations.
           </p>
 
@@ -186,9 +186,9 @@ export default function Home() {
           gap: "12px", marginBottom: "48px",
         }}>
           {[
-            { label: "Total Duration", value: "15 Min", color: "#00AEEF" },
-            { label: "MCQ Questions", value: "30 Qs", color: "#F7941D" },
-            { label: "Passing Cutoff", value: "10 Correct", color: "#16A34A" },
+            { label: "Total Duration", value: "30 Min", color: "#00AEEF" },
+            { label: "Total Questions", value: "60 Qs", color: "#F7941D" },
+            { label: "Passing Cutoff", value: "30 Correct", color: "#16A34A" },
             { label: "Simulation Marks", value: "30 Pts", color: "#003F72" },
           ].map((s) => (
             <div key={s.label} style={{
@@ -207,7 +207,7 @@ export default function Home() {
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
             <Award size={20} color="#00AEEF" />
             <h2 style={{ fontSize: "clamp(16px, 3vw, 20px)", fontWeight: 800, color: "#1A2B40" }}>
-              Assessment Structure — 30 Questions | 15 Minutes (Passing: 10 Correct Answers)
+              Assigned Assessment Structure — 2 Modules (12 Sections) | 60 Questions | 30 Minutes
             </h2>
           </div>
 
@@ -231,7 +231,7 @@ export default function Home() {
                     textTransform: "uppercase", letterSpacing: "0.06em",
                     padding: "4px 10px", borderRadius: "50px",
                   }}>
-                    Section {s.num} • {s.weight}
+                    {s.module}
                   </span>
                   <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "#8BA4BE", fontWeight: 600 }}>
                     <Clock size={12} />
@@ -245,7 +245,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── SECTION 7 ROLEPLAY BANNER (FULLY FILLED BALANCED LAYOUT) ── */}
+        {/* ── PRACTICAL ROLEPLAY SIMULATION ── */}
         <section style={{
           background: "linear-gradient(135deg, #002D54 0%, #005A9C 55%, #0090C8 100%)",
           borderRadius: "24px", padding: "clamp(24px,4vw,36px)",
@@ -274,7 +274,7 @@ export default function Home() {
               Practical Assessment • 30 Marks
             </div>
             <h3 style={{ fontSize: "clamp(20px,4vw,28px)", fontWeight: 900, color: "white", marginBottom: "12px", lineHeight: 1.25 }}>
-              Section 7: 5-Minute Practical Sales Simulation
+              5-Minute Practical Sales Simulation
             </h3>
             <p style={{ fontSize: "clamp(12px,2.5vw,14px)", color: "rgba(255,255,255,0.85)", lineHeight: 1.7, fontWeight: 500 }}>
               Candidates conduct a 3–5 minute roleplay scenario converting a Fixed Deposit walk-in
@@ -282,7 +282,7 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Right Side Glassmorphic Scorecard Preview (Fills Empty Space) */}
+          {/* Right Side Glassmorphic Scorecard Preview */}
           <div style={{
             position: "relative", zIndex: 1,
             background: "rgba(255, 255, 255, 0.12)",
@@ -330,7 +330,7 @@ export default function Home() {
 
         </section>
 
-        {/* ── FEATURES STRIP (BALANCED 4 COLUMNS) ── */}
+        {/* ── FEATURES STRIP ── */}
         <section style={{ marginBottom: "56px" }}>
           <div style={{
             display: "grid",
