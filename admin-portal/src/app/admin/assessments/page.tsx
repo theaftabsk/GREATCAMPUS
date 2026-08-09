@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   BookOpen, Plus, AlertTriangle, CheckCircle2, Layers, Grid,
-  Clock, Award, ShieldAlert, Trash2, Edit2, ChevronRight, RefreshCw
+  Clock, Award, ShieldAlert, Trash2, Edit2, ChevronRight, RefreshCw, X
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 
@@ -47,13 +47,19 @@ export default function AdminAssessmentsPage() {
 
   // Modals
   const [showCreateExamModal, setShowCreateExamModal] = useState(false);
+  const [showEditExamModal, setShowEditExamModal] = useState(false);
   const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
+  const [showEditSubjectModal, setShowEditSubjectModal] = useState(false);
   const [showAddSectionModal, setShowAddSectionModal] = useState(false);
+  const [showEditSectionModal, setShowEditSectionModal] = useState(false);
 
-  // Form State
+  // Form States
   const [examForm, setExamForm] = useState({ name: "", description: "", durationMins: 60, passingPercentage: 50, maxProctorWarnings: 3 });
+  const [editExamForm, setEditExamForm] = useState({ id: "", name: "", description: "", durationMins: 60, passingPercentage: 50, maxProctorWarnings: 3 });
   const [subjectName, setSubjectName] = useState("");
+  const [editSubjectForm, setEditSubjectForm] = useState({ id: "", name: "" });
   const [sectionForm, setSectionForm] = useState({ subjectId: "", name: "", questionsToAsk: 5 });
+  const [editSectionForm, setEditSectionForm] = useState({ id: "", name: "", questionsToAsk: 5 });
 
   const loadAssessments = async () => {
     setLoading(true);
@@ -63,8 +69,10 @@ export default function AdminAssessmentsPage() {
       const data = await res.json();
       if (data.success && Array.isArray(data.assessments)) {
         setAssessments(data.assessments);
-        if (data.assessments.length > 0 && !selectedAssessment) {
-          setSelectedAssessment(data.assessments[0]);
+        if (data.assessments.length > 0) {
+          const currentId = selectedAssessment?.id;
+          const matched = data.assessments.find((a: AssessmentItem) => a.id === currentId);
+          setSelectedAssessment(matched || data.assessments[0]);
         }
       }
     } catch (err) {
@@ -78,6 +86,7 @@ export default function AdminAssessmentsPage() {
     loadAssessments();
   }, []);
 
+  // --- EXAM HANDLERS ---
   const handleCreateExam = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -98,6 +107,44 @@ export default function AdminAssessmentsPage() {
     }
   };
 
+  const handleEditExam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/v1/assessments/${editExamForm.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editExamForm.name,
+          description: editExamForm.description,
+          durationMins: editExamForm.durationMins,
+          passingPercentage: editExamForm.passingPercentage,
+          maxProctorWarnings: editExamForm.maxProctorWarnings,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowEditExamModal(false);
+        loadAssessments();
+      }
+    } catch (err) {
+      console.error("Edit exam failed:", err);
+    }
+  };
+
+  const handleDeleteAssessment = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this Assessment Exam?")) return;
+    try {
+      const baseUrl = getApiBaseUrl();
+      await fetch(`${baseUrl}/api/v1/assessments/${id}`, { method: "DELETE" });
+      setSelectedAssessment(null);
+      loadAssessments();
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
+  };
+
+  // --- SUBJECT HANDLERS ---
   const handleAddSubject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAssessment || !subjectName) return;
@@ -119,6 +166,38 @@ export default function AdminAssessmentsPage() {
     }
   };
 
+  const handleEditSubject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editSubjectForm.id || !editSubjectForm.name) return;
+    try {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/v1/assessments/subjects/${editSubjectForm.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editSubjectForm.name }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowEditSubjectModal(false);
+        loadAssessments();
+      }
+    } catch (err) {
+      console.error("Edit subject failed:", err);
+    }
+  };
+
+  const handleDeleteSubject = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this Subject and all its Sections?")) return;
+    try {
+      const baseUrl = getApiBaseUrl();
+      await fetch(`${baseUrl}/api/v1/assessments/subjects/${id}`, { method: "DELETE" });
+      loadAssessments();
+    } catch (err) {
+      console.error("Delete subject failed:", err);
+    }
+  };
+
+  // --- SECTION HANDLERS ---
   const handleAddSection = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!sectionForm.subjectId || !sectionForm.name) return;
@@ -140,15 +219,34 @@ export default function AdminAssessmentsPage() {
     }
   };
 
-  const handleDeleteAssessment = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this Assessment Exam?")) return;
+  const handleEditSection = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editSectionForm.id || !editSectionForm.name) return;
     try {
       const baseUrl = getApiBaseUrl();
-      await fetch(`${baseUrl}/api/v1/assessments/${id}`, { method: "DELETE" });
-      setSelectedAssessment(null);
+      const res = await fetch(`${baseUrl}/api/v1/assessments/sections/${editSectionForm.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editSectionForm.name, questionsToAsk: editSectionForm.questionsToAsk }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowEditSectionModal(false);
+        loadAssessments();
+      }
+    } catch (err) {
+      console.error("Edit section failed:", err);
+    }
+  };
+
+  const handleDeleteSection = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this Section?")) return;
+    try {
+      const baseUrl = getApiBaseUrl();
+      await fetch(`${baseUrl}/api/v1/assessments/sections/${id}`, { method: "DELETE" });
       loadAssessments();
     } catch (err) {
-      console.error("Delete failed:", err);
+      console.error("Delete section failed:", err);
     }
   };
 
@@ -244,6 +342,23 @@ export default function AdminAssessmentsPage() {
               <div className="flex items-center gap-3">
                 <h2 className="text-lg font-extrabold text-slate-900">{selectedAssessment.name}</h2>
                 <button
+                  onClick={() => {
+                    setEditExamForm({
+                      id: selectedAssessment.id,
+                      name: selectedAssessment.name,
+                      description: selectedAssessment.description || "",
+                      durationMins: selectedAssessment.durationMins,
+                      passingPercentage: selectedAssessment.passingPercentage,
+                      maxProctorWarnings: selectedAssessment.maxProctorWarnings,
+                    });
+                    setShowEditExamModal(true);
+                  }}
+                  className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                  title="Edit Exam Settings"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
                   onClick={() => handleDeleteAssessment(selectedAssessment.id)}
                   className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition"
                   title="Delete Exam"
@@ -293,6 +408,23 @@ export default function AdminAssessmentsPage() {
                       {sIdx + 1}
                     </span>
                     <h3 className="text-sm font-extrabold text-slate-900">{sub.name}</h3>
+                    <button
+                      onClick={() => {
+                        setEditSubjectForm({ id: sub.id, name: sub.name });
+                        setShowEditSubjectModal(true);
+                      }}
+                      className="p-1 text-slate-400 hover:text-blue-600 hover:bg-white rounded transition"
+                      title="Edit Subject"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSubject(sub.id)}
+                      className="p-1 text-slate-400 hover:text-red-600 hover:bg-white rounded transition"
+                      title="Delete Subject"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
 
                   <button
@@ -319,15 +451,34 @@ export default function AdminAssessmentsPage() {
                           <span className="text-xs font-bold text-slate-800">
                             Sec {secIdx + 1}: {sec.name}
                           </span>
-                          {isSufficient ? (
-                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
-                              OK ({poolCount}/{sec.questionsToAsk})
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-200">
-                              Shortage ({poolCount}/{sec.questionsToAsk})
-                            </span>
-                          )}
+                          <div className="flex items-center space-x-2">
+                            {isSufficient ? (
+                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                                OK ({poolCount}/{sec.questionsToAsk})
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-200">
+                                Shortage ({poolCount}/{sec.questionsToAsk})
+                              </span>
+                            )}
+                            <button
+                              onClick={() => {
+                                setEditSectionForm({ id: sec.id, name: sec.name, questionsToAsk: sec.questionsToAsk });
+                                setShowEditSectionModal(true);
+                              }}
+                              className="p-1 text-slate-400 hover:text-blue-600 rounded transition"
+                              title="Edit Section"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSection(sec.id)}
+                              className="p-1 text-slate-400 hover:text-red-600 rounded transition"
+                              title="Delete Section"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
 
                         <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
@@ -429,6 +580,92 @@ export default function AdminAssessmentsPage() {
         </div>
       )}
 
+      {/* EDIT EXAM MODAL */}
+      {showEditExamModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-extrabold text-slate-900">Edit Exam Configuration</h2>
+              <button onClick={() => setShowEditExamModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditExam} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Exam Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editExamForm.name}
+                  onChange={(e) => setEditExamForm({ ...editExamForm, name: e.target.value })}
+                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Description</label>
+                <textarea
+                  value={editExamForm.description}
+                  onChange={(e) => setEditExamForm({ ...editExamForm, description: e.target.value })}
+                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                  rows={2}
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Duration (Mins)</label>
+                  <input
+                    type="number"
+                    required
+                    value={editExamForm.durationMins}
+                    onChange={(e) => setEditExamForm({ ...editExamForm, durationMins: parseInt(e.target.value) || 60 })}
+                    className="w-full p-3 rounded-xl border border-slate-200 text-xs font-medium outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Passing Score %</label>
+                  <input
+                    type="number"
+                    required
+                    value={editExamForm.passingPercentage}
+                    onChange={(e) => setEditExamForm({ ...editExamForm, passingPercentage: parseFloat(e.target.value) || 50 })}
+                    className="w-full p-3 rounded-xl border border-slate-200 text-xs font-medium outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Max Warnings</label>
+                  <input
+                    type="number"
+                    required
+                    value={editExamForm.maxProctorWarnings}
+                    onChange={(e) => setEditExamForm({ ...editExamForm, maxProctorWarnings: parseInt(e.target.value) || 3 })}
+                    className="w-full p-3 rounded-xl border border-slate-200 text-xs font-medium outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowEditExamModal(false)}
+                  className="px-4 py-2 text-slate-600 font-bold text-xs hover:bg-slate-100 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 shadow-md"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ADD SUBJECT MODAL */}
       {showAddSubjectModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
@@ -458,9 +695,52 @@ export default function AdminAssessmentsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 shadow-md"
+                  className="px-5 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl hover:bg-slate-800 shadow-md"
                 >
                   Add Subject
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT SUBJECT MODAL */}
+      {showEditSubjectModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-extrabold text-slate-900">Edit Subject</h2>
+              <button onClick={() => setShowEditSubjectModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubject} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Subject Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editSubjectForm.name}
+                  onChange={(e) => setEditSubjectForm({ ...editSubjectForm, name: e.target.value })}
+                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-medium outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowEditSubjectModal(false)}
+                  className="px-4 py-2 text-slate-600 font-bold text-xs hover:bg-slate-100 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 shadow-md"
+                >
+                  Save Subject
                 </button>
               </div>
             </form>
@@ -480,7 +760,7 @@ export default function AdminAssessmentsPage() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. General Banking"
+                  placeholder="e.g. Communication & Customer Handling"
                   value={sectionForm.name}
                   onChange={(e) => setSectionForm({ ...sectionForm, name: e.target.value })}
                   className="w-full p-3 rounded-xl border border-slate-200 text-xs font-medium outline-none"
@@ -488,10 +768,11 @@ export default function AdminAssessmentsPage() {
               </div>
 
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Questions to Ask Candidate (Random Draw) *</label>
+                <label className="font-bold text-slate-700 block mb-1">Questions To Ask Candidate (N) *</label>
                 <input
                   type="number"
                   required
+                  min={1}
                   value={sectionForm.questionsToAsk}
                   onChange={(e) => setSectionForm({ ...sectionForm, questionsToAsk: parseInt(e.target.value) || 5 })}
                   className="w-full p-3 rounded-xl border border-slate-200 text-xs font-medium outline-none"
@@ -511,6 +792,61 @@ export default function AdminAssessmentsPage() {
                   className="px-5 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 shadow-md"
                 >
                   Add Section
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT SECTION MODAL */}
+      {showEditSectionModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-extrabold text-slate-900">Edit Section Configuration</h2>
+              <button onClick={() => setShowEditSectionModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSection} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Section Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editSectionForm.name}
+                  onChange={(e) => setEditSectionForm({ ...editSectionForm, name: e.target.value })}
+                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-medium outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Questions To Ask Candidate (N) *</label>
+                <input
+                  type="number"
+                  required
+                  min={1}
+                  value={editSectionForm.questionsToAsk}
+                  onChange={(e) => setEditSectionForm({ ...editSectionForm, questionsToAsk: parseInt(e.target.value) || 5 })}
+                  className="w-full p-3 rounded-xl border border-slate-200 text-xs font-medium outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowEditSectionModal(false)}
+                  className="px-4 py-2 text-slate-600 font-bold text-xs hover:bg-slate-100 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 shadow-md"
+                >
+                  Save Section
                 </button>
               </div>
             </form>

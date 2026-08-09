@@ -10,7 +10,7 @@ interface NavbarProps {
 
 export default function Navbar({ onMobileSidebarToggle }: NavbarProps) {
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-2xs">
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
         
         {/* Niva Bupa Brand Logo */}
@@ -31,7 +31,7 @@ export default function Navbar({ onMobileSidebarToggle }: NavbarProps) {
               width={210}
               height={191}
               style={{
-                height: "46px",
+                height: "44px",
                 width: "auto",
                 borderRadius: "8px",
                 boxShadow: "0 2px 8px rgba(0, 160, 230, 0.2)",
@@ -47,7 +47,7 @@ export default function Navbar({ onMobileSidebarToggle }: NavbarProps) {
         </div>
 
         {/* Status indicator */}
-        <div className="flex items-center space-x-2 bg-blue-50 text-blue-800 px-3 py-1.5 rounded-full border border-blue-200 text-xs font-bold">
+        <div className="flex items-center space-x-2 bg-blue-50 text-blue-800 px-3.5 py-1.5 rounded-full border border-blue-200 text-xs font-extrabold shadow-2xs">
           <ShieldCheck className="w-4 h-4 text-blue-600" />
           <span>HR Admin Portal</span>
         </div>

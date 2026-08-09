@@ -54,10 +54,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 selection:bg-blue-500 selection:text-white">
       
+      {/* Sticky Header Navbar */}
       <Navbar onMobileSidebarToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)} />
 
-      <div className="flex-1 flex w-full">
+      <div className="flex-1 flex w-full relative">
         
+        {/* Mobile Backdrop */}
         {mobileSidebarOpen && (
           <div
             onClick={() => setMobileSidebarOpen(false)}
@@ -65,10 +67,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           ></div>
         )}
 
-        {/* Dedicated Admin Left Sidebar */}
+        {/* Dedicated Fixed Left Sidebar */}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col justify-between transform transition-transform duration-300 lg:static lg:translate-x-0 ${
-            mobileSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+          className={`fixed lg:sticky top-16 h-[calc(100vh-4rem)] z-40 w-64 bg-white border-r border-slate-200 flex flex-col justify-between overflow-y-auto shrink-0 transform transition-transform duration-300 ${
+            mobileSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"
           }`}
         >
           <div className="p-6 space-y-8">
@@ -80,7 +82,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 width={210}
                 height={191}
                 style={{
-                  height: "48px",
+                  height: "46px",
                   width: "auto",
                   borderRadius: "10px",
                   boxShadow: "0 3px 10px rgba(0, 160, 230, 0.2)",
@@ -201,7 +203,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         </aside>
 
-        <main className="flex-1 p-6 sm:p-8 overflow-y-auto">
+        {/* Main Content Body */}
+        <main className="flex-1 p-6 sm:p-8 min-w-0">
           {children}
         </main>
 
