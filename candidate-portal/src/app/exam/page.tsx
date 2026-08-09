@@ -123,21 +123,6 @@ export default function CandidateRegistration() {
             <form onSubmit={handleStart} className="exam-form">
               <div className="exam-form-grid">
 
-                {/* Single Fixed Active Assessment Display */}
-                <div style={{ gridColumn: "1 / -1", backgroundColor: "rgba(15, 23, 42, 0.6)", border: "1px solid rgba(59, 130, 246, 0.3)", borderRadius: "12px", padding: "16px 20px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px" }}>
-                    <BookOpen style={{ width: "20px", height: "20px", color: "#3b82f6" }} />
-                    <span style={{ fontSize: "14px", fontWeight: "600", color: "#93c5fd", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                      Assigned Assessment (Fixed)
-                    </span>
-                  </div>
-                  <h3 style={{ fontSize: "18px", fontWeight: "700", color: "#ffffff", margin: "0 0 6px 0" }}>
-                    {assessments[0]?.name || "Niva Bupa Health Insurance Assessment"}
-                  </h3>
-                  <p style={{ fontSize: "13px", color: "#94a3b8", margin: 0, lineHeight: "1.5" }}>
-                    Includes 2 Modules (AUM + ARM Banca) • 12 Sections • 60 Total Questions • 30 Minutes Duration
-                  </p>
-                </div>
 
                 <div>
                   <label className="exam-field-label">

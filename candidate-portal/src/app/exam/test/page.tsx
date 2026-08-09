@@ -377,7 +377,7 @@ export default function CandidateTestEngine() {
                 <h3 className="test-q-text">{currentQ.question}</h3>
 
                 {/* Options List */}
-                <div className="test-options-list">
+                <div className="options-list test-options-list" style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "20px" }}>
                   {[
                     { key: "A", val: currentQ.optionA },
                     { key: "B", val: currentQ.optionB },
@@ -388,12 +388,50 @@ export default function CandidateTestEngine() {
                     return (
                       <button
                         key={opt.key}
+                        type="button"
                         onClick={() => handleSelectOption(currentQ.id, opt.key)}
-                        className={`test-option-btn ${isSel ? "selected" : ""}`}
+                        className={`option-item test-option-btn ${isSel ? "option-item--selected selected" : ""}`}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "14px",
+                          padding: "14px 18px",
+                          borderRadius: "14px",
+                          border: `2px solid ${isSel ? "#00AEEF" : "#E2EFF8"}`,
+                          background: isSel ? "#E8F6FF" : "#F8FCFF",
+                          color: isSel ? "#003F72" : "#1A2B40",
+                          fontSize: "14px",
+                          fontWeight: isSel ? 700 : 600,
+                          cursor: "pointer",
+                          textAlign: "left",
+                          width: "100%",
+                          transition: "all 0.18s ease",
+                          boxShadow: isSel ? "0 4px 14px rgba(0, 174, 239, 0.15)" : "none",
+                        }}
                       >
-                        <span className="test-opt-key">{opt.key}</span>
-                        <span className="test-opt-val">{opt.val}</span>
-                        {isSel && <CheckCircle2 size={18} className="test-opt-check" />}
+                        <span
+                          className="option-key test-opt-key"
+                          style={{
+                            width: "32px",
+                            height: "32px",
+                            borderRadius: "50%",
+                            border: `2px solid ${isSel ? "#00AEEF" : "#CBD5E1"}`,
+                            background: isSel ? "#00AEEF" : "white",
+                            color: isSel ? "white" : "#64748B",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: "13px",
+                            fontWeight: 800,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {opt.key}
+                        </span>
+                        <span className="option-val test-opt-val" style={{ flex: 1, lineHeight: "1.5" }}>
+                          {opt.val}
+                        </span>
+                        {isSel && <CheckCircle2 size={20} color="#00AEEF" style={{ flexShrink: 0 }} />}
                       </button>
                     );
                   })}
