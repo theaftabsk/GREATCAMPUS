@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 const nivaBupaAumQuestions = [
   // SECTION 1 – COMMUNICATION & COMPREHENSION (Q1-Q10) -> Pick 5 Random
   {
-    subjectName: "Section 1: Communication & Comprehension",
+    subjectName: "Subject 1: Agency Unit Manager (AUM) Module",
     sectionName: "Communication & Comprehension",
     questionsToAsk: 5,
     questions: [
@@ -93,7 +93,7 @@ const nivaBupaAumQuestions = [
   },
   // SECTION 2 – ADVANCED ENGLISH (Q11-Q20) -> Pick 5 Random
   {
-    subjectName: "Section 2: Advanced English",
+    subjectName: "Subject 1: Agency Unit Manager (AUM) Module",
     sectionName: "Advanced English",
     questionsToAsk: 5,
     questions: [
@@ -181,7 +181,7 @@ const nivaBupaAumQuestions = [
   },
   // SECTION 3 – MENTAL ABILITY & REASONING (Q21-Q30) -> Pick 5 Random
   {
-    subjectName: "Section 3: Mental Ability & Reasoning",
+    subjectName: "Subject 1: Agency Unit Manager (AUM) Module",
     sectionName: "Mental Ability & Reasoning",
     questionsToAsk: 5,
     questions: [
@@ -269,7 +269,7 @@ const nivaBupaAumQuestions = [
   },
   // SECTION 4 – APPLIED MATHEMATICAL REASONING (Q31-Q40) -> Pick 5 Random
   {
-    subjectName: "Section 4: Applied Mathematical Reasoning",
+    subjectName: "Subject 1: Agency Unit Manager (AUM) Module",
     sectionName: "Applied Mathematical Reasoning",
     questionsToAsk: 5,
     questions: [
@@ -357,7 +357,7 @@ const nivaBupaAumQuestions = [
   },
   // SECTION 5 – SALES ORIENTATION & JOB READINESS (Q41-Q50) -> Pick 5 Random
   {
-    subjectName: "Section 5: Sales Orientation & Job Readiness",
+    subjectName: "Subject 1: Agency Unit Manager (AUM) Module",
     sectionName: "Sales Orientation & Job Readiness",
     questionsToAsk: 5,
     questions: [
@@ -445,7 +445,7 @@ const nivaBupaAumQuestions = [
   },
   // SECTION 6 – APPLIED INSURANCE AWARENESS (Q51-Q55) -> Pick 5 Random
   {
-    subjectName: "Section 6: Applied Insurance Awareness",
+    subjectName: "Subject 1: Agency Unit Manager (AUM) Module",
     sectionName: "Applied Insurance Awareness",
     questionsToAsk: 5,
     questions: [
@@ -496,7 +496,7 @@ const nivaBupaAumQuestions = [
 const nivaBupaArmQuestions = [
   // SECTION 1 – COMMUNICATION & CUSTOMER HANDLING (Q1-Q10) -> Pick 5 Random
   {
-    subjectName: "Section 1: Communication & Customer Handling",
+    subjectName: "Subject 2: Assistant Relationship Manager (ARM Banca) Module",
     sectionName: "Communication & Customer Handling",
     questionsToAsk: 5,
     questions: [
@@ -584,7 +584,7 @@ const nivaBupaArmQuestions = [
   },
   // SECTION 2 – ADVANCED ENGLISH (Q11-Q20) -> Pick 5 Random
   {
-    subjectName: "Section 2: Advanced English",
+    subjectName: "Subject 2: Assistant Relationship Manager (ARM Banca) Module",
     sectionName: "Advanced English",
     questionsToAsk: 5,
     questions: [
@@ -672,7 +672,7 @@ const nivaBupaArmQuestions = [
   },
   // SECTION 3 – MENTAL ABILITY & REASONING (Q21-Q30) -> Pick 5 Random
   {
-    subjectName: "Section 3: Mental Ability & Reasoning",
+    subjectName: "Subject 2: Assistant Relationship Manager (ARM Banca) Module",
     sectionName: "Mental Ability & Reasoning",
     questionsToAsk: 5,
     questions: [
@@ -760,7 +760,7 @@ const nivaBupaArmQuestions = [
   },
   // SECTION 4 – ADVANCED NUMERICAL & MATHEMATICAL REASONING (Q31-Q40) -> Pick 5 Random
   {
-    subjectName: "Section 4: Advanced Numerical & Mathematical Reasoning",
+    subjectName: "Subject 2: Assistant Relationship Manager (ARM Banca) Module",
     sectionName: "Advanced Numerical & Mathematical Reasoning",
     questionsToAsk: 5,
     questions: [
@@ -848,7 +848,7 @@ const nivaBupaArmQuestions = [
   },
   // SECTION 5 – BANKING & FINANCIAL AWARENESS (Q41-Q50) -> Pick 5 Random
   {
-    subjectName: "Section 5: Banking & Financial Awareness",
+    subjectName: "Subject 2: Assistant Relationship Manager (ARM Banca) Module",
     sectionName: "Banking & Financial Awareness",
     questionsToAsk: 5,
     questions: [
@@ -936,7 +936,7 @@ const nivaBupaArmQuestions = [
   },
   // SECTION 6 – SALES ORIENTATION & SITUATIONAL JUDGEMENT (Q51-Q60) -> Pick 5 Random
   {
-    subjectName: "Section 6: Sales Orientation & Situational Judgement",
+    subjectName: "Subject 2: Assistant Relationship Manager (ARM Banca) Module",
     sectionName: "Sales Orientation & Situational Judgement",
     questionsToAsk: 5,
     questions: [
@@ -1049,22 +1049,16 @@ async function main() {
   });
   console.log('✅ Created Admin user:', admin.username);
 
-  // 1. Seed Assessment AUM
-  const assessmentAum = await prisma.assessment.upsert({
-    where: { slug: 'niva-bupa-aum-assessment' },
-    update: {
-      name: 'Niva Bupa Health Insurance - Agency Unit Manager Assessment',
-      description: '30 Random Questions per attempt from a pool of 55 questions covering Communication, Advanced English, Reasoning, Applied Math, Sales Orientation, and Insurance Awareness.',
-      durationMins: 30,
-      passingPercentage: 50.0,
-      maxProctorWarnings: 3,
-      status: 'ACTIVE',
-    },
-    create: {
+  // Clean up any old assessments so EXACTLY 1 SINGLE FIXED ACTIVE ASSESSMENT exists!
+  await prisma.assessment.deleteMany({});
+
+  // Single Fixed Assessment: Niva Bupa Health Insurance Assessment
+  const singleFixedAssessment = await prisma.assessment.create({
+    data: {
       tenantId: tenant.id,
-      name: 'Niva Bupa Health Insurance - Agency Unit Manager Assessment',
-      slug: 'niva-bupa-aum-assessment',
-      description: '30 Random Questions per attempt from a pool of 55 questions covering Communication, Advanced English, Reasoning, Applied Math, Sales Orientation, and Insurance Awareness.',
+      name: 'Niva Bupa Health Insurance Assessment',
+      slug: 'niva-bupa-assessment',
+      description: 'Single Fixed Official Assessment for Niva Bupa Health Insurance covering Agency Unit Manager (AUM) and Assistant Relationship Manager (ARM Banca) modules.',
       durationMins: 30,
       passingPercentage: 50.0,
       maxProctorWarnings: 3,
@@ -1072,19 +1066,27 @@ async function main() {
     },
   });
 
-  await prisma.assessmentSubject.deleteMany({
-    where: { assessmentId: assessmentAum.id },
-  });
+  console.log(`✅ Single Fixed Assessment Created: ${singleFixedAssessment.name} (${singleFixedAssessment.id})`);
 
+  // Seed Subject 1: AUM Module with 6 Sections
   let order1 = 1;
   for (const group of nivaBupaAumQuestions) {
-    const subject = await prisma.assessmentSubject.create({
-      data: {
-        assessmentId: assessmentAum.id,
+    let subject = await prisma.assessmentSubject.findFirst({
+      where: {
+        assessmentId: singleFixedAssessment.id,
         name: group.subjectName,
-        displayOrder: order1++,
       },
     });
+
+    if (!subject) {
+      subject = await prisma.assessmentSubject.create({
+        data: {
+          assessmentId: singleFixedAssessment.id,
+          name: group.subjectName,
+          displayOrder: order1++,
+        },
+      });
+    }
 
     const section = await prisma.subjectSection.create({
       data: {
@@ -1111,44 +1113,26 @@ async function main() {
       });
     }
   }
-  console.log('✅ Assessment 1 (AUM) seeded successfully!');
 
-  // 2. Seed Assessment ARM
-  const assessmentArm = await prisma.assessment.upsert({
-    where: { slug: 'niva-bupa-arm-banca-assessment' },
-    update: {
-      name: 'Niva Bupa Health Insurance - Assistant Relationship Manager Assessment',
-      description: '30 Random Questions per attempt from a pool of 60 questions covering Communication, Advanced English, Reasoning, Numerical Reasoning, Banking & Financial Awareness, and Situational Judgement.',
-      durationMins: 30,
-      passingPercentage: 50.0,
-      maxProctorWarnings: 3,
-      status: 'ACTIVE',
-    },
-    create: {
-      tenantId: tenant.id,
-      name: 'Niva Bupa Health Insurance - Assistant Relationship Manager Assessment',
-      slug: 'niva-bupa-arm-banca-assessment',
-      description: '30 Random Questions per attempt from a pool of 60 questions covering Communication, Advanced English, Reasoning, Numerical Reasoning, Banking & Financial Awareness, and Situational Judgement.',
-      durationMins: 30,
-      passingPercentage: 50.0,
-      maxProctorWarnings: 3,
-      status: 'ACTIVE',
-    },
-  });
-
-  await prisma.assessmentSubject.deleteMany({
-    where: { assessmentId: assessmentArm.id },
-  });
-
-  let order2 = 1;
+  // Seed Subject 2: ARM Banca Module with 6 Sections
+  let order2 = 2;
   for (const group of nivaBupaArmQuestions) {
-    const subject = await prisma.assessmentSubject.create({
-      data: {
-        assessmentId: assessmentArm.id,
+    let subject = await prisma.assessmentSubject.findFirst({
+      where: {
+        assessmentId: singleFixedAssessment.id,
         name: group.subjectName,
-        displayOrder: order2++,
       },
     });
+
+    if (!subject) {
+      subject = await prisma.assessmentSubject.create({
+        data: {
+          assessmentId: singleFixedAssessment.id,
+          name: group.subjectName,
+          displayOrder: order2++,
+        },
+      });
+    }
 
     const section = await prisma.subjectSection.create({
       data: {
@@ -1175,9 +1159,8 @@ async function main() {
       });
     }
   }
-  console.log('✅ Assessment 2 (ARM) seeded successfully!');
 
-  console.log('🎉 Main database seed finished cleanly!');
+  console.log('🎉 Single Fixed Assessment (1 Exam, 2 Subjects, 12 Sections, 115 Pool Qs, 60 Attempt Qs) Created Successfully!');
 }
 
 main()
