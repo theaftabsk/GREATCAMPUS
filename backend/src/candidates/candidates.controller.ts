@@ -57,6 +57,12 @@ export class CandidatesController {
     return { success: true, ...result };
   }
 
+  @Post(':id/reset')
+  async resetCandidate(@Param('id') id: string) {
+    const candidate = await this.candidatesService.resetCandidate(id);
+    return { success: true, message: 'Candidate reset successfully for retake', candidate };
+  }
+
   @Delete(':id')
   async deleteCandidate(@Param('id') id: string) {
     await this.candidatesService.deleteCandidate(id);

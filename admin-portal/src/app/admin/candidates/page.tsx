@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   Search, Plus, Eye, Printer, Trash2, X, BookOpen, AlertTriangle,
-  CheckCircle2, ShieldAlert, FileText, UserPlus, Layers, ShieldCheck
+  CheckCircle2, ShieldAlert, FileText, UserPlus, Layers, ShieldCheck, RotateCcw
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 
@@ -104,6 +104,34 @@ export default function AdminCandidatesPage() {
       }
     } catch (err) {
       alert("Failed to register candidate.");
+    }
+  };
+
+  const handleResetCandidate = async (id: string, name: string) => {
+    const confirmed = confirm(
+      `Reset Candidate "${name}" for Retake?\n\n` +
+      `This will allow the candidate to log back in and retake the assessment.\n\n` +
+      `Their previous:\n` +
+      `• Total Score & Percentage\n` +
+      `• Question Submissions & Answers\n` +
+      `• Proctoring Warnings & Audit History\n\n` +
+      `will NOT be deleted and will remain 100% preserved in the database.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/v1/candidates/${id}/reset`, { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        alert(`✓ Candidate "${name}" reset successfully!\nCandidate can now re-enter the assessment.`);
+        if (selectedCandidate?.id === id) setSelectedCandidate(null);
+        fetchCandidates();
+      } else {
+        alert(data.message || "Failed to reset candidate.");
+      }
+    } catch (err) {
+      alert("Failed to reset candidate session.");
     }
   };
 
@@ -279,6 +307,13 @@ export default function AdminCandidatesPage() {
                         className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg font-bold text-xs inline-flex items-center gap-1"
                       >
                         <Eye className="w-4 h-4" /> View Report
+                      </button>
+                      <button
+                        onClick={() => handleResetCandidate(c.id, c.name)}
+                        className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg font-bold text-xs inline-flex items-center gap-1"
+                        title="Reset Candidate session to allow retaking the assessment (Preserves history)"
+                      >
+                        <RotateCcw className="w-4 h-4" /> Reset / Allow Retake
                       </button>
                       <button
                         onClick={() => handleDeleteCandidate(c.id, c.name)}
@@ -549,13 +584,21 @@ export default function AdminCandidatesPage() {
               )}
             </div>
 
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-              <button
-                onClick={() => window.print()}
-                className="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl inline-flex items-center gap-2"
-              >
-                <Printer className="w-4 h-4" /> Print Scorecard
-              </button>
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-slate-900 text-white font-bold text-xs rounded-xl inline-flex items-center gap-2"
+                >
+                  <Printer className="w-4 h-4" /> Print Scorecard
+                </button>
+                <button
+                  onClick={() => handleResetCandidate(selectedCandidate.id, selectedCandidate.name)}
+                  className="px-4 py-2 bg-amber-500 text-white font-bold text-xs rounded-xl inline-flex items-center gap-2 hover:bg-amber-600 shadow-sm"
+                >
+                  <RotateCcw className="w-4 h-4" /> Reset / Allow Retake
+                </button>
+              </div>
 
               <button
                 onClick={() => setSelectedCandidate(null)}

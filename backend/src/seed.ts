@@ -1049,11 +1049,18 @@ async function main() {
   });
   console.log('✅ Created Admin user:', admin.username);
 
-  // Clean up any old assessments so EXACTLY 1 SINGLE FIXED ACTIVE ASSESSMENT exists!
-  await prisma.assessment.deleteMany({});
+  // Check if Assessment already exists to ensure idempotency and preserve existing candidate data
+  let singleFixedAssessment = await prisma.assessment.findFirst({
+    where: { slug: 'niva-bupa-assessment' },
+  });
+
+  if (singleFixedAssessment) {
+    console.log(`ℹ️ Existing Assessment Found: ${singleFixedAssessment.name} (${singleFixedAssessment.id}). Skipping seed question creation to preserve candidate data.`);
+    return;
+  }
 
   // Single Fixed Assessment: Niva Bupa Health Insurance Assessment
-  const singleFixedAssessment = await prisma.assessment.create({
+  singleFixedAssessment = await prisma.assessment.create({
     data: {
       tenantId: tenant.id,
       name: 'Niva Bupa Health Insurance Assessment',

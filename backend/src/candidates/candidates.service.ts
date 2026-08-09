@@ -526,6 +526,21 @@ export class CandidatesService {
     };
   }
 
+  async resetCandidate(id: string) {
+    const candidate = await this.prisma.candidate.findUnique({ where: { id } });
+    if (!candidate) throw new NotFoundException('Candidate not found.');
+
+    // Reset candidate status so candidate can re-enter session & start a fresh attempt
+    // Historical attempt records (ExamAttempt, Submission, ProctoringLog) remain 100% intact in DB
+    return this.prisma.candidate.update({
+      where: { id },
+      data: {
+        status: 'REGISTERED',
+      },
+      include: { assessment: true },
+    });
+  }
+
   async deleteCandidate(id: string) {
     return this.prisma.candidate.delete({ where: { id } });
   }
