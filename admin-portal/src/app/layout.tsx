@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-plus-jakarta",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "GREATCAMPUS - HR Admin Evaluation Portal",
-  description: "Dedicated HR Administration & Assessment Candidate Scorecard Evaluation Platform",
+  title: "NIVA BUPA - HR Admin Evaluation Portal",
+  description: "Official HR Administration & Assessment Evaluation Platform for Niva Bupa Health Insurance",
 };
 
 export default function RootLayout({
@@ -12,8 +20,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="antialiased bg-slate-50 text-slate-900">
+    <html lang="en" className={plusJakartaSans.variable}>
+      <body className={`${plusJakartaSans.className} antialiased bg-slate-50 text-slate-900`}>
         {children}
       </body>
     </html>
