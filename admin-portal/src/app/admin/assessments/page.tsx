@@ -160,7 +160,7 @@ export default function AdminAssessmentsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this assessment session? This will also remove all candidate records linked to it.")) return;
+    if (!confirm("Delete this assessment session? This will also remove candidate records linked to it.")) return;
     try {
       await fetch(`${getApiBaseUrl()}/api/v1/candidates/assessments/${id}`, { method: "DELETE" });
       await loadSessions();
@@ -186,37 +186,42 @@ export default function AdminAssessmentsPage() {
         <div className="assess-header-left">
           <div className="assess-header-icon"><BookOpen size={22} /></div>
           <div>
-            <h1 className="assess-title">Assessment Sessions</h1>
-            <p className="assess-subtitle">Create & manage unique exam session links for candidates</p>
+            <h1 className="assess-title">Exams & Assessment Sessions</h1>
+            <p className="assess-subtitle">Create unique candidate exam links with scheduled access windows</p>
           </div>
         </div>
         <div className="assess-header-actions">
-          <button className="assess-refresh-btn" onClick={loadSessions} title="Refresh">
-            <RefreshCw size={15} />
+          <button className="assess-refresh-btn" onClick={loadSessions} title="Refresh Sessions">
+            <RefreshCw size={15} /> Refresh List
           </button>
           <button className="assess-create-btn" onClick={openCreate}>
-            <Plus size={16} /> New Session
+            <Plus size={16} /> New Assessment Session
           </button>
         </div>
       </div>
 
       {/* Fixed Exam Info Banner */}
       <div className="assess-fixed-banner">
-        <div className="assess-fixed-item"><Zap size={14} /> <strong>60 Questions</strong> — Fixed</div>
+        <div className="assess-fixed-item"><Zap size={15} /> <strong>60 Questions</strong> — Shared Bank</div>
         <div className="assess-fixed-divider" />
-        <div className="assess-fixed-item"><Clock size={14} /> <strong>45 Minutes</strong> — Fixed</div>
+        <div className="assess-fixed-item"><Clock size={15} /> <strong>45 Mins Default</strong> — Configurable</div>
         <div className="assess-fixed-divider" />
-        <div className="assess-fixed-item"><BookOpen size={14} /> Shared Question Bank · All sessions use Q1–Q60</div>
+        <div className="assess-fixed-item"><BookOpen size={15} /> All sessions generate unique exam URLs</div>
       </div>
 
       {/* Session Grid */}
       {loading ? (
-        <div className="assess-loading">Loading sessions…</div>
+        <div className="assess-loading">
+          <div className="assess-spinner"></div>
+          <p>Loading assessment sessions...</p>
+        </div>
       ) : sessions.length === 0 ? (
         <div className="assess-empty">
-          <BookOpen size={40} className="assess-empty-icon" />
-          <p>No assessment sessions yet.</p>
-          <button className="assess-create-btn" onClick={openCreate}><Plus size={15} /> Create First Session</button>
+          <BookOpen size={42} className="assess-empty-icon" />
+          <p>No assessment sessions created yet.</p>
+          <button className="assess-create-btn" onClick={openCreate} style={{ margin: "16px auto 0" }}>
+            <Plus size={15} /> Create First Session
+          </button>
         </div>
       ) : (
         <div className="assess-grid">
@@ -235,16 +240,16 @@ export default function AdminAssessmentsPage() {
                   )}
                 </div>
 
-                {/* Fixed Exam Stats */}
+                {/* Session Stats */}
                 <div className="assess-card-stats">
                   <div className="assess-stat"><BookOpen size={13} /> {TOTAL_QUESTIONS} Questions</div>
-                  <div className="assess-stat"><Clock size={13} /> {EXAM_DURATION_MINS} Min</div>
+                  <div className="assess-stat"><Clock size={13} /> {session.durationMins || EXAM_DURATION_MINS} Mins</div>
                   <div className="assess-stat"><Users size={13} /> {session.totalCandidates} Candidates</div>
                 </div>
 
                 {/* Active Window */}
                 <div className="assess-card-window">
-                  <Calendar size={13} />
+                  <Calendar size={14} className="assess-window-icon" />
                   <div className="assess-window-times">
                     <span className="assess-window-label">From:</span>
                     <span className="assess-window-value">{formatDisplay(session.activeFrom)}</span>
@@ -253,10 +258,10 @@ export default function AdminAssessmentsPage() {
                   </div>
                 </div>
 
-                {/* Unique Exam Link */}
+                {/* Unique Candidate Exam Link */}
                 <div className="assess-link-row">
                   <div className="assess-link-box">
-                    <Link2 size={12} />
+                    <Link2 size={13} />
                     <span className="assess-link-text" title={session.uniqueCandidateLink}>
                       {session.uniqueCandidateLink}
                     </span>
@@ -266,7 +271,7 @@ export default function AdminAssessmentsPage() {
                     onClick={() => copyLink(session)}
                   >
                     {isCopied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
-                    {isCopied ? "Copied!" : "Copy"}
+                    {isCopied ? "Copied" : "Copy"}
                   </button>
                 </div>
 
@@ -296,20 +301,20 @@ export default function AdminAssessmentsPage() {
         <div className="assess-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setShowCreateModal(false); setShowEditModal(false); }}}>
           <div className="assess-modal">
             <div className="assess-modal-header">
-              <h2>{showCreateModal ? "Create New Session" : "Edit Session"}</h2>
+              <h2>{showCreateModal ? "Create Assessment Session" : "Edit Session"}</h2>
               <button className="assess-modal-close" onClick={() => { setShowCreateModal(false); setShowEditModal(false); }}>
                 <X size={18} />
               </button>
             </div>
 
-            {/* Fixed Info */}
+            {/* Banner */}
             <div className="assess-modal-fixed-info">
-              <Zap size={13} /> All sessions use <strong>60 Questions · 45 Minutes</strong> (fixed, cannot be changed)
+              <Zap size={14} /> Shared Question Bank · <strong>60 Questions</strong> per candidate attempt
             </div>
 
             <div className="assess-modal-body">
               {formError && (
-                <div className="assess-form-error"><AlertCircle size={14} /> {formError}</div>
+                <div className="assess-form-error"><AlertCircle size={15} /> {formError}</div>
               )}
 
               <div className="assess-form-group">
@@ -343,7 +348,7 @@ export default function AdminAssessmentsPage() {
                     onChange={(e) => setForm({ ...form, activeFrom: e.target.value })}
                     className="assess-form-input"
                   />
-                  <span className="assess-form-hint">When candidates can start entering</span>
+                  <span className="assess-form-hint">Candidate access start time</span>
                 </div>
                 <div className="assess-form-group">
                   <label><Calendar size={13} /> Active Until</label>
@@ -353,12 +358,12 @@ export default function AdminAssessmentsPage() {
                     onChange={(e) => setForm({ ...form, activeUntil: e.target.value })}
                     className="assess-form-input"
                   />
-                  <span className="assess-form-hint">Link expires after this time</span>
+                  <span className="assess-form-hint">Session expiration time</span>
                 </div>
               </div>
 
               <div className="assess-form-group">
-                <label><Clock size={13} /> Exam Duration (Mins)</label>
+                <label><Clock size={13} /> Exam Duration (Minutes)</label>
                 <input
                   type="number"
                   min={5}
@@ -368,12 +373,12 @@ export default function AdminAssessmentsPage() {
                   className="assess-form-input"
                   placeholder="45"
                 />
-                <span className="assess-form-hint">Time allowed for candidate countdown timer</span>
+                <span className="assess-form-hint">Countdown timer given to candidates once started</span>
               </div>
 
               <div className="assess-form-row">
                 <div className="assess-form-group">
-                  <label>Passing % (default 50)</label>
+                  <label>Passing Percentage (%)</label>
                   <input
                     type="number" min={1} max={100}
                     value={form.passingPercentage}
@@ -397,7 +402,7 @@ export default function AdminAssessmentsPage() {
                 <select
                   value={form.status}
                   onChange={(e) => setForm({ ...form, status: e.target.value })}
-                  className="assess-form-input"
+                  className="assess-form-input font-bold text-blue-600"
                 >
                   <option value="ACTIVE">ACTIVE</option>
                   <option value="DRAFT">DRAFT</option>
@@ -415,7 +420,7 @@ export default function AdminAssessmentsPage() {
                 onClick={() => handleSave(showEditModal)}
                 disabled={saving}
               >
-                {saving ? "Saving…" : showCreateModal ? "Create Session" : "Save Changes"}
+                {saving ? "Saving..." : showCreateModal ? "Create Session" : "Save Changes"}
               </button>
             </div>
           </div>
@@ -423,95 +428,101 @@ export default function AdminAssessmentsPage() {
       )}
 
       <style>{`
-        .assess-page { padding: 24px; max-width: 1100px; margin: 0 auto; }
-        .assess-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 16px; flex-wrap: wrap; }
+        .assess-page { padding: 28px; max-width: 1040px; margin: 0 auto; background-color: #f8fafc; min-height: 100vh; }
+        
+        .assess-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
         .assess-header-left { display: flex; align-items: center; gap: 14px; }
-        .assess-header-icon { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg,#6366f1,#818cf8); display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; }
-        .assess-title { font-size: 1.4rem; font-weight: 700; color: #e2e8f0; margin: 0; }
-        .assess-subtitle { font-size: 0.82rem; color: #64748b; margin: 2px 0 0; }
+        .assess-header-icon { width: 44px; height: 44px; border-radius: 12px; background: #2563eb; display: flex; align-items: center; justify-content: center; color: #ffffff; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
+        .assess-title { font-size: 1.4rem; font-weight: 800; color: #0f172a; margin: 0; tracking: -0.02em; }
+        .assess-subtitle { font-size: 0.84rem; color: #64748b; margin-top: 2px; font-weight: 500; }
         .assess-header-actions { display: flex; gap: 10px; align-items: center; }
-        .assess-refresh-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; border-radius: 8px; padding: 8px; cursor: pointer; display: flex; align-items: center; transition: background 0.2s; }
-        .assess-refresh-btn:hover { background: rgba(255,255,255,0.1); }
-        .assess-create-btn { background: linear-gradient(135deg,#6366f1,#818cf8); border: none; color: #fff; border-radius: 10px; padding: 9px 18px; font-size: 0.88rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: opacity 0.2s; }
-        .assess-create-btn:hover { opacity: 0.9; }
+        .assess-refresh-btn { background: #ffffff; border: 1px solid #cbd5e1; color: #334155; border-radius: 10px; padding: 9px 16px; font-size: 0.84rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .assess-refresh-btn:hover { background: #f1f5f9; border-color: #94a3b8; color: #0f172a; }
+        .assess-create-btn { background: #2563eb; border: none; color: #ffffff; border-radius: 10px; padding: 9px 18px; font-size: 0.86rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: background 0.2s; box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
+        .assess-create-btn:hover { background: #1d4ed8; }
 
-        .assess-fixed-banner { display: flex; align-items: center; gap: 0; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25); border-radius: 12px; padding: 12px 20px; margin-bottom: 24px; flex-wrap: wrap; gap: 8px; }
-        .assess-fixed-item { display: flex; align-items: center; gap: 7px; font-size: 0.84rem; color: #a5b4fc; }
-        .assess-fixed-divider { width: 1px; height: 16px; background: rgba(99,102,241,0.3); margin: 0 12px; }
+        .assess-fixed-banner { display: flex; align-items: center; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 12px 20px; margin-bottom: 24px; flex-wrap: wrap; gap: 10px; }
+        .assess-fixed-item { display: flex; align-items: center; gap: 7px; font-size: 0.85rem; color: #1d4ed8; font-weight: 600; }
+        .assess-fixed-divider { width: 1px; height: 16px; background: #93c5fd; margin: 0 8px; }
 
-        .assess-loading { text-align: center; padding: 60px; color: #64748b; font-size: 0.9rem; }
-        .assess-empty { text-align: center; padding: 80px 20px; color: #64748b; }
-        .assess-empty-icon { margin: 0 auto 14px; opacity: 0.3; display: block; }
+        .assess-loading { text-align: center; padding: 60px; color: #64748b; font-size: 0.9rem; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .assess-spinner { width: 28px; height: 28px; border: 3px solid #2563eb; border-top-color: transparent; border-radius: 50%; animation: assessSpin 0.8s linear infinite; }
+        @keyframes assessSpin { to { transform: rotate(360deg); } }
 
-        .assess-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 18px; }
+        .assess-empty { text-align: center; padding: 70px 20px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; color: #64748b; }
+        .assess-empty-icon { margin: 0 auto 12px; color: #94a3b8; }
 
-        .assess-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px; transition: border-color 0.2s; }
-        .assess-card--active { border-color: rgba(52,211,153,0.3); }
-        .assess-card--expired { border-color: rgba(239,68,68,0.2); opacity: 0.75; }
-        .assess-card--upcoming { border-color: rgba(251,191,36,0.3); }
-        .assess-card--inactive { opacity: 0.6; }
-        .assess-card--draft { border-style: dashed; }
+        .assess-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+
+        .assess-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: border-color 0.2s, box-shadow 0.2s; }
+        .assess-card:hover { border-color: #cbd5e1; box-shadow: 0 6px 16px rgba(0,0,0,0.06); }
+        .assess-card--active { border-top: 4px solid #16a34a; }
+        .assess-card--upcoming { border-top: 4px solid #d97706; }
+        .assess-card--expired { border-top: 4px solid #dc2626; opacity: 0.85; }
+        .assess-card--inactive { opacity: 0.75; }
 
         .assess-card-header { display: flex; flex-direction: column; gap: 6px; }
-        .assess-card-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-        .assess-card-name { font-size: 1rem; font-weight: 700; color: #e2e8f0; margin: 0; line-height: 1.3; }
-        .assess-card-desc { font-size: 0.78rem; color: #64748b; margin: 0; }
+        .assess-card-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+        .assess-card-name { font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0; line-height: 1.3; }
+        .assess-card-desc { font-size: 0.8rem; color: #64748b; margin: 0; font-weight: 500; }
 
-        .session-status-badge { font-size: 0.72rem; font-weight: 600; padding: 3px 9px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
-        .status-active   { background: rgba(52,211,153,0.15); color: #34d399; }
-        .status-upcoming { background: rgba(251,191,36,0.15); color: #fbbf24; }
-        .status-expired  { background: rgba(239,68,68,0.15);  color: #f87171; }
-        .status-inactive { background: rgba(100,116,139,0.15); color: #64748b; }
-        .status-draft    { background: rgba(148,163,184,0.15); color: #94a3b8; }
+        .session-status-badge { font-size: 0.74rem; font-weight: 800; padding: 4px 10px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+        .status-active   { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+        .status-upcoming { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+        .status-expired  { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .status-inactive { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+        .status-draft    { background: #f1f5f9; color: #64748b; border: 1px dashed #cbd5e1; }
 
-        .assess-card-stats { display: flex; gap: 14px; flex-wrap: wrap; }
-        .assess-stat { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; color: #94a3b8; background: rgba(255,255,255,0.05); padding: 4px 10px; border-radius: 20px; }
+        .assess-card-stats { display: flex; gap: 10px; flex-wrap: wrap; }
+        .assess-stat { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 700; color: #334155; background: #f1f5f9; padding: 5px 11px; border-radius: 20px; border: 1px solid #e2e8f0; }
 
-        .assess-card-window { display: flex; align-items: flex-start; gap: 8px; background: rgba(255,255,255,0.03); border-radius: 10px; padding: 10px 12px; }
-        .assess-card-window > svg { color: #64748b; margin-top: 2px; flex-shrink: 0; }
-        .assess-window-times { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; font-size: 0.78rem; }
-        .assess-window-label { color: #64748b; }
-        .assess-window-value { color: #cbd5e1; }
+        .assess-card-window { display: flex; align-items: flex-start; gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 14px; }
+        .assess-window-icon { color: #2563eb; margin-top: 2px; flex-shrink: 0; }
+        .assess-window-times { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 0.8rem; }
+        .assess-window-label { color: #64748b; font-weight: 600; }
+        .assess-window-value { color: #0f172a; font-weight: 700; }
 
         .assess-link-row { display: flex; gap: 8px; align-items: center; }
-        .assess-link-box { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 7px 10px; flex: 1; min-width: 0; }
-        .assess-link-box > svg { color: #6366f1; flex-shrink: 0; }
-        .assess-link-text { font-size: 0.72rem; color: #94a3b8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; }
-        .assess-copy-btn { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 600; padding: 7px 12px; border-radius: 8px; border: 1px solid rgba(99,102,241,0.4); background: rgba(99,102,241,0.1); color: #818cf8; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
-        .assess-copy-btn:hover { background: rgba(99,102,241,0.2); }
-        .assess-copy-btn--copied { border-color: rgba(52,211,153,0.4); background: rgba(52,211,153,0.1); color: #34d399; }
+        .assess-link-box { display: flex; align-items: center; gap: 7px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 8px 12px; flex: 1; min-width: 0; }
+        .assess-link-box > svg { color: #2563eb; flex-shrink: 0; }
+        .assess-link-text { font-size: 0.76rem; color: #334155; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; }
+        .assess-copy-btn { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 700; padding: 8px 14px; border-radius: 10px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; cursor: pointer; white-space: nowrap; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+        .assess-copy-btn:hover { background: #dbeafe; }
+        .assess-copy-btn--copied { border-color: #86efac; background: #f0fdf4; color: #166534; }
 
-        .assess-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-        .assess-action-btn { display: flex; align-items: center; gap: 5px; font-size: 0.76rem; font-weight: 600; padding: 6px 12px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; transition: all 0.2s; }
-        .assess-action-btn--edit       { background: rgba(99,102,241,0.1); border-color: rgba(99,102,241,0.3); color: #818cf8; }
-        .assess-action-btn--edit:hover { background: rgba(99,102,241,0.2); }
-        .assess-action-btn--deactivate       { background: rgba(251,191,36,0.1); border-color: rgba(251,191,36,0.3); color: #fbbf24; }
-        .assess-action-btn--deactivate:hover { background: rgba(251,191,36,0.2); }
-        .assess-action-btn--activate       { background: rgba(52,211,153,0.1); border-color: rgba(52,211,153,0.3); color: #34d399; }
-        .assess-action-btn--activate:hover { background: rgba(52,211,153,0.2); }
-        .assess-action-btn--delete       { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: #f87171; }
-        .assess-action-btn--delete:hover { background: rgba(239,68,68,0.2); }
+        .assess-card-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+        .assess-action-btn { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 700; padding: 7px 13px; border-radius: 9px; border: 1px solid transparent; cursor: pointer; transition: all 0.2s; }
+        .assess-action-btn--edit       { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+        .assess-action-btn--edit:hover { background: #dbeafe; }
+        .assess-action-btn--deactivate       { background: #fef3c7; border-color: #fde68a; color: #92400e; }
+        .assess-action-btn--deactivate:hover { background: #fde68a; }
+        .assess-action-btn--activate       { background: #dcfce7; border-color: #86efac; color: #166534; }
+        .assess-action-btn--activate:hover { background: #bbf7d0; }
+        .assess-action-btn--delete       { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+        .assess-action-btn--delete:hover { background: #fecaca; }
 
         /* Modal */
-        .assess-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; backdrop-filter: blur(4px); }
-        .assess-modal { background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; }
-        .assess-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-        .assess-modal-header h2 { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin: 0; }
-        .assess-modal-close { background: none; border: none; color: #64748b; cursor: pointer; padding: 4px; border-radius: 6px; display: flex; align-items: center; }
-        .assess-modal-close:hover { color: #e2e8f0; background: rgba(255,255,255,0.05); }
-        .assess-modal-fixed-info { display: flex; align-items: center; gap: 8px; padding: 10px 24px; background: rgba(99,102,241,0.08); border-bottom: 1px solid rgba(99,102,241,0.15); font-size: 0.8rem; color: #a5b4fc; }
-        .assess-modal-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+        .assess-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; backdrop-filter: blur(4px); }
+        .assess-modal { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); }
+        .assess-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; }
+        .assess-modal-header h2 { font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 0; }
+        .assess-modal-close { background: #f1f5f9; border: none; color: #64748b; cursor: pointer; padding: 6px; border-radius: 8px; display: flex; align-items: center; }
+        .assess-modal-close:hover { color: #0f172a; background: #e2e8f0; }
+        .assess-modal-fixed-info { display: flex; align-items: center; gap: 8px; padding: 12px 24px; background: #eff6ff; border-bottom: 1px solid #bfdbfe; font-size: 0.82rem; color: #1d4ed8; font-weight: 600; }
+        .assess-modal-body { padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; }
         .assess-form-group { display: flex; flex-direction: column; gap: 6px; }
-        .assess-form-group label { font-size: 0.8rem; font-weight: 600; color: #94a3b8; display: flex; align-items: center; gap: 5px; }
-        .assess-form-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 9px 12px; color: #e2e8f0; font-size: 0.88rem; outline: none; transition: border-color 0.2s; }
-        .assess-form-input:focus { border-color: rgba(99,102,241,0.5); }
-        .assess-form-hint { font-size: 0.73rem; color: #475569; }
-        .assess-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .assess-form-error { display: flex; align-items: center; gap: 7px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; padding: 9px 12px; font-size: 0.82rem; color: #f87171; }
-        .assess-modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.08); }
-        .assess-modal-cancel { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; border-radius: 10px; padding: 9px 18px; font-size: 0.88rem; cursor: pointer; }
-        .assess-modal-save { background: linear-gradient(135deg,#6366f1,#818cf8); border: none; color: #fff; border-radius: 10px; padding: 9px 20px; font-size: 0.88rem; font-weight: 600; cursor: pointer; }
+        .assess-form-group label { font-size: 0.8rem; font-weight: 700; color: #475569; display: flex; align-items: center; gap: 6px; }
+        .assess-form-input { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 14px; color: #0f172a; font-size: 0.88rem; font-weight: 500; outline: none; transition: border-color 0.2s, box-shadow 0.2s; width: 100%; box-sizing: border-box; }
+        .assess-form-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+        .assess-form-hint { font-size: 0.74rem; color: #64748b; font-weight: 500; }
+        .assess-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .assess-form-error { display: flex; align-items: center; gap: 8px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 10px 14px; font-size: 0.82rem; color: #dc2626; font-weight: 600; }
+        .assess-modal-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 18px 24px; border-top: 1px solid #e2e8f0; background: #f8fafc; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
+        .assess-modal-cancel { background: #ffffff; border: 1px solid #cbd5e1; color: #475569; border-radius: 10px; padding: 9px 18px; font-size: 0.86rem; font-weight: 600; cursor: pointer; }
+        .assess-modal-save { background: #2563eb; border: none; color: #ffffff; border-radius: 10px; padding: 9px 22px; font-size: 0.86rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.3); }
+        .assess-modal-save:hover { background: #1d4ed8; }
         .assess-modal-save:disabled { opacity: 0.6; cursor: not-allowed; }
+        
         @media (max-width: 600px) {
           .assess-form-row { grid-template-columns: 1fr; }
           .assess-grid { grid-template-columns: 1fr; }
