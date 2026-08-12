@@ -184,13 +184,23 @@ export default function AdminAssessmentsPage() {
   };
 
   const handleToggleStatus = async (session: AssessmentSession) => {
+    const computed = getComputedStatus(session);
+    if (computed === "EXPIRED" && session.status !== "ACTIVE") {
+      alert("This assessment session has expired. To activate it, please click Edit and set a future 'Until' end date.");
+      openEdit(session);
+      return;
+    }
     const newStatus = session.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
     try {
-      await fetch(`${getApiBaseUrl()}/api/v1/assessments/save`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/v1/assessments/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: session.id, name: session.name, status: newStatus }),
       });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.message || "Failed to update status.");
+      }
       await loadSessions();
     } catch { /* silent */ }
   };

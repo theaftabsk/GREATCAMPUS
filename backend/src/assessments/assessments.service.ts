@@ -92,6 +92,27 @@ export class AssessmentsService {
     const tenant = await this.getOrCreateTenant();
     const slug = data.slug || (data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + '-' + Date.now().toString().slice(-4));
 
+    const now = new Date();
+    let finalActiveFrom = data.activeFrom ? new Date(data.activeFrom) : null;
+    let finalActiveUntil = data.activeUntil ? new Date(data.activeUntil) : null;
+
+    // On creation: default activeFrom to NOW, activeUntil to NOW + 24 Hours if not specified
+    if (!data.id) {
+      if (!finalActiveFrom) finalActiveFrom = now;
+      if (!finalActiveUntil) finalActiveUntil = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    }
+
+    // Validation Guard: If activating an expired session without a future activeUntil, throw error
+    if (data.id && data.status === 'ACTIVE') {
+      const existing = await this.prisma.assessment.findUnique({ where: { id: data.id } });
+      if (existing) {
+        const targetUntil = finalActiveUntil !== undefined ? finalActiveUntil : existing.activeUntil;
+        if (targetUntil && now > targetUntil) {
+          throw new Error('Cannot activate an expired assessment session. Please edit the session and set a future Until end date.');
+        }
+      }
+    }
+
     const payload: any = {
       name: data.name,
       slug,
@@ -100,8 +121,8 @@ export class AssessmentsService {
       passingPercentage: data.passingPercentage !== undefined ? Number(data.passingPercentage) : 50,
       maxProctorWarnings: data.maxProctorWarnings !== undefined ? Number(data.maxProctorWarnings) : 3,
       status: data.status || 'ACTIVE',
-      ...(data.activeFrom !== undefined && { activeFrom: data.activeFrom ? new Date(data.activeFrom) : null }),
-      ...(data.activeUntil !== undefined && { activeUntil: data.activeUntil ? new Date(data.activeUntil) : null }),
+      ...(finalActiveFrom !== undefined && { activeFrom: finalActiveFrom }),
+      ...(finalActiveUntil !== undefined && { activeUntil: finalActiveUntil }),
     };
 
     if (data.id) {
