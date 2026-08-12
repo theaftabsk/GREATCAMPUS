@@ -82,7 +82,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 selection:bg-blue-600 selection:text-white">
-      
+
       {/* Fixed Header Navbar */}
       <Navbar
         onMobileSidebarToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)}
@@ -91,7 +91,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       />
 
       <div className="flex-1 flex w-full relative">
-        
+
         {/* Mobile Sidebar Backdrop */}
         {mobileSidebarOpen && (
           <div
@@ -102,11 +102,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Dedicated Fixed Left Sidebar */}
         <aside
-          className={`fixed top-16 left-0 bottom-0 z-40 bg-white border-r border-slate-200 flex flex-col justify-between overflow-y-auto shrink-0 transform transition-all duration-300 ${
-            isCollapsed ? "lg:w-20 w-64" : "w-64"
-          } ${
-            mobileSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"
-          }`}
+          className={`fixed top-16 left-0 bottom-0 z-40 bg-white border-r border-slate-200 flex flex-col justify-between overflow-y-auto shrink-0 transform transition-all duration-300 ${isCollapsed ? "lg:w-20 w-64" : "w-64"
+            } ${mobileSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"
+            }`}
         >
           <div className={isCollapsed ? "p-2.5 space-y-2" : "p-4 space-y-2"}>
             <nav className="space-y-1.5">
@@ -119,13 +117,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     href={item.href}
                     onClick={() => setMobileSidebarOpen(false)}
                     title={isCollapsed ? item.label : undefined}
-                    className={`w-full rounded-xl text-left text-xs font-bold transition-all flex items-center justify-between ${
-                      isCollapsed ? "p-3 justify-center" : "p-3"
-                    } ${
-                      isActive
+                    className={`w-full rounded-xl text-left text-xs font-bold transition-all flex items-center justify-between ${isCollapsed ? "p-3 justify-center" : "p-3"
+                      } ${isActive
                         ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
                         : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center space-x-3">
                       <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-slate-500"}`} />
@@ -143,9 +139,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <button
               onClick={handleLogout}
               title="Sign Out"
-              className={`w-full border border-slate-200 bg-slate-50 text-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors font-bold text-xs flex items-center justify-center space-x-2 ${
-                isCollapsed ? "p-3 rounded-xl" : "p-2.5 rounded-xl"
-              }`}
+              className={`w-full border border-slate-200 bg-slate-50 text-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors font-bold text-xs flex items-center justify-center space-x-2 ${isCollapsed ? "p-3 rounded-xl" : "p-2.5 rounded-xl"
+                }`}
             >
               <LogOut className="w-4 h-4 shrink-0" />
               {!isCollapsed && <span>Sign Out</span>}
@@ -155,9 +150,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </aside>
 
         {/* Main Content Area */}
-        <main className={`flex-1 pt-16 min-h-screen w-full transition-all duration-300 ${
-          isCollapsed ? "lg:pl-20" : "lg:pl-64"
-        }`}>
+        <main className={`flex-1 pt-16 min-h-screen w-full transition-all duration-300 ${isCollapsed ? "lg:pl-20" : "lg:pl-64"
+          }`}>
           <div className="w-full">
             {children}
           </div>

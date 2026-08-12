@@ -414,9 +414,9 @@ export default function AdminAssessmentsPage() {
       )}
 
       <style>{`
-        .assess-page { padding: 28px; max-width: 1040px; margin: 0 auto; background-color: #f8fafc; min-height: 100vh; }
+        .assess-page { padding: 28px 36px; width: 100%; max-width: 100%; margin: 0; background-color: #f8fafc; min-height: calc(100vh - 64px); box-sizing: border-box; }
         
-        .assess-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; }
+        .assess-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; gap: 16px; flex-wrap: wrap; width: 100%; }
         .assess-header-left { display: flex; align-items: center; gap: 14px; }
         .assess-header-icon { width: 44px; height: 44px; border-radius: 12px; background: #2563eb; display: flex; align-items: center; justify-content: center; color: #ffffff; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
         .assess-title { font-size: 1.4rem; font-weight: 800; color: #0f172a; margin: 0; tracking: -0.02em; }
@@ -427,18 +427,18 @@ export default function AdminAssessmentsPage() {
         .assess-create-btn { background: #2563eb; border: none; color: #ffffff; border-radius: 10px; padding: 9px 18px; font-size: 0.86rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: background 0.2s; box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
         .assess-create-btn:hover { background: #1d4ed8; }
 
-        .assess-fixed-banner { display: flex; align-items: center; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 12px 20px; margin-bottom: 24px; flex-wrap: wrap; gap: 10px; }
+        .assess-fixed-banner { display: flex; align-items: center; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 12px 20px; margin-bottom: 24px; flex-wrap: wrap; gap: 10px; width: 100%; box-sizing: border-box; }
         .assess-fixed-item { display: flex; align-items: center; gap: 7px; font-size: 0.85rem; color: #1d4ed8; font-weight: 600; }
         .assess-fixed-divider { width: 1px; height: 16px; background: #93c5fd; margin: 0 8px; }
 
-        .assess-loading { text-align: center; padding: 60px; color: #64748b; font-size: 0.9rem; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .assess-loading { text-align: center; padding: 60px; color: #64748b; font-size: 0.9rem; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 12px; width: 100%; }
         .assess-spinner { width: 28px; height: 28px; border: 3px solid #2563eb; border-top-color: transparent; border-radius: 50%; animation: assessSpin 0.8s linear infinite; }
         @keyframes assessSpin { to { transform: rotate(360deg); } }
 
-        .assess-empty { text-align: center; padding: 70px 20px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; color: #64748b; }
+        .assess-empty { text-align: center; padding: 80px 20px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; color: #64748b; width: 100%; box-sizing: border-box; }
         .assess-empty-icon { margin: 0 auto 12px; color: #94a3b8; }
 
-        .assess-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+        .assess-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 24px; width: 100%; }
 
         .assess-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: border-color 0.2s, box-shadow 0.2s; }
         .assess-card:hover { border-color: #cbd5e1; box-shadow: 0 6px 16px rgba(0,0,0,0.06); }
