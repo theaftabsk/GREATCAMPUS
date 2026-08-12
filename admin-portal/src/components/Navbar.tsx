@@ -3,54 +3,51 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { ShieldCheck, Menu, LayoutDashboard, BookOpen, UserCheck, FileText, Settings } from "lucide-react";
+import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 interface NavbarProps {
   onMobileSidebarToggle?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-const pageTitles: Record<string, { title: string; subtitle: string }> = {
-  "/admin": {
-    title: "Dashboard Overview",
-    subtitle: "ARM Banca Assessment Platform",
-  },
-  "/admin/assessments": {
-    title: "Exams & Assessments",
-    subtitle: "Active Session & Link Generator",
-  },
-  "/admin/candidates": {
-    title: "Candidate Evaluation",
-    subtitle: "Candidate Results & Proctoring Audit",
-  },
-  "/admin/questions": {
-    title: "Question Bank CMS",
-    subtitle: "60 Fixed Questions Shared Pool",
-  },
-  "/admin/settings": {
-    title: "System Settings",
-    subtitle: "HR Administrator Account & Credentials",
-  },
+const pageTitles: Record<string, string> = {
+  "/admin": "Dashboard Overview",
+  "/admin/assessments": "Exams & Assessments",
+  "/admin/candidates": "Candidate Evaluation",
+  "/admin/questions": "Question Bank CMS",
+  "/admin/settings": "System Settings",
 };
 
-export default function Navbar({ onMobileSidebarToggle }: NavbarProps) {
+export default function Navbar({ onMobileSidebarToggle, isCollapsed, onToggleCollapse }: NavbarProps) {
   const pathname = usePathname();
-  const current = pageTitles[pathname] || {
-    title: "HR Admin Portal",
-    subtitle: "ARM Banca Assessment Platform",
-  };
+  const currentTitle = pageTitles[pathname] || "HR Admin Portal";
 
   return (
     <header className="fixed top-0 left-0 right-0 h-16 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs">
       <div className="w-full h-full px-4 sm:px-6 flex items-center justify-between">
         
-        {/* Left: Brand Logo & Dynamic Active Page Title */}
+        {/* Left: Brand Logo, Mobile Menu, Desktop Collapse Toggle & Page Title */}
         <div className="flex items-center space-x-3">
+          {/* Mobile Menu Button */}
           {onMobileSidebarToggle && (
             <button
               onClick={onMobileSidebarToggle}
-              className="lg:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              className="lg:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              title="Toggle Mobile Menu"
             >
               <Menu className="w-5 h-5" />
+            </button>
+          )}
+
+          {/* Desktop Sidebar Collapse Toggle */}
+          {onToggleCollapse && (
+            <button
+              onClick={onToggleCollapse}
+              className="hidden lg:flex p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+              {isCollapsed ? <PanelLeftOpen className="w-5 h-5 text-blue-600" /> : <PanelLeftClose className="w-5 h-5" />}
             </button>
           )}
 
@@ -71,29 +68,11 @@ export default function Navbar({ onMobileSidebarToggle }: NavbarProps) {
             />
           </Link>
           
-          <div className="hidden sm:flex flex-col border-l border-slate-200 pl-3">
+          <div className="hidden sm:flex border-l border-slate-200 pl-3">
             <span className="text-xs font-black text-slate-900 tracking-tight flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
-              {current.title}
+              {currentTitle}
             </span>
-            <span className="text-[10px] font-semibold text-slate-500">
-              {current.subtitle}
-            </span>
-          </div>
-        </div>
-
-        {/* Right Status & Profile Pill */}
-        <div className="flex items-center space-x-3">
-          <div className="hidden md:flex items-center space-x-2 bg-blue-50 text-blue-800 px-3.5 py-1.5 rounded-full border border-blue-200 text-xs font-black shadow-2xs">
-            <ShieldCheck className="w-4 h-4 text-blue-600" />
-            <span>HR Admin Portal</span>
-          </div>
-
-          <div className="flex items-center space-x-2 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700">
-            <div className="w-6 h-6 rounded-lg bg-blue-600 text-white font-black flex items-center justify-center text-[10px]">
-              HR
-            </div>
-            <span className="hidden sm:inline">System Admin</span>
           </div>
         </div>
 

@@ -19,6 +19,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("banca_admin_token");
@@ -83,7 +84,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 selection:bg-blue-600 selection:text-white">
       
       {/* Fixed Header Navbar */}
-      <Navbar onMobileSidebarToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)} />
+      <Navbar
+        onMobileSidebarToggle={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+      />
 
       <div className="flex-1 flex w-full relative">
         
@@ -97,22 +102,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Dedicated Fixed Left Sidebar */}
         <aside
-          className={`fixed top-16 left-0 bottom-0 z-40 w-64 bg-white border-r border-slate-200 flex flex-col justify-between overflow-y-auto shrink-0 transform transition-transform duration-300 ${
+          className={`fixed top-16 left-0 bottom-0 z-40 bg-white border-r border-slate-200 flex flex-col justify-between overflow-y-auto shrink-0 transform transition-all duration-300 ${
+            isCollapsed ? "lg:w-20 w-64" : "w-64"
+          } ${
             mobileSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"
           }`}
         >
-          <div className="p-5 space-y-6">
-            
-            {/* Sidebar Navigation Header Label */}
-            <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                Banca Navigation
-              </span>
-              <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                Live Portal
-              </span>
-            </div>
-
+          <div className={isCollapsed ? "p-2.5 space-y-2" : "p-4 space-y-2"}>
             <nav className="space-y-1.5">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -122,49 +118,46 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileSidebarOpen(false)}
-                    className={`w-full p-3 rounded-xl text-left text-xs font-bold transition-all flex items-center justify-between ${
+                    title={isCollapsed ? item.label : undefined}
+                    className={`w-full rounded-xl text-left text-xs font-bold transition-all flex items-center justify-between ${
+                      isCollapsed ? "p-3 justify-center" : "p-3"
+                    } ${
                       isActive
                         ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
                         : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     }`}
                   >
                     <div className="flex items-center space-x-3">
-                      <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-slate-500"}`} />
-                      <span>{item.label}</span>
+                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-slate-500"}`} />
+                      {!isCollapsed && <span>{item.label}</span>}
                     </div>
-                    {isActive && <ChevronRight className="w-4 h-4 text-white" />}
+                    {!isCollapsed && isActive && <ChevronRight className="w-4 h-4 text-white shrink-0" />}
                   </Link>
                 );
               })}
             </nav>
-
           </div>
 
-          {/* Sidebar Footer User Info */}
-          <div className="p-4 border-t border-slate-100 bg-slate-50/50 m-4 rounded-xl border flex items-center justify-between">
-            <div className="flex items-center space-x-2.5">
-              <div className="w-8 h-8 rounded-lg bg-blue-600 text-white font-black flex items-center justify-center text-xs shadow-2xs">
-                HR
-              </div>
-              <div>
-                <p className="text-xs font-bold text-slate-900">System Admin</p>
-                <p className="text-[10px] text-slate-400 font-semibold">Banca Channel</p>
-              </div>
-            </div>
-
+          {/* Sidebar Footer Sign Out Button */}
+          <div className={isCollapsed ? "p-2.5 border-t border-slate-100" : "p-4 border-t border-slate-100"}>
             <button
               onClick={handleLogout}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
               title="Sign Out"
+              className={`w-full border border-slate-200 bg-slate-50 text-slate-700 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors font-bold text-xs flex items-center justify-center space-x-2 ${
+                isCollapsed ? "p-3 rounded-xl" : "p-2.5 rounded-xl"
+              }`}
             >
-              <LogOut className="w-4 h-4" />
+              <LogOut className="w-4 h-4 shrink-0" />
+              {!isCollapsed && <span>Sign Out</span>}
             </button>
           </div>
 
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 lg:pl-64 pt-16 min-h-screen w-full">
+        <main className={`flex-1 pt-16 min-h-screen w-full transition-all duration-300 ${
+          isCollapsed ? "lg:pl-20" : "lg:pl-64"
+        }`}>
           <div className="w-full">
             {children}
           </div>
