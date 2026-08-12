@@ -5,21 +5,12 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import CameraProctor from "@/components/CameraProctor";
 import "../exam/exam.css";
-import { User, Mail, Phone, Hash, ArrowRight, BookOpen } from "lucide-react";
+import { User, Mail, Phone, Hash, ArrowRight, BookOpen, AlertTriangle, ShieldCheck, Lock } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
-
-interface AssessmentOption {
-  id: string;
-  name: string;
-  description: string;
-}
 
 export default function CandidateRegistration() {
   const router = useRouter();
-  const [assessments, setAssessments] = useState<AssessmentOption[]>([]);
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string>("");
-  const [isFaceVerified, setIsFaceVerified] = useState<boolean>(false);
-  const [faceCheckMsg, setFaceCheckMsg] = useState<string>("");
   const [formData, setFormData] = useState({
     applicationId: "",
     name: "",
@@ -32,6 +23,7 @@ export default function CandidateRegistration() {
   const [activeAssessment, setActiveAssessment] = useState<any>(null);
   const [isAssessmentExpired, setIsAssessmentExpired] = useState<boolean>(false);
   const [isAssessmentNotStarted, setIsAssessmentNotStarted] = useState<boolean>(false);
+  const [hasValidLink, setHasValidLink] = useState<boolean>(false);
 
   useEffect(() => {
     async function loadAssessmentFromUrl() {
@@ -40,37 +32,38 @@ export default function CandidateRegistration() {
         const searchParams = new URLSearchParams(window.location.search);
         const targetIdentifier = searchParams.get("assessment") || searchParams.get("assessmentId") || searchParams.get("id");
 
-        if (targetIdentifier) {
-          const res = await fetch(`${baseUrl}/api/v1/candidates/assessments/details/${targetIdentifier}`);
-          const data = await res.json();
-          if (data.success && data.assessment) {
-            setActiveAssessment(data.assessment);
-            setSelectedAssessmentId(data.assessment.id);
-            if (data.assessment.isExpired) {
-              setIsAssessmentExpired(true);
-              setError("This assessment session link is no longer active or has expired. Please contact your HR Administrator for a valid link.");
-            } else if (data.assessment.isNotStarted) {
-              setIsAssessmentNotStarted(true);
-              const fromTime = data.assessment.activeFrom
-                ? new Date(data.assessment.activeFrom).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })
-                : "a scheduled time";
-              setError(`This assessment session hasn't started yet. It will be accessible from ${fromTime}.`);
-            }
-            return;
-          }
+        if (!targetIdentifier) {
+          setHasValidLink(false);
+          setError("No Assessment Link Specified. Candidates must access the exam using an official assessment link (e.g. http://localhost:3000/[slug]) provided by HR or Headstart CRM.");
+          return;
         }
 
-        // Fallback: load default active assessment list
-        const res = await fetch(`${baseUrl}/api/v1/candidates/assessments/list`);
+        const res = await fetch(`${baseUrl}/api/v1/candidates/assessments/details/${targetIdentifier}`);
         const data = await res.json();
-        if (data.success && data.assessments && data.assessments.length > 0) {
-          setAssessments(data.assessments);
-          const firstActive = data.assessments.find((a: any) => a.status === "ACTIVE") || data.assessments[0];
-          setSelectedAssessmentId(firstActive.id);
-          setActiveAssessment(firstActive);
+
+        if (data.success && data.assessment) {
+          setActiveAssessment(data.assessment);
+          setSelectedAssessmentId(data.assessment.id);
+          setHasValidLink(true);
+
+          if (data.assessment.isExpired) {
+            setIsAssessmentExpired(true);
+            setError("This assessment session link is no longer active or has expired. Please contact your HR Administrator for a valid link.");
+          } else if (data.assessment.isNotStarted) {
+            setIsAssessmentNotStarted(true);
+            const fromTime = data.assessment.activeFrom
+              ? new Date(data.assessment.activeFrom).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })
+              : "a scheduled time";
+            setError(`This assessment session hasn't started yet. It will be accessible from ${fromTime}.`);
+          }
+        } else {
+          setHasValidLink(false);
+          setError(`Invalid or Inactive Assessment Link (${targetIdentifier}). Please contact HR or use your official exam URL.`);
         }
       } catch (err) {
         console.error("Failed to load target assessment details:", err);
+        setHasValidLink(false);
+        setError("Unable to connect to Assessment Server. Please try again.");
       }
     }
     loadAssessmentFromUrl();
@@ -84,12 +77,10 @@ export default function CandidateRegistration() {
     }
 
     setLoading(true);
-    setError("");
 
     try {
       const baseUrl = getApiBaseUrl();
 
-      // Try verify-and-start API first
       let res = await fetch(`${baseUrl}/api/v1/candidates/verify-and-start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -98,13 +89,11 @@ export default function CandidateRegistration() {
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
-          assessmentId: selectedAssessmentId || (assessments[0]?.id || ""),
+          assessmentId: selectedAssessmentId,
         }),
       });
 
-      // Fallback to register API if verify-and-start is 404 or fails
       if (!res.ok) {
-        console.warn("verify-and-start endpoint returned non-200, trying standard register endpoint...");
         res = await fetch(`${baseUrl}/api/v1/candidates/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -114,7 +103,7 @@ export default function CandidateRegistration() {
             name: formData.name,
             email: formData.email,
             phone: formData.phone,
-            assessmentId: selectedAssessmentId || (assessments[0]?.id || ""),
+            assessmentId: selectedAssessmentId,
           }),
         });
       }
@@ -128,7 +117,7 @@ export default function CandidateRegistration() {
           phone: formData.phone,
           applicationId: formData.applicationId,
           referenceId: formData.applicationId,
-          assessmentId: selectedAssessmentId || (assessments[0]?.id || ""),
+          assessmentId: selectedAssessmentId,
         };
         localStorage.setItem("banca_candidate", JSON.stringify(candidateObj));
         if (data.questions) {
@@ -136,7 +125,6 @@ export default function CandidateRegistration() {
         }
         router.push("/exam/test");
       } else {
-        // Soft fallback for candidate entry
         const fallbackCand = {
           id: `cand-${Date.now()}`,
           name: formData.name,
@@ -144,13 +132,12 @@ export default function CandidateRegistration() {
           phone: formData.phone,
           applicationId: formData.applicationId,
           referenceId: formData.applicationId,
-          assessmentId: selectedAssessmentId || (assessments[0]?.id || ""),
+          assessmentId: selectedAssessmentId,
         };
         localStorage.setItem("banca_candidate", JSON.stringify(fallbackCand));
         router.push("/exam/test");
       }
     } catch {
-      // Offline fallback candidate registration
       const fallbackCand = {
         id: `cand-${Date.now()}`,
         name: formData.name,
@@ -158,7 +145,7 @@ export default function CandidateRegistration() {
         phone: formData.phone,
         applicationId: formData.applicationId,
         referenceId: formData.applicationId,
-        assessmentId: selectedAssessmentId || (assessments[0]?.id || ""),
+        assessmentId: selectedAssessmentId,
       };
       localStorage.setItem("banca_candidate", JSON.stringify(fallbackCand));
       router.push("/exam/test");
@@ -168,132 +155,135 @@ export default function CandidateRegistration() {
   };
 
   return (
-    <div className="exam-page">
+    <div style={{ minHeight: "100dvh", background: "linear-gradient(160deg, #E8F6FD 0%, #F4FAFF 50%, #FFF8EE 100%)", display: "flex", flexDirection: "column" }}>
       <Navbar mode="public" />
 
-      <main className="exam-main">
-        <div className="exam-card">
+      <main style={{ flex: 1, padding: "clamp(16px, 4vw, 36px) 16px 48px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ width: "100%", maxWidth: "860px", background: "white", borderRadius: "24px", border: "1.5px solid #C8E8F8", boxShadow: "0 16px 48px rgba(0,63,114,0.12)", overflow: "hidden" }}>
 
-          {/* Hero Header */}
-          <div className="exam-card-hero">
-            <div className="exam-card-hero-badge">
-              Headstart CRM Candidate Verification
+          <div style={{ background: "linear-gradient(135deg, #003F72, #00AEEF)", padding: "28px 32px", color: "white" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(255,255,255,0.18)", padding: "4px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.5px", marginBottom: "10px" }}>
+              <BookOpen size={12} /> OFFICIAL ASSESSMENT SESSION
             </div>
-            <h1 className="exam-card-hero-title">
-              Candidate Verification &<br />Session Registration
+            <h1 style={{ fontSize: "clamp(20px, 4vw, 28px)", fontWeight: 900, marginBottom: "6px" }}>
+              {activeAssessment?.name || "Niva Bupa Health Insurance Assessment"}
             </h1>
-            <p className="exam-card-hero-sub">
-              Enter your CRM Application ID and details to verify your assessment assignment and begin the exam.
+            <p style={{ fontSize: "13px", opacity: 0.9, margin: 0 }}>
+              {activeAssessment?.description || "Candidate Verification & Proctored Assessment Engine"}
             </p>
           </div>
 
-          {/* Card Body */}
-          <div className="exam-card-body">
-
-            {/* Error */}
-            {error && (
-              <div className="exam-error-box" style={{ background: "#FEF2F2", border: "1.5px solid #FCA5A5", color: "#991B1B", padding: "12px 16px", borderRadius: "12px", marginBottom: "16px", fontSize: "13px", fontWeight: 600 }}>
-                {error}
+          <div style={{ padding: "clamp(20px, 4vw, 36px)" }}>
+            {!hasValidLink ? (
+              <div style={{ textAlign: "center", padding: "32px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
+                <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "#FEF2F2", border: "2px solid #FCA5A5", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Lock size={32} color="#DC2626" />
+                </div>
+                <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#0F172A", margin: 0 }}>
+                  Assessment Access Restricted
+                </h3>
+                <p style={{ fontSize: "14px", color: "#475569", maxWidth: "540px", textAlign: "center", lineHeight: "1.6", margin: 0 }}>
+                  Candidates cannot access generic exam pages directly. You must click the official exam URL provided in your candidate invitation email or Headstart CRM (e.g. <strong style={{ color: "#0284C7" }}>http://localhost:3000/session-slug</strong>).
+                </p>
               </div>
-            )}
-
-            {/* Form */}
-            <form onSubmit={handleStart} className="exam-form">
-
-              <div className="exam-form-grid">
-
-                <div>
-                  <label className="exam-field-label">
-                    Application ID <span className="exam-field-required">*</span>
-                    <span style={{ fontWeight: 500, textTransform: "none", fontSize: "10px", color: "#00AEEF", marginLeft: "4px" }}>(From Headstart CRM)</span>
-                  </label>
-                  <div className="exam-input-wrap">
-                    <Hash className="exam-input-icon" />
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. APP-2026-8801"
-                      value={formData.applicationId}
-                      onChange={(e) => setFormData({ ...formData, applicationId: e.target.value })}
-                      className="exam-input"
-                    />
+            ) : (
+              <>
+                {error && (
+                  <div style={{ background: "#FEF2F2", border: "1.5px solid #FCA5A5", borderRadius: "12px", padding: "14px 18px", color: "#B91C1C", fontSize: "13px", fontWeight: 600, display: "flex", alignItems: "center", gap: "10px", marginBottom: "24px" }}>
+                    <AlertTriangle size={18} color="#DC2626" />
+                    <span>{error}</span>
                   </div>
-                </div>
-
-                <div>
-                  <label className="exam-field-label">
-                    Full Name <span className="exam-field-required">*</span>
-                  </label>
-                  <div className="exam-input-wrap">
-                    <User className="exam-input-icon" />
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Aftab SK"
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="exam-input"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="exam-field-label">
-                    Email Address <span className="exam-field-required">*</span>
-                  </label>
-                  <div className="exam-input-wrap">
-                    <Mail className="exam-input-icon" />
-                    <input
-                      type="email"
-                      required
-                      placeholder="aftab@example.com"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="exam-input"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="exam-field-label">
-                    Mobile Number <span className="exam-field-required">*</span>
-                  </label>
-                  <div className="exam-input-wrap">
-                    <Phone className="exam-input-icon" />
-                    <input
-                      type="tel"
-                      required
-                      placeholder="+91 98765 43210"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="exam-input"
-                    />
-                  </div>
-                </div>
-
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading || isAssessmentExpired || isAssessmentNotStarted}
-                className="exam-submit-btn"
-              >
-                {loading ? (
-                  <>
-                    <span style={{ width: "16px", height: "16px", border: "2.5px solid rgba(255,255,255,0.4)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                    <span>Initialising Session…</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Begin Assessment Test</span>
-                    <ArrowRight size={18} />
-                  </>
                 )}
-              </button>
 
-            </form>
+                <form onSubmit={handleStart} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#1A2B40", marginBottom: "6px", textTransform: "uppercase" }}>
+                      Headstart Application ID *
+                    </label>
+                    <div style={{ position: "relative" }}>
+                      <Hash size={16} color="#00AEEF" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }} />
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. APP-882019"
+                        value={formData.applicationId}
+                        onChange={(e) => setFormData({ ...formData, applicationId: e.target.value })}
+                        disabled={isAssessmentExpired || isAssessmentNotStarted}
+                        style={{ width: "100%", padding: "12px 14px 12px 42px", borderRadius: "10px", border: "1.5px solid #CBD5E1", fontSize: "14px", fontWeight: 600, color: "#0F172A" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#1A2B40", marginBottom: "6px", textTransform: "uppercase" }}>
+                        Candidate Name *
+                      </label>
+                      <div style={{ position: "relative" }}>
+                        <User size={16} color="#00AEEF" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }} />
+                        <input
+                          type="text"
+                          required
+                          placeholder="Full Name"
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          disabled={isAssessmentExpired || isAssessmentNotStarted}
+                          style={{ width: "100%", padding: "12px 14px 12px 42px", borderRadius: "10px", border: "1.5px solid #CBD5E1", fontSize: "14px", fontWeight: 600, color: "#0F172A" }}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#1A2B40", marginBottom: "6px", textTransform: "uppercase" }}>
+                        Email Address *
+                      </label>
+                      <div style={{ position: "relative" }}>
+                        <Mail size={16} color="#00AEEF" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }} />
+                        <input
+                          type="email"
+                          required
+                          placeholder="candidate@example.com"
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          disabled={isAssessmentExpired || isAssessmentNotStarted}
+                          style={{ width: "100%", padding: "12px 14px 12px 42px", borderRadius: "10px", border: "1.5px solid #CBD5E1", fontSize: "14px", fontWeight: 600, color: "#0F172A" }}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#1A2B40", marginBottom: "6px", textTransform: "uppercase" }}>
+                        Phone Number *
+                      </label>
+                      <div style={{ position: "relative" }}>
+                        <Phone size={16} color="#00AEEF" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }} />
+                        <input
+                          type="tel"
+                          required
+                          placeholder="Mobile Number"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          disabled={isAssessmentExpired || isAssessmentNotStarted}
+                          style={{ width: "100%", padding: "12px 14px 12px 42px", borderRadius: "10px", border: "1.5px solid #CBD5E1", fontSize: "14px", fontWeight: 600, color: "#0F172A" }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: "12px", paddingTop: "20px", borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "flex-end" }}>
+                    <button
+                      type="submit"
+                      disabled={loading || isAssessmentExpired || isAssessmentNotStarted}
+                      style={{ padding: "14px 32px", borderRadius: "12px", background: isAssessmentExpired || isAssessmentNotStarted ? "#94A3B8" : "linear-gradient(135deg, #003F72, #00AEEF)", color: "white", fontWeight: 800, fontSize: "15px", border: "none", cursor: isAssessmentExpired || isAssessmentNotStarted ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", gap: "10px", boxShadow: "0 6px 20px rgba(0,63,114,0.2)" }}
+                    >
+                      {loading ? "Verifying with CRM..." : "Start Assessment"}
+                      <ArrowRight size={18} />
+                    </button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
-
         </div>
       </main>
     </div>
