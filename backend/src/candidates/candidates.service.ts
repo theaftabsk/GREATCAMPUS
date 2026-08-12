@@ -508,7 +508,7 @@ export class CandidatesService {
       },
     });
 
-    const frontendBaseUrl = process.env.FRONTEND_CANDIDATE_URL || 'https://greatcampus-1.onrender.com';
+    const frontendBaseUrl = process.env.CANDIDATE_PORTAL_URL || process.env.FRONTEND_CANDIDATE_URL || 'http://localhost:3000';
 
     return assessments.map((ass) => {
       // Auto-compute status based on activeFrom/activeUntil
@@ -534,7 +534,7 @@ export class CandidatesService {
         totalCandidates: ass._count.candidates,
         durationMins: ass.durationMins || EXAM_DURATION_MINS,
         totalQuestions: TOTAL_QUESTIONS,
-        uniqueCandidateLink: `${frontendBaseUrl}/exam?assessment=${ass.slug || ass.id}`,
+        uniqueCandidateLink: `${frontendBaseUrl}/${ass.slug || ass.id}`,
       };
     });
   }
@@ -559,10 +559,9 @@ export class CandidatesService {
     let isExpired = assessment.status === 'INACTIVE';
     if (!isNotStarted && assessment.activeUntil && now > new Date(assessment.activeUntil)) {
       isExpired = true;
-      // No DB write — status stays as set by Admin (ACTIVE/DRAFT/INACTIVE)
     }
 
-    const frontendBaseUrl = process.env.FRONTEND_CANDIDATE_URL || 'https://greatcampus-1.onrender.com';
+    const frontendBaseUrl = process.env.CANDIDATE_PORTAL_URL || process.env.FRONTEND_CANDIDATE_URL || 'http://localhost:3000';
 
     return {
       id: assessment.id,
@@ -576,7 +575,7 @@ export class CandidatesService {
       totalQuestions: TOTAL_QUESTIONS,
       isExpired,
       isNotStarted,
-      uniqueCandidateLink: `${frontendBaseUrl}/exam?assessment=${assessment.slug || assessment.id}`,
+      uniqueCandidateLink: `${frontendBaseUrl}/${assessment.slug || assessment.id}`,
     };
   }
 
