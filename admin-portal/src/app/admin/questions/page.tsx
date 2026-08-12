@@ -112,17 +112,11 @@ export default function AdminQuestionsPage() {
 
   return (
     <div className="qp-page">
-      {/* Header */}
+      {/* Header Bar */}
       <div className="qp-header">
-        <div className="qp-header-left">
-          <div className="qp-header-icon"><BookOpen size={22} /></div>
-          <div>
-            <h1 className="qp-title">Question Bank CMS</h1>
-            <p className="qp-subtitle">
-              {questions.length} Questions in fixed pool · High-contrast Clean White & Blue
-            </p>
-          </div>
-        </div>
+        <p className="qp-subtitle">
+          {questions.length} Questions in fixed pool · High-contrast Clean White & Blue
+        </p>
         <div className="qp-header-actions">
           <button className="qp-refresh-btn" onClick={fetchQuestions} title="Refresh Questions">
             <RefreshCw size={15} /> Refresh Bank

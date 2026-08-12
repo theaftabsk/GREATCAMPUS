@@ -67,15 +67,9 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="set-page">
-      {/* Header */}
+      {/* Header Bar */}
       <div className="set-header">
-        <div className="set-header-icon">
-          <ShieldCheck size={22} />
-        </div>
-        <div>
-          <h1 className="set-title">Admin Account & Credentials</h1>
-          <p className="set-subtitle">Update HR Administrator username and access password</p>
-        </div>
+        <p className="set-subtitle">Update HR Administrator username and access password</p>
       </div>
 
       {/* Success Alert */}

@@ -181,15 +181,9 @@ export default function AdminAssessmentsPage() {
 
   return (
     <div className="assess-page">
-      {/* Header */}
+      {/* Header Bar */}
       <div className="assess-header">
-        <div className="assess-header-left">
-          <div className="assess-header-icon"><BookOpen size={22} /></div>
-          <div>
-            <h1 className="assess-title">Exams & Assessment Sessions</h1>
-            <p className="assess-subtitle">Create unique candidate exam links with scheduled access windows</p>
-          </div>
-        </div>
+        <p className="assess-subtitle">Create unique candidate exam links with scheduled access windows</p>
         <div className="assess-header-actions">
           <button className="assess-refresh-btn" onClick={loadSessions} title="Refresh Sessions">
             <RefreshCw size={15} /> Refresh List
