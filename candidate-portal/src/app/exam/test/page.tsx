@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
+import CameraProctor from "@/components/CameraProctor";
 import "../exam.css";
 import {
   Clock, ChevronLeft, ChevronRight, Bookmark, CheckCircle2,
@@ -40,7 +41,7 @@ export default function CandidateTestEngine() {
   const [answers, setAnswers] = useState<Record<string, { selectedOption: string | null; timeTakenSec: number }>>({});
   const [flagged, setFlagged] = useState<Record<string, boolean>>({});
 
-  const [timeLeftSec, setTimeLeftSec] = useState(3600); // 60 mins default
+  const [timeLeftSec, setTimeLeftSec] = useState(2700); // 45 mins default
   const [timerWarning, setTimerWarning] = useState("");
 
   // Proctoring States
@@ -109,9 +110,9 @@ export default function CandidateTestEngine() {
     const interval = setInterval(() => {
       setTimeLeftSec((prev) => {
         const next = prev - 1;
-        if (next === 600) setTimerWarning("⚠️ 10 Minutes remaining!");
-        else if (next === 300) setTimerWarning("⚠️ 5 Minutes remaining!");
-        else if (next === 60) setTimerWarning("🚨 CRITICAL: 1 Minute remaining!");
+        if (next === 600) setTimerWarning("10 Minutes remaining!");
+        else if (next === 300) setTimerWarning("5 Minutes remaining!");
+        else if (next === 60) setTimerWarning("CRITICAL: 1 Minute remaining!");
         else if (next <= 0) {
           clearInterval(interval);
           handleSubmitExam();
@@ -299,16 +300,14 @@ export default function CandidateTestEngine() {
       <div className="test-subbar">
         <div className="test-subbar-inner">
 
-          {/* Assessment Title & Subject Info */}
+          {/* Assessment Title */}
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "#00AEEF", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <BookOpen size={20} />
             </div>
             <div>
               <div style={{ fontSize: "14px", fontWeight: 800, color: "#1E293B" }}>{assessmentName}</div>
-              <div style={{ fontSize: "12px", color: "#64748B" }}>
-                {currentQ.subjectName} ➔ <strong style={{ color: "#00AEEF" }}>{currentQ.sectionName}</strong>
-              </div>
+              <div style={{ fontSize: "12px", color: "#64748B" }}>45 Minutes Timed Assessment</div>
             </div>
           </div>
 
@@ -342,8 +341,9 @@ export default function CandidateTestEngine() {
 
       {/* Timer Warning Banner */}
       {timerWarning && (
-        <div style={{ background: "#FEF2F2", borderBottom: "1px solid #FCA5A5", color: "#991B1B", padding: "8px 16px", textTransform: "uppercase", letterSpacing: "0.5px", fontSize: "12px", fontWeight: 800, textAlign: "center" }}>
-          {timerWarning}
+        <div style={{ background: "#FEF2F2", borderBottom: "1px solid #FCA5A5", color: "#991B1B", padding: "8px 16px", fontSize: "12px", fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", letterSpacing: "0.3px" }}>
+          <AlertTriangle size={14} color="#DC2626" />
+          <span style={{ textTransform: "uppercase" }}>{timerWarning}</span>
         </div>
       )}
 
@@ -359,9 +359,6 @@ export default function CandidateTestEngine() {
               <div className="test-card-header">
                 <div>
                   <span className="test-q-badge">Question {currentIdx + 1} of {questions.length}</span>
-                  <span style={{ marginLeft: "8px", fontSize: "12px", fontWeight: 700, color: "#64748B", background: "#F1F5F9", padding: "2px 8px", borderRadius: "4px" }}>
-                    {currentQ.sectionName}
-                  </span>
                 </div>
                 <button
                   onClick={() => setFlagged((p) => ({ ...p, [currentQ.id]: !p[currentQ.id] }))}
@@ -539,26 +536,80 @@ export default function CandidateTestEngine() {
 
       {/* PROCTORING WARNING MODAL */}
       {warningModalMsg && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(15, 23, 42, 0.75)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
-          <div style={{ background: "white", maxWidth: "420px", width: "100%", borderRadius: "16px", padding: "24px", boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", textAlign: "center" }}>
-            <div style={{ width: "56px", height: "56px", borderRadius: "50%", background: "#FEF2F2", color: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
-              <ShieldAlert size={32} />
+        <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(15,23,42,0.80)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ background: "white", maxWidth: "440px", width: "100%", borderRadius: "20px", overflow: "hidden", boxShadow: "0 32px 64px rgba(0,0,0,0.3)" }}>
+            
+            {/* Red top bar */}
+            <div style={{ background: "linear-gradient(135deg,#DC2626,#B91C1C)", padding: "24px", textAlign: "center" }}>
+              <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+                <ShieldAlert size={36} color="white" />
+              </div>
+              <h3 style={{ fontSize: "20px", fontWeight: 900, color: "white", margin: 0, letterSpacing: "-0.3px" }}>Proctoring Violation</h3>
+              <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.75)", marginTop: "4px", fontWeight: 600 }}>Identity verification failed</p>
             </div>
-            <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#1E293B" }}>Proctoring Warning</h3>
-            <p style={{ fontSize: "13px", color: "#475569", marginTop: "8px", lineHeight: 1.5 }}>
-              {warningModalMsg}
-            </p>
-            <div style={{ marginTop: "16px", padding: "10px", background: "#FFFBEB", border: "1px solid #FCD34D", borderRadius: "8px", fontSize: "12px", fontWeight: 700, color: "#92400E" }}>
-              Warning Count: {warningCount} / {maxProctorWarnings}
+
+            {/* Body */}
+            <div style={{ padding: "24px" }}>
+              {/* Message */}
+              <div style={{ display: "flex", gap: "12px", alignItems: "flex-start", background: "#FEF2F2", border: "1.5px solid #FCA5A5", borderRadius: "12px", padding: "14px" }}>
+                <AlertTriangle size={20} color="#DC2626" style={{ flexShrink: 0, marginTop: "1px" }} />
+                <p style={{ fontSize: "13px", color: "#7F1D1D", lineHeight: 1.6, margin: 0, fontWeight: 600 }}>
+                  {warningModalMsg}
+                </p>
+              </div>
+
+              {/* Warning progress */}
+              <div style={{ marginTop: "16px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 700, color: "#475569" }}>Violation Progress</span>
+                  <span style={{ fontSize: "12px", fontWeight: 800, color: warningCount >= 2 ? "#DC2626" : "#92400E" }}>
+                    {warningCount} of {maxProctorWarnings} warnings
+                  </span>
+                </div>
+                <div style={{ height: "8px", background: "#F1F5F9", borderRadius: "99px", overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${(warningCount / maxProctorWarnings) * 100}%`, background: warningCount >= 2 ? "#DC2626" : "#F59E0B", borderRadius: "99px", transition: "width 0.4s ease" }} />
+                </div>
+                <p style={{ fontSize: "11px", color: "#94A3B8", marginTop: "6px", fontWeight: 600 }}>
+                  {maxProctorWarnings - warningCount} warning(s) remaining before automatic disqualification.
+                </p>
+              </div>
+
+              {/* Acknowledge button */}
+              <button
+                onClick={() => setWarningModalMsg(null)}
+                style={{ marginTop: "20px", width: "100%", padding: "13px", background: "#1E293B", color: "white", fontWeight: 800, fontSize: "14px", borderRadius: "12px", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+              >
+                <CheckCircle2 size={18} />
+                I Understand — Resume Test
+              </button>
             </div>
-            <button
-              onClick={() => setWarningModalMsg(null)}
-              style={{ marginTop: "20px", width: "100%", padding: "10px", background: "#00AEEF", color: "white", fontWeight: 800, borderRadius: "10px", border: "none", cursor: "pointer" }}
-            >
-              I Understand & Resume Test
-            </button>
           </div>
         </div>
+      )}
+
+      {/* LIVE CAMERA PROCTORING PIP & SCREENSHOT CAPTURE ENGINE */}
+      {!loading && !disqualified && attemptId && (
+        <CameraProctor
+          mode="exam"
+          attemptId={attemptId}
+          onWarningTrigger={(type, msg) => {
+            // Immediately show warning modal (no backend wait)
+            setWarningCount((prev) => {
+              const next = prev + 1;
+              if (next >= maxProctorWarnings) {
+                // Auto disqualify
+                setDisqualified(true);
+                setWarningModalMsg(null);
+                handleSubmitExam();
+              } else {
+                setWarningModalMsg(msg);
+              }
+              return next;
+            });
+            // Also log to backend (non-blocking)
+            reportProctoringViolation(type, msg);
+          }}
+        />
       )}
 
     </div>

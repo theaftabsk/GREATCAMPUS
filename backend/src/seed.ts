@@ -1066,7 +1066,7 @@ async function main() {
       name: 'Niva Bupa Health Insurance Assessment',
       slug: 'niva-bupa-assessment',
       description: 'Single Fixed Official Assessment for Niva Bupa Health Insurance covering Agency Unit Manager (AUM) and Assistant Relationship Manager (ARM Banca) modules.',
-      durationMins: 30,
+      durationMins: 45,
       passingPercentage: 50.0,
       maxProctorWarnings: 3,
       status: 'ACTIVE',

@@ -6,6 +6,7 @@ import { QuestionsModule } from './questions/questions.module';
 import { CandidatesModule } from './candidates/candidates.module';
 import { ProctoringModule } from './proctoring/proctoring.module';
 import { AssessmentsModule } from './assessments/assessments.module';
+import { HeadstartIntegrationModule } from './integration/headstart/headstart-integration.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -18,6 +19,7 @@ import { AppService } from './app.service';
     CandidatesModule,
     ProctoringModule,
     AssessmentsModule,
+    HeadstartIntegrationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

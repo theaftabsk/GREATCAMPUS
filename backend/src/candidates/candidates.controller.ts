@@ -20,10 +20,26 @@ export class CandidatesController {
       phone: string;
       assessmentId: string;
       referenceId?: string;
+      applicationId?: string;
     }
   ) {
     const candidate = await this.candidatesService.registerCandidate(body);
     return { success: true, candidate };
+  }
+
+  @Post('verify-and-start')
+  async verifyAndStartExam(
+    @Body()
+    body: {
+      applicationId: string;
+      assessmentId: string;
+      name?: string;
+      email?: string;
+      phone?: string;
+    }
+  ) {
+    const data = await this.candidatesService.verifyAndStartExam(body);
+    return { success: true, ...data };
   }
 
   @Post('start-exam')

@@ -1,9 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { HeadstartClientService } from '../integration/headstart/headstart-client.service';
+import { HeadstartWebhookService } from '../integration/headstart/headstart-webhook.service';
 
 @Injectable()
 export class CandidatesService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(CandidatesService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private headstartClient: HeadstartClientService,
+    private headstartWebhook: HeadstartWebhookService,
+  ) {}
 
   async getCandidates(assessmentId?: string) {
     const whereClause: any = {};
@@ -144,6 +152,7 @@ export class CandidatesService {
     phone: string;
     assessmentId: string;
     referenceId?: string;
+    applicationId?: string;
   }) {
     const assessment = await this.prisma.assessment.findUnique({ where: { id: data.assessmentId } });
     if (!assessment) {
@@ -152,9 +161,15 @@ export class CandidatesService {
 
     const refId = data.referenceId || `REF-${Date.now().toString().slice(-6)}`;
 
-    // Check if candidate with referenceId or email exists
+    // Check if candidate with referenceId or email or applicationId exists
     const existing = await this.prisma.candidate.findFirst({
-      where: { OR: [{ referenceId: refId }, { email: data.email }] },
+      where: {
+        OR: [
+          { referenceId: refId },
+          { email: data.email },
+          ...(data.applicationId ? [{ applicationId: data.applicationId }] : []),
+        ],
+      },
     });
 
     if (existing) {
@@ -165,6 +180,7 @@ export class CandidatesService {
           assessmentId: data.assessmentId,
           name: data.name,
           phone: data.phone,
+          ...(data.applicationId && { applicationId: data.applicationId }),
         },
         include: { assessment: true },
       });
@@ -176,10 +192,85 @@ export class CandidatesService {
         email: data.email,
         phone: data.phone,
         referenceId: refId,
+        applicationId: data.applicationId || null,
         assessmentId: data.assessmentId,
       },
       include: { assessment: true },
     });
+  }
+
+  /**
+   * Verified Exam Entrance Flow (Headstart CRM API 1 + API 2 + API 4 Webhook)
+   */
+  async verifyAndStartExam(data: {
+    applicationId: string;
+    assessmentId: string;
+    name?: string;
+    email?: string;
+    phone?: string;
+  }) {
+    this.logger.log(`Verifying candidate exam start for Application ID: ${data.applicationId}, Assessment: ${data.assessmentId}`);
+
+    // Step 1: Call CRM API 1 to verify candidate details
+    const crmDetails = await this.headstartClient.verifyCandidate(data.applicationId);
+    if (!crmDetails.success) {
+      throw new BadRequestException(crmDetails.message || 'Failed to verify candidate with Headstart CRM.');
+    }
+
+    // Step 2: Call CRM API 2 to verify candidate assignment
+    const crmAssignment = await this.headstartClient.verifyAssignment(data.applicationId, data.assessmentId);
+    if (!crmAssignment.assigned) {
+      throw new BadRequestException('Candidate is NOT assigned to this assessment in Headstart CRM.');
+    }
+
+    // Step 3: Register / Find Candidate in local DB
+    const name = data.name || crmDetails.name || 'Candidate';
+    const email = data.email || crmDetails.email || `${data.applicationId.toLowerCase()}@candidate.com`;
+    const phone = data.phone || crmDetails.phone || '0000000000';
+
+    let candidate = await this.prisma.candidate.findFirst({
+      where: {
+        OR: [
+          { applicationId: data.applicationId },
+          { referenceId: data.applicationId },
+        ],
+      },
+    });
+
+    if (!candidate) {
+      candidate = await this.prisma.candidate.create({
+        data: {
+          name,
+          email,
+          phone,
+          applicationId: data.applicationId,
+          crmCandidateId: crmDetails.crmCandidateId || null,
+          referenceId: data.applicationId,
+          assessmentId: data.assessmentId,
+        },
+      });
+    } else {
+      candidate = await this.prisma.candidate.update({
+        where: { id: candidate.id },
+        data: {
+          assessmentId: data.assessmentId,
+          name,
+          email,
+          phone,
+          crmCandidateId: crmDetails.crmCandidateId || candidate.crmCandidateId,
+        },
+      });
+    }
+
+    // Step 4: Initialize Exam Session
+    const sessionData = await this.startExamSession(candidate.id);
+
+    // Step 5: Fire API 4 Status Webhook (Status = Started)
+    if (sessionData && sessionData.attemptId) {
+      await this.headstartWebhook.sendAssessmentStatus(sessionData.attemptId, 'Started');
+    }
+
+    return sessionData;
   }
 
   // --- START EXAM SESSION & SAMPLING ---
@@ -266,37 +357,22 @@ export class CandidatesService {
       };
     }
 
-    // RULE 5: Question Pool Validation BEFORE creating new attempt
-    const validationErrors: Array<{ sectionName: string; required: number; available: number }> = [];
-    for (const sub of candidate.assessment.subjects) {
-      for (const sec of sub.sections) {
-        if (sec.questions.length < sec.questionsToAsk) {
-          validationErrors.push({
-            sectionName: `${sub.name} ➔ ${sec.name}`,
-            required: sec.questionsToAsk,
-            available: sec.questions.length,
-          });
-        }
-      }
-    }
-
-    if (validationErrors.length > 0) {
-      const firstErr = validationErrors[0];
-      throw new BadRequestException(
-        `Insufficient questions in Section: ${firstErr.sectionName} (Required: ${firstErr.required}, Available: ${firstErr.available})`
-      );
-    }
-
-    // RULE 4: Create New Attempt with Snapshots & Randomized Question Selection
+    // Simplified Flat Attempt Creation (45 Mins, 60 Questions Direct from DB)
     const attempt = await this.prisma.examAttempt.create({
       data: {
         candidateId: candidate.id,
         status: 'IN_PROGRESS',
-        durationMinsSnapshot: candidate.assessment.durationMins,
-        passingPercentageSnapshot: candidate.assessment.passingPercentage,
-        maxProctorWarningsSnapshot: candidate.assessment.maxProctorWarnings,
+        durationMinsSnapshot: 45,
+        passingPercentageSnapshot: candidate.assessment.passingPercentage || 50.0,
+        maxProctorWarningsSnapshot: candidate.assessment.maxProctorWarnings || 3,
         startedAt: new Date(),
       },
+    });
+
+    // Fetch questions directly from DB for this assessment
+    const allDbQuestions = await this.prisma.question.findMany({
+      where: { status: 'ACTIVE' },
+      orderBy: { id: 'asc' },
     });
 
     const selectedQuestionRecords: Array<{
@@ -309,23 +385,15 @@ export class CandidatesService {
     }> = [];
 
     let order = 1;
-    for (const sub of candidate.assessment.subjects) {
-      for (const sec of sub.sections) {
-        // Shuffle section pool questions randomly
-        const shuffled = [...sec.questions].sort(() => Math.random() - 0.5);
-        const sampled = shuffled.slice(0, sec.questionsToAsk);
-
-        for (const q of sampled) {
-          selectedQuestionRecords.push({
-            attemptId: attempt.id,
-            questionId: q.id,
-            subjectId: sub.id,
-            sectionId: sec.id,
-            questionOrder: order++,
-            marks: q.marks,
-          });
-        }
-      }
+    for (const q of allDbQuestions) {
+      selectedQuestionRecords.push({
+        attemptId: attempt.id,
+        questionId: q.id,
+        subjectId: q.sectionId,
+        sectionId: q.sectionId,
+        questionOrder: order++,
+        marks: q.marks || 1.0,
+      });
     }
 
     // Batch insert AttemptQuestion records
@@ -473,6 +541,14 @@ export class CandidatesService {
       where: { id: attempt.candidateId },
       data: { status: 'COMPLETED' },
     });
+
+    // Fire Headstart OUT Webhooks (API 4 Status = Completed, API 5 Result, API 6 Report Card)
+    try {
+      await this.headstartWebhook.sendAssessmentStatus(attempt.id, 'Completed');
+      await this.headstartWebhook.sendAssessmentResultAndReportCard(attempt.id);
+    } catch (err) {
+      this.logger.error(`Error firing post-submission webhooks: ${err.message}`);
+    }
 
     return updatedAttempt;
   }

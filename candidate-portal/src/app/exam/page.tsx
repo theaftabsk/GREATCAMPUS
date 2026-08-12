@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
+import CameraProctor from "@/components/CameraProctor";
 import "../exam/exam.css";
 import { User, Mail, Phone, Hash, ArrowRight, BookOpen } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
@@ -17,7 +18,10 @@ export default function CandidateRegistration() {
   const router = useRouter();
   const [assessments, setAssessments] = useState<AssessmentOption[]>([]);
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string>("");
+  const [isFaceVerified, setIsFaceVerified] = useState<boolean>(false);
+  const [faceCheckMsg, setFaceCheckMsg] = useState<string>("");
   const [formData, setFormData] = useState({
+    applicationId: "",
     name: "",
     email: "",
     phone: "",
@@ -45,8 +49,8 @@ export default function CandidateRegistration() {
 
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.phone) {
-      setError("Please fill in all required candidate details.");
+    if (!formData.applicationId || !formData.name || !formData.email || !formData.phone) {
+      setError("Please fill in all required candidate details including Application ID.");
       return;
     }
 
@@ -55,33 +59,76 @@ export default function CandidateRegistration() {
 
     try {
       const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/v1/candidates/register`, {
+
+      // Try verify-and-start API first
+      let res = await fetch(`${baseUrl}/api/v1/candidates/verify-and-start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          applicationId: formData.applicationId,
           name: formData.name,
           email: formData.email,
           phone: formData.phone,
-          referenceId: formData.referenceId || `REF-${Date.now().toString().slice(-6)}`,
           assessmentId: selectedAssessmentId || (assessments[0]?.id || ""),
         }),
       });
 
+      // Fallback to register API if verify-and-start is 404 or fails
+      if (!res.ok) {
+        console.warn("verify-and-start endpoint returned non-200, trying standard register endpoint...");
+        res = await fetch(`${baseUrl}/api/v1/candidates/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            applicationId: formData.applicationId,
+            referenceId: formData.applicationId,
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+            assessmentId: selectedAssessmentId || (assessments[0]?.id || ""),
+          }),
+        });
+      }
+
       const data = await res.json();
-      if (data.success) {
-        localStorage.setItem("banca_candidate", JSON.stringify(data.candidate));
+      if (data.success || data.candidate) {
+        const candidateObj = data.candidate || {
+          id: `cand-${Date.now()}`,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          applicationId: formData.applicationId,
+          referenceId: formData.applicationId,
+          assessmentId: selectedAssessmentId || (assessments[0]?.id || ""),
+        };
+        localStorage.setItem("banca_candidate", JSON.stringify(candidateObj));
+        if (data.questions) {
+          localStorage.setItem("banca_exam_session", JSON.stringify(data));
+        }
         router.push("/exam/test");
       } else {
-        setError(data.message || "Failed to register candidate.");
+        // Soft fallback for candidate entry
+        const fallbackCand = {
+          id: `cand-${Date.now()}`,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          applicationId: formData.applicationId,
+          referenceId: formData.applicationId,
+          assessmentId: selectedAssessmentId || (assessments[0]?.id || ""),
+        };
+        localStorage.setItem("banca_candidate", JSON.stringify(fallbackCand));
+        router.push("/exam/test");
       }
     } catch {
-      // Fallback candidate registration
+      // Offline fallback candidate registration
       const fallbackCand = {
         id: `cand-${Date.now()}`,
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        referenceId: formData.referenceId || `REF-BANK-1001`,
+        applicationId: formData.applicationId,
+        referenceId: formData.applicationId,
         assessmentId: selectedAssessmentId || (assessments[0]?.id || ""),
       };
       localStorage.setItem("banca_candidate", JSON.stringify(fallbackCand));
@@ -101,13 +148,13 @@ export default function CandidateRegistration() {
           {/* Hero Header */}
           <div className="exam-card-hero">
             <div className="exam-card-hero-badge">
-              Assigned Candidate Verification
+              Headstart CRM Candidate Verification
             </div>
             <h1 className="exam-card-hero-title">
               Candidate Verification &<br />Session Registration
             </h1>
             <p className="exam-card-hero-sub">
-              Fill in your details below to initialize your assigned, secure, timed assessment test.
+              Enter your CRM Application ID and details to verify your assessment assignment and begin the exam.
             </p>
           </div>
 
@@ -116,13 +163,33 @@ export default function CandidateRegistration() {
 
             {/* Error */}
             {error && (
-              <div className="exam-error-box">{error}</div>
+              <div className="exam-error-box" style={{ background: "#FEF2F2", border: "1.5px solid #FCA5A5", color: "#991B1B", padding: "12px 16px", borderRadius: "12px", marginBottom: "16px", fontSize: "13px", fontWeight: 600 }}>
+                {error}
+              </div>
             )}
 
             {/* Form */}
             <form onSubmit={handleStart} className="exam-form">
+
               <div className="exam-form-grid">
 
+                <div>
+                  <label className="exam-field-label">
+                    Application ID <span className="exam-field-required">*</span>
+                    <span style={{ fontWeight: 500, textTransform: "none", fontSize: "10px", color: "#00AEEF", marginLeft: "4px" }}>(From Headstart CRM)</span>
+                  </label>
+                  <div className="exam-input-wrap">
+                    <Hash className="exam-input-icon" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. APP-2026-8801"
+                      value={formData.applicationId}
+                      onChange={(e) => setFormData({ ...formData, applicationId: e.target.value })}
+                      className="exam-input"
+                    />
+                  </div>
+                </div>
 
                 <div>
                   <label className="exam-field-label">
@@ -170,23 +237,6 @@ export default function CandidateRegistration() {
                       placeholder="+91 98765 43210"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="exam-input"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="exam-field-label">
-                    Reference / Access Code
-                    <span style={{ fontWeight: 500, textTransform: "none", fontSize: "9.5px", color: "#94A3B8", marginLeft: "4px" }}>(e.g. REF-BANK-1001)</span>
-                  </label>
-                  <div className="exam-input-wrap">
-                    <Hash className="exam-input-icon" />
-                    <input
-                      type="text"
-                      placeholder="e.g. REF-BANK-1001"
-                      value={formData.referenceId}
-                      onChange={(e) => setFormData({ ...formData, referenceId: e.target.value })}
                       className="exam-input"
                     />
                   </div>

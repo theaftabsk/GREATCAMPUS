@@ -41,7 +41,7 @@ model Assessment {
   enableTabSwitch      Boolean             @default(true)
   enableFullscreen     Boolean             @default(true)
   enableCopyPaste      Boolean             @default(true)
-  status               String              @default("ACTIVE") // ACTIVE, DRAFT, ARCHIVED
+  status               String              @default("ACTIVE") // ACTIVE, DRAFT, INACTIVE
   subjects             AssessmentSubject[]
   candidates           Candidate[]
   createdAt            DateTime            @default(now())
@@ -87,16 +87,32 @@ model Question {
 }
 
 model Candidate {
-  id           String        @id @default(uuid())
-  assessmentId String
-  assessment   Assessment    @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  name         String
-  email        String
-  phone        String
-  referenceId  String        @unique
-  status       String        @default("REGISTERED") // REGISTERED, IN_PROGRESS, COMPLETED, DISQUALIFIED
-  attempts     ExamAttempt[]
-  createdAt    DateTime      @default(now())
+  id             String        @id @default(uuid())
+  assessmentId   String
+  assessment     Assessment    @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  name           String
+  email          String
+  phone          String
+  applicationId  String?       // Headstart CRM Application ID (not unique to allow multiple exams per candidate)
+  crmCandidateId String?       // Headstart CRM Candidate ID
+  referenceId    String        @unique
+  status         String        @default("REGISTERED") // REGISTERED, IN_PROGRESS, COMPLETED, DISQUALIFIED
+  attempts       ExamAttempt[]
+  createdAt      DateTime      @default(now())
+}
+
+model IntegrationConfig {
+  id                       String   @id @default(uuid())
+  tenantId                 String   @unique
+  crmBaseUrl               String   @default("https://api.headstartcrm.com")
+  crmApiKey                String?  
+  api1Endpoint             String   @default("/api/candidates/verify")
+  api2Endpoint             String   @default("/api/candidates/check-assignment")
+  webhookStatusUrl         String?  
+  webhookResultUrl         String?  
+  webhookReportUrl         String?  
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 }
 
 model ExamAttempt {
@@ -117,6 +133,7 @@ model ExamAttempt {
   attemptQuestions           AttemptQuestion[]
   submissions                Submission[]
   proctoringLogs             ProctoringLog[]
+  screenshots                ProctoringScreenshot[]
 }
 
 model AttemptQuestion {
@@ -134,7 +151,7 @@ model AttemptQuestion {
 model Submission {
   id             String      @id @default(uuid())
   attemptId      String
-  attempt        ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  attempt       ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   questionId     String
   question       Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
   selectedOption String?
@@ -146,7 +163,17 @@ model ProctoringLog {
   id          String      @id @default(uuid())
   attemptId   String
   attempt     ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-  eventType   String      // "TAB_SWITCH", "FULLSCREEN_EXIT", "COPY_PASTE", "RIGHT_CLICK"
+  eventType   String      // "TAB_SWITCH", "FULLSCREEN_EXIT", "COPY_PASTE", "RIGHT_CLICK", "FACE_NOT_DETECTED", "MULTIPLE_FACES", "CAMERA_OFF"
   details     String?
   timestamp   DateTime    @default(now())
+}
+
+model ProctoringScreenshot {
+  id          String      @id @default(uuid())
+  attemptId   String
+  attempt     ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  type        String      // "SCHEDULED" | "WARNING"
+  eventType   String?     // "FACE_NOT_DETECTED" | "MULTIPLE_FACES" | "CAMERA_OFF" | "FACE_NOT_VISIBLE" | "TAB_SWITCH"
+  imageUrl    String      // Relative URL / path to saved image
+  capturedAt  DateTime    @default(now())
 }

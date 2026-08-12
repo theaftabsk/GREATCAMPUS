@@ -186,7 +186,7 @@ export default function Home() {
           gap: "12px", marginBottom: "48px",
         }}>
           {[
-            { label: "Total Duration", value: "30 Min", color: "#00AEEF" },
+            { label: "Total Duration", value: "45 Min", color: "#00AEEF" },
             { label: "Total Questions", value: "60 Qs", color: "#F7941D" },
             { label: "Passing Cutoff", value: "30 Correct", color: "#16A34A" },
             { label: "Simulation Marks", value: "30 Pts", color: "#003F72" },
@@ -207,7 +207,7 @@ export default function Home() {
           <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
             <Award size={20} color="#00AEEF" />
             <h2 style={{ fontSize: "clamp(16px, 3vw, 20px)", fontWeight: 800, color: "#1A2B40" }}>
-              Assigned Assessment Structure — 2 Modules (12 Sections) | 60 Questions | 30 Minutes
+              Assigned Assessment — 60 Questions | 45 Minutes
             </h2>
           </div>
 
