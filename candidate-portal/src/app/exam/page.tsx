@@ -29,22 +29,44 @@ export default function CandidateRegistration() {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [activeAssessment, setActiveAssessment] = useState<any>(null);
+  const [isAssessmentExpired, setIsAssessmentExpired] = useState<boolean>(false);
 
   useEffect(() => {
-    async function fetchAssessments() {
+    async function loadAssessmentFromUrl() {
       try {
         const baseUrl = getApiBaseUrl();
-        const res = await fetch(`${baseUrl}/api/v1/assessments`);
+        const searchParams = new URLSearchParams(window.location.search);
+        const targetIdentifier = searchParams.get("assessment") || searchParams.get("assessmentId") || searchParams.get("id");
+
+        if (targetIdentifier) {
+          const res = await fetch(`${baseUrl}/api/v1/candidates/assessments/details/${targetIdentifier}`);
+          const data = await res.json();
+          if (data.success && data.assessment) {
+            setActiveAssessment(data.assessment);
+            setSelectedAssessmentId(data.assessment.id);
+            if (data.assessment.isExpired) {
+              setIsAssessmentExpired(true);
+              setError("This assessment session link is no longer active or has expired. Please contact your HR Administrator for a valid link.");
+            }
+            return;
+          }
+        }
+
+        // Fallback: load default active assessment list
+        const res = await fetch(`${baseUrl}/api/v1/candidates/assessments/list`);
         const data = await res.json();
         if (data.success && data.assessments && data.assessments.length > 0) {
           setAssessments(data.assessments);
-          setSelectedAssessmentId(data.assessments[0].id);
+          const firstActive = data.assessments.find((a: any) => a.status === "ACTIVE") || data.assessments[0];
+          setSelectedAssessmentId(firstActive.id);
+          setActiveAssessment(firstActive);
         }
       } catch (err) {
-        console.error("Failed to load assessments:", err);
+        console.error("Failed to load target assessment details:", err);
       }
     }
-    fetchAssessments();
+    loadAssessmentFromUrl();
   }, []);
 
   const handleStart = async (e: React.FormEvent) => {
@@ -246,7 +268,7 @@ export default function CandidateRegistration() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || isAssessmentExpired}
                 className="exam-submit-btn"
               >
                 {loading ? (
