@@ -39,16 +39,17 @@ export default function AdminCandidatesPage() {
   const loadAssessments = async () => {
     try {
       const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/v1/assessments`);
+      const res = await fetch(`${baseUrl}/api/v1/candidates/assessments/list`);
       const data = await res.json();
       if (data.success && Array.isArray(data.assessments)) {
-        setAssessments(data.assessments);
-        if (data.assessments.length > 0 && !candForm.assessmentId) {
-          setCandForm((p) => ({ ...p, assessmentId: data.assessments[0].id }));
+        const activeOnly = data.assessments.filter((a: any) => a.status === "ACTIVE");
+        setAssessments(activeOnly.length > 0 ? activeOnly : data.assessments);
+        if (activeOnly.length > 0 && !candForm.assessmentId) {
+          setCandForm((p) => ({ ...p, assessmentId: activeOnly[0].id }));
         }
       }
     } catch (err) {
-      console.error("Failed to load assessments:", err);
+      console.error("Failed to load active assessments:", err);
     }
   };
 
