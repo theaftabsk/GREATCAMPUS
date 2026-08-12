@@ -510,32 +510,33 @@ const armBancaQuestions30 = [
   },
 ];
 
-async function seed60Questions() {
-  console.log("🌱 Resetting Question Bank to 60 official Niva Bupa assessment questions (30 AUM + 30 ARM Banca)...");
+// 6 Assessment Sections — each covers exactly 10 questions (Q1-10, Q11-20, ..., Q51-60)
+const SECTIONS = [
+  { order: 1, name: "Communication & Customer Handling" },   // Q1–Q10
+  { order: 2, name: "Advanced English" },                    // Q11–Q20
+  { order: 3, name: "Mental Ability & Reasoning" },         // Q21–Q30
+  { order: 4, name: "Numerical & Mathematical Reasoning" }, // Q31–Q40
+  { order: 5, name: "Banking & Financial Awareness" },      // Q41–Q50
+  { order: 6, name: "Sales Orientation & Situational Judgement" }, // Q51–Q60
+];
 
-  // Step 1: Remove existing questions
+async function seed60Questions() {
+  console.log("🌱 Resetting Question Bank to 60 official Niva Bupa questions with 6-section mapping...");
+
+  // Step 1: Clear existing data
   await prisma.submission.deleteMany({});
   await prisma.attemptQuestion.deleteMany({});
   await prisma.question.deleteMany({});
 
-  // Step 2: Insert 30 AUM questions
-  for (const q of aumQuestions30) {
-    await prisma.question.create({
-      data: {
-        question: q.question,
-        optionA: q.optionA,
-        optionB: q.optionB,
-        optionC: q.optionC,
-        optionD: q.optionD,
-        correctAnswer: q.correctAnswer,
-        marks: 1.0,
-        status: "ACTIVE",
-      },
-    });
-  }
+  // Step 2: Combine all 60 questions in order (30 AUM + 30 ARM Banca)
+  const allQuestions = [...aumQuestions30, ...armBancaQuestions30];
 
-  // Step 3: Insert 30 ARM Banca questions
-  for (const q of armBancaQuestions30) {
+  // Step 3: Insert each question with section metadata based on sequential index
+  for (let i = 0; i < allQuestions.length; i++) {
+    const q = allQuestions[i];
+    const sectionIndex = Math.floor(i / 10); // 0-5 → section 1-6
+    const section = SECTIONS[sectionIndex];
+
     await prisma.question.create({
       data: {
         question: q.question,
@@ -546,12 +547,18 @@ async function seed60Questions() {
         correctAnswer: q.correctAnswer,
         marks: 1.0,
         status: "ACTIVE",
+        sectionName: section.name,
+        sectionOrder: section.order,
       },
     });
   }
 
   const count = await prisma.question.count();
-  console.log(`🎉 Successfully seeded EXACTLY ${count} active questions into the Question Bank!`);
+  console.log(`🎉 Successfully seeded EXACTLY ${count} active questions with 6-section mapping!`);
+  console.log("📊 Section breakdown:");
+  for (const s of SECTIONS) {
+    console.log(`   Section ${s.order}: ${s.name} — Q${(s.order - 1) * 10 + 1}–Q${s.order * 10}`);
+  }
 }
 
 seed60Questions()
@@ -562,3 +569,4 @@ seed60Questions()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

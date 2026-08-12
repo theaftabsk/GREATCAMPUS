@@ -32,7 +32,7 @@ export class HeadstartIntegrationController {
         orderBy: { createdAt: 'desc' },
       });
 
-      const candidatePortalUrl = process.env.CANDIDATE_PORTAL_URL || 'http://localhost:3001';
+      const candidatePortalUrl = process.env.CANDIDATE_PORTAL_URL || 'http://localhost:3002';
 
       const formatted = activeAssessments.map((a) => ({
         assessmentId: a.id,

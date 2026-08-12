@@ -414,11 +414,13 @@ export class CandidatesService {
 
     const percentage = totalPossibleScore > 0 ? Math.round((totalScore / totalPossibleScore) * 100) : 0;
     const isPassed = percentage >= attempt.passingPercentageSnapshot;
+    const submittedAt = new Date();
 
+    // ─── STEP 1: DB save FIRST (submittedAt + result must be persisted before webhooks) ───
     const updatedAttempt = await this.prisma.examAttempt.update({
       where: { id: attempt.id },
       data: {
-        submittedAt: new Date(),
+        submittedAt,
         status: 'COMPLETED',
         score: totalScore,
         totalPossibleScore,
@@ -432,10 +434,11 @@ export class CandidatesService {
       data: { status: 'COMPLETED' },
     });
 
-    // Fire Headstart OUT Webhooks
+    // ─── STEP 2: Fire Headstart OUT Webhooks AFTER DB is fully updated ─────────
+    // Order guaranteed: API 4 (COMPLETED) → API 5 (Result) → API 6 (Report Card)
     try {
-      await this.headstartWebhook.sendAssessmentStatus(attempt.id, 'Completed');
-      await this.headstartWebhook.sendAssessmentResultAndReportCard(attempt.id);
+      await this.headstartWebhook.sendAssessmentStatus(updatedAttempt.id, 'Completed');
+      await this.headstartWebhook.sendAssessmentResultAndReportCard(updatedAttempt.id);
     } catch (err) {
       this.logger.error(`Error firing post-submission webhooks: ${err.message}`);
     }

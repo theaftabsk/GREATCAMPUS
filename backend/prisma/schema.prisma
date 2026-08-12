@@ -52,7 +52,7 @@ model Assessment {
 }
 
 // Shared Question Bank — 60 fixed questions used across ALL assessments.
-// No subject/section hierarchy. Questions belong directly to this shared pool.
+// sectionName groups questions into 6 sections (Q1-10, Q11-20, ... Q51-60) for section-wise report cards.
 model Question {
   id               String            @id @default(uuid())
   question         String
@@ -63,6 +63,8 @@ model Question {
   correctAnswer    String            // "A", "B", "C", "D"
   marks            Float             @default(1.0)
   status           String            @default("ACTIVE")
+  sectionName      String            @default("General") // Section label for report card grouping
+  sectionOrder     Int               @default(0)         // 1-6 for ordering sections in report card
   attemptQuestions AttemptQuestion[]
   submissions      Submission[]
   createdAt        DateTime          @default(now())
