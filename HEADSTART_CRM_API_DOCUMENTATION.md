@@ -19,33 +19,49 @@ The **Assessment Tool** operates as an independent, high-performance proctored a
 
 ---
 
-## 2. Total API Summary Matrix
+## 2. API Responsibility Summary
 
-| # | API Name | Direction | Type | Method | Endpoint / Webhook URL |
-|---|----------|-----------|------|--------|------------------------|
-| **1** | Candidate Verification | Headstart → Us | `IN` | `GET` | `${HEADSTART_CRM_BASE_URL}/api/candidates/verify` |
-| **2** | Candidate Assignment Check | Headstart → Us | `IN` | `POST` | `${HEADSTART_CRM_BASE_URL}/api/candidates/check-assignment` |
-| **3** | Active Assessments | Us → Headstart | `OUT` | `GET` | `http://localhost:4000/api/v1/integration/headstart/assessments/active` |
-| **4** | Assessment Status Webhook | Us → Headstart | `OUT` | `POST Webhook` | `${HEADSTART_WEBHOOK_STATUS_URL}` |
-| **5** | Assessment Result Webhook | Us → Headstart | `OUT` | `POST Webhook` | `${HEADSTART_WEBHOOK_RESULT_URL}` |
-| **6** | Section Report Card Webhook | Us → Headstart | `OUT` | `POST Webhook` | `${HEADSTART_WEBHOOK_REPORT_URL}` |
+### 🅰️ PART A: APIs & Webhooks PROVIDED BY Assessment Tool (TO Headstart CRM)
+These are endpoints and webhooks **our Assessment Tool provides to Headstart CRM**:
+1. **API 3 (Active Assessments Endpoint)**: Headstart calls our REST endpoint to fetch active exams.
+2. **API 4 (Assessment Status Webhook)**: We push `Started` & `Completed` real-time events to Headstart.
+3. **API 5 (Assessment Result Webhook)**: We push total marks, percentage, and `Qualified/Not Qualified` status.
+4. **API 6 (Section Report Card Webhook)**: We push 6-section detailed subject-wise marks breakdown.
+
+### 🅱️ PART B: APIs CONSUMED FROM Headstart CRM (BY Assessment Tool)
+These are endpoints **Headstart CRM provides to our Assessment Tool**:
+1. **API 1 (Candidate Verification API)**: We call Headstart CRM to verify Application ID.
+2. **API 2 (Candidate Assignment Check API)**: We call Headstart CRM to verify if candidate is assigned.
 
 ---
 
-## 3. Required Environment Variables Setup
+## 3. Total API Summary Matrix
+
+| # | API Name | Ownership / Provided By | Direction | Type | Endpoint / Webhook URL |
+|---|----------|------------------------|-----------|------|------------------------|
+| **1** | Candidate Verification | **Headstart CRM** | IN | `GET` | `${HEADSTART_CRM_BASE_URL}/api/candidates/verify` |
+| **2** | Candidate Assignment Check | **Headstart CRM** | IN | `POST` | `${HEADSTART_CRM_BASE_URL}/api/candidates/check-assignment` |
+| **3** | Active Assessments | **Assessment Tool (Us)** | OUT | `GET` | `http://localhost:4000/api/v1/integration/headstart/assessments/active` |
+| **4** | Assessment Status Webhook | **Assessment Tool (Us)** | OUT | `POST Webhook` | `${HEADSTART_WEBHOOK_STATUS_URL}` |
+| **5** | Assessment Result Webhook | **Assessment Tool (Us)** | OUT | `POST Webhook` | `${HEADSTART_WEBHOOK_RESULT_URL}` |
+| **6** | Section Report Card Webhook | **Assessment Tool (Us)** | OUT | `POST Webhook` | `${HEADSTART_WEBHOOK_REPORT_URL}` |
+
+---
+
+## 4. Required Environment Variables Setup
 
 Configure the following variables in `backend/.env`:
 
 ```env
-# Port & Local Base URLs
+# Assessment Tool Local Engine URLs
 PORT=4000
 CANDIDATE_PORTAL_URL=http://localhost:3000
 
-# Headstart CRM Base URL & Authentication (Provided by Headstart Team)
+# Headstart CRM Base URL & Authentication (Headstart Team Provides)
 HEADSTART_CRM_BASE_URL=https://api.headstartcrm.com
 HEADSTART_CRM_API_KEY=your_headstart_api_key_here
 
-# Headstart Webhook Receiver Endpoints (Provided by Headstart Team)
+# Headstart Webhook Receiver Endpoints (Headstart Team Provides)
 HEADSTART_WEBHOOK_STATUS_URL=https://api.headstartcrm.com/webhooks/status
 HEADSTART_WEBHOOK_RESULT_URL=https://api.headstartcrm.com/webhooks/result
 HEADSTART_WEBHOOK_REPORT_URL=https://api.headstartcrm.com/webhooks/report-card
@@ -53,71 +69,22 @@ HEADSTART_WEBHOOK_REPORT_URL=https://api.headstartcrm.com/webhooks/report-card
 
 ---
 
-## 4. API Schemas & Technical Specification
-
-### API 1 · Candidate Details / Verification API `[IN]`
-- **Direction**: Headstart CRM → Assessment Tool
-- **Method**: `GET`
-- **Purpose**: Verifies candidate data against CRM using `applicationId` at exam form fill-up.
-
-#### Request (Sent by Us to CRM):
-```http
-GET /api/candidates/verify?applicationId=APP-882019 HTTP/1.1
-Host: api.headstartcrm.com
-Authorization: Bearer <HEADSTART_CRM_API_KEY>
-Content-Type: application/json
-```
-
-#### Response (Received from CRM):
-```json
-{
-  "success": true,
-  "crmCandidateId": "CRM-CAND-882019",
-  "applicationId": "APP-882019",
-  "name": "Amit Sharma",
-  "email": "amit.sharma@example.com",
-  "phone": "9876543210"
-}
-```
-
----
-
-### API 2 · Candidate Assessment Assignment API `[IN]`
-- **Direction**: Headstart CRM → Assessment Tool
-- **Method**: `POST`
-- **Purpose**: Checks whether a candidate (`applicationId`) is assigned to a specific assessment (`assessmentId`).
-
-#### Request (Sent by Us to CRM):
-```http
-POST /api/candidates/check-assignment HTTP/1.1
-Host: api.headstartcrm.com
-Authorization: Bearer <HEADSTART_CRM_API_KEY>
-Content-Type: application/json
-
-{
-  "applicationId": "APP-882019",
-  "assessmentId": "aa-2812"
-}
-```
-
-#### Response (Received from CRM):
-```json
-{
-  "success": true,
-  "assigned": true,
-  "message": "Candidate is assigned to this assessment."
-}
-```
-
----
+## 5. Technical Specifications — PART A: APIs Provided BY Assessment Tool (TO Headstart CRM)
 
 ### API 3 · Active Assessments API `[OUT]`
-- **Direction**: Assessment Tool → Headstart CRM
+- **Provided By**: Assessment Tool
+- **Consumed By**: Headstart CRM
 - **Method**: `GET`
 - **Endpoint**: `http://localhost:4000/api/v1/integration/headstart/assessments/active`
 - **Purpose**: Provides currently active assessment sessions for Headstart CRM candidate assignment.
 
-#### Response (Provided to CRM):
+#### Request (Sent by Headstart to Us):
+```http
+GET /api/v1/integration/headstart/assessments/active HTTP/1.1
+Host: localhost:4000
+```
+
+#### Response (Provided by Us to Headstart):
 ```json
 {
   "success": true,
@@ -143,11 +110,12 @@ Content-Type: application/json
 ---
 
 ### API 4 · Assessment Status Webhook `[OUT Webhook]`
-- **Direction**: Assessment Tool → Headstart CRM
+- **Provided By**: Assessment Tool
+- **Consumed By**: Headstart CRM
 - **Method**: `POST`
 - **Trigger**: Fired on exam session start (`Started`) and submission (`Completed`).
 
-#### Webhook Request Payload (Sent to Headstart):
+#### Webhook Request Payload (Sent by Us to Headstart):
 ```json
 {
   "candidateId": "CRM-CAND-882019",
@@ -161,11 +129,12 @@ Content-Type: application/json
 ---
 
 ### API 5 · Assessment Result Webhook `[OUT Webhook]`
-- **Direction**: Assessment Tool → Headstart CRM
+- **Provided By**: Assessment Tool
+- **Consumed By**: Headstart CRM
 - **Method**: `POST`
 - **Trigger**: Fired post-submission after database result persistence.
 
-#### Webhook Request Payload (Sent to Headstart):
+#### Webhook Request Payload (Sent by Us to Headstart):
 ```json
 {
   "candidateId": "CRM-CAND-882019",
@@ -184,11 +153,12 @@ Content-Type: application/json
 ---
 
 ### API 6 · Section-wise Report Card Webhook `[OUT Webhook]`
-- **Direction**: Assessment Tool → Headstart CRM
+- **Provided By**: Assessment Tool
+- **Consumed By**: Headstart CRM
 - **Method**: `POST`
 - **Trigger**: Fired post-submission alongside API 5.
 
-#### Webhook Request Payload (Sent to Headstart):
+#### Webhook Request Payload (Sent by Us to Headstart):
 ```json
 {
   "candidateId": "CRM-CAND-882019",
@@ -248,7 +218,66 @@ Content-Type: application/json
 
 ---
 
-## 5. Information Required From Headstart Technical Team
+## 6. Technical Specifications — PART B: APIs Consumed FROM Headstart CRM (BY Assessment Tool)
+
+### API 1 · Candidate Details / Verification API `[IN]`
+- **Provided By**: Headstart CRM
+- **Consumed By**: Assessment Tool
+- **Method**: `GET`
+- **Purpose**: Verifies candidate data against CRM using `applicationId` at exam form fill-up.
+
+#### Request (Sent by Us to Headstart):
+```http
+GET /api/candidates/verify?applicationId=APP-882019 HTTP/1.1
+Host: api.headstartcrm.com
+Authorization: Bearer <HEADSTART_CRM_API_KEY>
+```
+
+#### Response (Received from Headstart):
+```json
+{
+  "success": true,
+  "crmCandidateId": "CRM-CAND-882019",
+  "applicationId": "APP-882019",
+  "name": "Amit Sharma",
+  "email": "amit.sharma@example.com",
+  "phone": "9876543210"
+}
+```
+
+---
+
+### API 2 · Candidate Assessment Assignment API `[IN]`
+- **Provided By**: Headstart CRM
+- **Consumed By**: Assessment Tool
+- **Method**: `POST`
+- **Purpose**: Checks whether a candidate (`applicationId`) is assigned to a specific assessment (`assessmentId`).
+
+#### Request (Sent by Us to Headstart):
+```http
+POST /api/candidates/check-assignment HTTP/1.1
+Host: api.headstartcrm.com
+Authorization: Bearer <HEADSTART_CRM_API_KEY>
+Content-Type: application/json
+
+{
+  "applicationId": "APP-882019",
+  "assessmentId": "aa-2812"
+}
+```
+
+#### Response (Received from Headstart):
+```json
+{
+  "success": true,
+  "assigned": true,
+  "message": "Candidate is assigned to this assessment."
+}
+```
+
+---
+
+## 7. Information Required From Headstart Technical Team
 
 To transition to production live integration, the Headstart Technical Team must provide:
 1. `HEADSTART_CRM_BASE_URL`
