@@ -16,7 +16,8 @@ export class HeadstartIntegrationController {
     this.logger.log(`API 3 (OUT): Fetching Active Assessments for Headstart CRM.`);
 
     try {
-      const activeAssessments = await this.prisma.assessment.findMany({
+      const now = new Date();
+      const allAssessments = await this.prisma.assessment.findMany({
         where: {
           status: 'ACTIVE',
         },
@@ -27,23 +28,38 @@ export class HeadstartIntegrationController {
           description: true,
           durationMins: true,
           status: true,
+          activeFrom: true,
+          activeUntil: true,
           createdAt: true,
         },
         orderBy: { createdAt: 'desc' },
       });
 
-      const candidatePortalUrl = process.env.CANDIDATE_PORTAL_URL || 'http://localhost:3002';
+      // Filter assessments active within scheduled window (if set)
+      const activeAssessments = allAssessments.filter((a) => {
+        if (a.activeFrom && now < new Date(a.activeFrom)) return false;
+        if (a.activeUntil && now > new Date(a.activeUntil)) return false;
+        return true;
+      });
 
-      const formatted = activeAssessments.map((a) => ({
-        assessmentId: a.id,
-        assessmentName: a.name,
-        assessmentSlug: a.slug,
-        assessmentLink: `${candidatePortalUrl}/exam?assessmentId=${a.id}`,
-        duration: `${a.durationMins} Mins`,
-        durationMins: a.durationMins,
-        status: a.status,
-        createdAt: a.createdAt,
-      }));
+      const candidatePortalUrl = process.env.CANDIDATE_PORTAL_URL || 'http://localhost:3000';
+
+      const formatted = activeAssessments.map((a) => {
+        const slugOrId = a.slug || a.id;
+        return {
+          assessmentId: a.id,
+          assessmentName: a.name,
+          assessmentSlug: a.slug,
+          assessmentLink: `${candidatePortalUrl}/${slugOrId}`,
+          duration: `${a.durationMins || 45} Mins`,
+          durationMins: a.durationMins || 45,
+          totalQuestions: 60,
+          status: 'ACTIVE',
+          activeFrom: a.activeFrom,
+          activeUntil: a.activeUntil,
+          createdAt: a.createdAt,
+        };
+      });
 
       return {
         success: true,
