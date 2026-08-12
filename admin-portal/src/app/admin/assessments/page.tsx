@@ -315,13 +315,15 @@ export default function AdminAssessmentsPage() {
                         <button className="excel-act-btn excel-act-edit" onClick={() => openEdit(session)} title="Edit Session">
                           <Edit2 size={13} />
                         </button>
-                        <button
-                          className={`excel-act-btn ${session.status === "ACTIVE" ? "excel-act-deactivate" : "excel-act-activate"}`}
-                          onClick={() => handleToggleStatus(session)}
-                          title={session.status === "ACTIVE" ? "Deactivate" : "Activate"}
-                        >
-                          {session.status === "ACTIVE" ? <EyeOff size={13} /> : <Eye size={13} />}
-                        </button>
+                        {computedStatus !== "EXPIRED" && (
+                          <button
+                            className={`excel-act-btn ${session.status === "ACTIVE" ? "excel-act-deactivate" : "excel-act-activate"}`}
+                            onClick={() => handleToggleStatus(session)}
+                            title={session.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                          >
+                            {session.status === "ACTIVE" ? <EyeOff size={13} /> : <Eye size={13} />}
+                          </button>
+                        )}
                         <button className="excel-act-btn excel-act-delete" onClick={() => handleDelete(session.id)} title="Delete Session">
                           <Trash2 size={13} />
                         </button>
