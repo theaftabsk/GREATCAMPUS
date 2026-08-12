@@ -63,7 +63,6 @@ export default function AdminQuestionsPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  // Reset to page 1 whenever search changes
   const handleSearch = (val: string) => { setSearchTerm(val); setCurrentPage(1); };
 
   const openEdit = (q: Question) => {
@@ -82,7 +81,7 @@ export default function AdminQuestionsPage() {
   };
 
   const handleSave = async () => {
-    const { question, optionA, optionB, optionC, optionD, correctAnswer } = formData;
+    const { question, optionA, optionB, optionC, optionD } = formData;
     if (!question.trim() || !optionA.trim() || !optionB.trim() || !optionC.trim() || !optionD.trim()) {
       setFormError("All fields are required.");
       return;
@@ -107,8 +106,8 @@ export default function AdminQuestionsPage() {
     }
   };
 
-  const optionColor: Record<string, string> = {
-    A: "#6366f1", B: "#0ea5e9", C: "#f59e0b", D: "#10b981",
+  const optionBadgeBg: Record<string, string> = {
+    A: "#2563eb", B: "#0284c7", C: "#d97706", D: "#059669",
   };
 
   return (
@@ -116,45 +115,47 @@ export default function AdminQuestionsPage() {
       {/* Header */}
       <div className="qp-header">
         <div className="qp-header-left">
-          <div className="qp-header-icon"><BookOpen size={20} /></div>
+          <div className="qp-header-icon"><BookOpen size={22} /></div>
           <div>
-            <h1 className="qp-title">Question Bank</h1>
+            <h1 className="qp-title">Question Bank CMS</h1>
             <p className="qp-subtitle">
-              {questions.length} questions · All assessments share this fixed pool
+              {questions.length} Questions in fixed pool · High-contrast Clean White & Blue
             </p>
           </div>
         </div>
         <div className="qp-header-actions">
-          <button className="qp-refresh-btn" onClick={fetchQuestions} title="Refresh">
-            <RefreshCw size={14} />
+          <button className="qp-refresh-btn" onClick={fetchQuestions} title="Refresh Questions">
+            <RefreshCw size={15} /> Refresh Bank
           </button>
         </div>
       </div>
 
       {/* Search */}
       <div className="qp-search-wrap">
-        <Search size={15} className="qp-search-icon" />
+        <Search size={16} className="qp-search-icon" />
         <input
           className="qp-search"
-          placeholder="Search questions…"
+          placeholder="Search question text..."
           value={searchTerm}
           onChange={(e) => handleSearch(e.target.value)}
         />
         {searchTerm && (
           <button className="qp-search-clear" onClick={() => handleSearch("")}>
-            <X size={13} />
+            <X size={14} />
           </button>
         )}
       </div>
 
       {/* Question List */}
       {loading ? (
-        <div className="qp-loading">Loading questions…</div>
+        <div className="qp-loading">
+          <div className="qp-spinner"></div>
+          <p>Loading Question Bank...</p>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="qp-empty">
-          <BookOpen size={36} style={{ opacity: 0.3, display: "block", margin: "0 auto 12px" }} />
-          <p>{searchTerm ? "No questions match your search." : "No questions in the question bank yet."}</p>
-          {!searchTerm && null}
+          <BookOpen size={42} className="qp-empty-icon" />
+          <p>{searchTerm ? "No questions match your search query." : "No questions in the question bank yet."}</p>
         </div>
       ) : (
         <>
@@ -163,11 +164,11 @@ export default function AdminQuestionsPage() {
               <div key={q.id} className="qp-card">
                 <div className="qp-card-top">
                   <div className="qp-card-num">
-                    <Hash size={11} /> {questions.indexOf(q) + 1}
+                    <Hash size={12} /> Question {questions.indexOf(q) + 1}
                   </div>
                   <div className="qp-card-actions">
                     <button className="qp-btn-edit" onClick={() => openEdit(q)}>
-                      <Edit2 size={13} /> Edit
+                      <Edit2 size={14} /> Edit Question
                     </button>
                   </div>
                 </div>
@@ -175,19 +176,21 @@ export default function AdminQuestionsPage() {
                 <p className="qp-question-text">{q.question}</p>
 
                 <div className="qp-options">
-                  {(["A", "B", "C", "D"] as const).map((opt) => (
-                    <div
-                      key={opt}
-                      className={`qp-option ${q.correctAnswer === opt ? "qp-option--correct" : ""}`}
-                      style={q.correctAnswer === opt ? { borderColor: optionColor[opt] } : {}}
-                    >
-                      <span className="qp-opt-label" style={{ background: optionColor[opt] }}>{opt}</span>
-                      <span className="qp-opt-text">{q[`option${opt}` as keyof Question] as string}</span>
-                      {q.correctAnswer === opt && (
-                        <CheckCircle2 size={14} className="qp-correct-icon" style={{ color: optionColor[opt] }} />
-                      )}
-                    </div>
-                  ))}
+                  {(["A", "B", "C", "D"] as const).map((opt) => {
+                    const isCorrect = q.correctAnswer === opt;
+                    return (
+                      <div
+                        key={opt}
+                        className={`qp-option ${isCorrect ? "qp-option--correct" : ""}`}
+                      >
+                        <span className="qp-opt-label" style={{ background: optionBadgeBg[opt] }}>{opt}</span>
+                        <span className="qp-opt-text">{q[`option${opt}` as keyof Question] as string}</span>
+                        {isCorrect && (
+                          <CheckCircle2 size={16} className="qp-correct-icon" />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -201,25 +204,25 @@ export default function AdminQuestionsPage() {
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage((p) => p - 1)}
               >
-                ← Prev
+                Previous
               </button>
               <div className="qp-page-info">
                 Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong>
-                <span className="qp-page-count">({filtered.length} questions)</span>
+                <span className="qp-page-count">({filtered.length} total questions)</span>
               </div>
               <button
                 className="qp-page-btn"
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage((p) => p + 1)}
               >
-                Next →
+                Next
               </button>
             </div>
           )}
         </>
       )}
 
-      {/* ADD / EDIT MODAL */}
+      {/* EDIT MODAL */}
       {showModal && (
         <div
           className="qp-modal-overlay"
@@ -227,22 +230,22 @@ export default function AdminQuestionsPage() {
         >
           <div className="qp-modal">
             <div className="qp-modal-header">
-            <h2>Edit Question</h2>
+              <h2>Edit Question</h2>
               <button className="qp-modal-close" onClick={() => setShowModal(false)}>
-                <X size={17} />
+                <X size={18} />
               </button>
             </div>
 
             <div className="qp-modal-body">
               {formError && (
-                <div className="qp-form-error"><AlertCircle size={14} /> {formError}</div>
+                <div className="qp-form-error"><AlertCircle size={15} /> {formError}</div>
               )}
 
               <div className="qp-form-group">
-                <label>Question Text *</label>
+                <label>Question Statement *</label>
                 <textarea
                   rows={3}
-                  placeholder="Enter the question…"
+                  placeholder="Enter question text..."
                   value={formData.question}
                   onChange={(e) => setFormData({ ...formData, question: e.target.value })}
                   className="qp-form-input qp-form-textarea"
@@ -252,12 +255,12 @@ export default function AdminQuestionsPage() {
               {(["A", "B", "C", "D"] as const).map((opt) => (
                 <div key={opt} className="qp-form-group">
                   <label>
-                    <span className="qp-opt-label-sm" style={{ background: optionColor[opt] }}>{opt}</span>
+                    <span className="qp-opt-label-sm" style={{ background: optionBadgeBg[opt] }}>{opt}</span>
                     Option {opt} *
                   </label>
                   <input
                     type="text"
-                    placeholder={`Option ${opt}…`}
+                    placeholder={`Option ${opt}...`}
                     value={formData[`option${opt}` as keyof typeof formData] as string}
                     onChange={(e) => setFormData({ ...formData, [`option${opt}`]: e.target.value })}
                     className="qp-form-input"
@@ -271,12 +274,12 @@ export default function AdminQuestionsPage() {
                   <select
                     value={formData.correctAnswer}
                     onChange={(e) => setFormData({ ...formData, correctAnswer: e.target.value })}
-                    className="qp-form-input"
+                    className="qp-form-input font-bold text-blue-600"
                   >
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="C">C</option>
-                    <option value="D">D</option>
+                    <option value="A">Option A</option>
+                    <option value="B">Option B</option>
+                    <option value="C">Option C</option>
+                    <option value="D">Option D</option>
                   </select>
                 </div>
                 <div className="qp-form-group">
@@ -294,7 +297,7 @@ export default function AdminQuestionsPage() {
             <div className="qp-modal-footer">
               <button className="qp-modal-cancel" onClick={() => setShowModal(false)}>Cancel</button>
               <button className="qp-modal-save" onClick={handleSave} disabled={saving}>
-                {saving ? "Saving…" : "Save Changes"}
+                {saving ? "Saving Changes..." : "Save Question"}
               </button>
             </div>
           </div>
@@ -302,69 +305,81 @@ export default function AdminQuestionsPage() {
       )}
 
       <style>{`
-        .qp-page { padding: 24px; max-width: 900px; margin: 0 auto; }
-        .qp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+        .qp-page { padding: 28px; max-width: 960px; margin: 0 auto; background-color: #f8fafc; min-height: 100vh; }
+        
+        .qp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
         .qp-header-left { display: flex; align-items: center; gap: 14px; }
-        .qp-header-icon { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg,#6366f1,#818cf8); display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; }
-        .qp-title { font-size: 1.35rem; font-weight: 700; color: #e2e8f0; margin: 0; }
-        .qp-subtitle { font-size: 0.8rem; color: #64748b; margin: 2px 0 0; }
-        .qp-header-actions { display: flex; gap: 8px; align-items: center; }
-        .qp-refresh-btn { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; border-radius: 8px; padding: 8px; cursor: pointer; display: flex; align-items: center; }
-        .qp-add-btn { background: linear-gradient(135deg,#6366f1,#818cf8); border: none; color: #fff; border-radius: 10px; padding: 9px 16px; font-size: 0.86rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .qp-header-icon { width: 44px; height: 44px; border-radius: 12px; background: #2563eb; display: flex; align-items: center; justify-content: center; color: #ffffff; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
+        .qp-title { font-size: 1.4rem; font-weight: 800; color: #0f172a; margin: 0; tracking: -0.02em; }
+        .qp-subtitle { font-size: 0.84rem; color: #64748b; margin-top: 2px; font-weight: 500; }
+        .qp-header-actions { display: flex; gap: 10px; align-items: center; }
+        .qp-refresh-btn { background: #ffffff; border: 1px solid #cbd5e1; color: #334155; border-radius: 10px; padding: 9px 16px; font-size: 0.84rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .qp-refresh-btn:hover { background: #f1f5f9; border-color: #94a3b8; color: #0f172a; }
 
-        .qp-search-wrap { position: relative; margin-bottom: 20px; }
-        .qp-search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #64748b; }
-        .qp-search { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px 36px; color: #e2e8f0; font-size: 0.88rem; outline: none; box-sizing: border-box; }
-        .qp-search:focus { border-color: rgba(99,102,241,0.5); }
-        .qp-search-clear { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer; display: flex; align-items: center; padding: 2px; }
+        .qp-search-wrap { position: relative; margin-bottom: 24px; }
+        .qp-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #64748b; }
+        .qp-search { width: 100%; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 12px 14px 12px 42px; color: #0f172a; font-size: 0.9rem; font-weight: 500; outline: none; box-sizing: border-box; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: border-color 0.2s, box-shadow 0.2s; }
+        .qp-search:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
+        .qp-search-clear { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #64748b; cursor: pointer; display: flex; align-items: center; padding: 4px; border-radius: 6px; }
+        .qp-search-clear:hover { color: #0f172a; background: #e2e8f0; }
 
-        .qp-loading { text-align: center; padding: 60px; color: #64748b; font-size: 0.9rem; }
-        .qp-empty { text-align: center; padding: 60px 20px; color: #64748b; }
+        .qp-loading { text-align: center; padding: 60px; color: #64748b; font-size: 0.9rem; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .qp-spinner { width: 28px; height: 28px; border: 3px solid #2563eb; border-top-color: transparent; border-radius: 50%; animation: qpSpin 0.8s linear infinite; }
+        @keyframes qpSpin { to { transform: rotate(360deg); } }
 
-        .qp-list { display: flex; flex-direction: column; gap: 12px; }
+        .qp-empty { text-align: center; padding: 70px 20px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; color: #64748b; }
+        .qp-empty-icon { margin: 0 auto 12px; color: #94a3b8; }
 
-        .qp-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+        .qp-list { display: flex; flex-direction: column; gap: 16px; }
+
+        .qp-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: border-color 0.2s, box-shadow 0.2s; }
+        .qp-card:hover { border-color: #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .qp-card-top { display: flex; justify-content: space-between; align-items: center; }
-        .qp-card-num { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; font-weight: 700; color: #6366f1; background: rgba(99,102,241,0.1); border-radius: 6px; padding: 3px 8px; }
-        .qp-card-actions { display: flex; gap: 7px; }
-        .qp-btn-edit { display: flex; align-items: center; gap: 4px; font-size: 0.74rem; font-weight: 600; padding: 5px 10px; border-radius: 7px; border: 1px solid rgba(99,102,241,0.3); background: rgba(99,102,241,0.1); color: #818cf8; cursor: pointer; }
-        .qp-btn-delete { display: flex; align-items: center; gap: 4px; font-size: 0.74rem; font-weight: 600; padding: 5px 10px; border-radius: 7px; border: 1px solid rgba(239,68,68,0.3); background: rgba(239,68,68,0.1); color: #f87171; cursor: pointer; }
+        .qp-card-num { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 700; color: #1d4ed8; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 4px 10px; }
+        .qp-card-actions { display: flex; gap: 8px; }
+        .qp-btn-edit { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 700; padding: 6px 14px; border-radius: 8px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; cursor: pointer; transition: all 0.2s; }
+        .qp-btn-edit:hover { background: #dbeafe; border-color: #93c5fd; }
 
-        .qp-question-text { font-size: 0.9rem; color: #cbd5e1; line-height: 1.5; margin: 0; }
+        .qp-question-text { font-size: 0.95rem; font-weight: 700; color: #0f172a; line-height: 1.5; margin: 0; }
 
-        .qp-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .qp-option { display: flex; align-items: flex-start; gap: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 9px; padding: 8px 10px; position: relative; }
-        .qp-option--correct { background: rgba(99,102,241,0.06); }
-        .qp-opt-label { font-size: 0.7rem; font-weight: 700; color: #fff; border-radius: 5px; padding: 2px 6px; flex-shrink: 0; }
-        .qp-opt-text { font-size: 0.8rem; color: #94a3b8; line-height: 1.4; flex: 1; }
-        .qp-correct-icon { position: absolute; top: 8px; right: 8px; flex-shrink: 0; }
+        .qp-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .qp-option { display: flex; align-items: center; gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; position: relative; transition: border-color 0.2s; }
+        .qp-option--correct { background: #f0fdf4; border-color: #86efac; }
+        .qp-opt-label { font-size: 0.72rem; font-weight: 800; color: #ffffff; border-radius: 6px; padding: 2px 7px; flex-shrink: 0; }
+        .qp-opt-text { font-size: 0.85rem; color: #334155; font-weight: 600; line-height: 1.4; flex: 1; }
+        .qp-correct-icon { color: #16a34a; flex-shrink: 0; }
+
+        .qp-pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; padding: 16px 20px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+        .qp-page-btn { background: #ffffff; border: 1px solid #cbd5e1; color: #1e293b; border-radius: 9px; padding: 8px 18px; font-size: 0.84rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+        .qp-page-btn:hover:not(:disabled) { background: #eff6ff; border-color: #2563eb; color: #2563eb; }
+        .qp-page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .qp-page-info { font-size: 0.84rem; color: #64748b; font-weight: 500; }
+        .qp-page-info strong { color: #0f172a; font-weight: 700; }
+        .qp-page-count { margin-left: 6px; font-size: 0.78rem; color: #94a3b8; }
 
         /* Modal */
-        .qp-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; backdrop-filter: blur(4px); }
-        .qp-modal { background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 18px; width: 100%; max-width: 540px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; }
-        .qp-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-        .qp-modal-header h2 { font-size: 1.05rem; font-weight: 700; color: #e2e8f0; margin: 0; }
-        .qp-modal-close { background: none; border: none; color: #64748b; cursor: pointer; padding: 4px; border-radius: 6px; display: flex; align-items: center; }
-        .qp-modal-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 12px; }
-        .qp-form-group { display: flex; flex-direction: column; gap: 5px; }
-        .qp-form-group label { font-size: 0.78rem; font-weight: 600; color: #94a3b8; display: flex; align-items: center; gap: 6px; }
-        .qp-form-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 9px; padding: 9px 12px; color: #e2e8f0; font-size: 0.86rem; outline: none; transition: border-color 0.2s; width: 100%; box-sizing: border-box; }
-        .qp-form-input:focus { border-color: rgba(99,102,241,0.5); }
+        .qp-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; backdrop-filter: blur(4px); }
+        .qp-modal { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); }
+        .qp-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; }
+        .qp-modal-header h2 { font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 0; }
+        .qp-modal-close { background: #f1f5f9; border: none; color: #64748b; cursor: pointer; padding: 6px; border-radius: 8px; display: flex; align-items: center; }
+        .qp-modal-close:hover { color: #0f172a; background: #e2e8f0; }
+        .qp-modal-body { padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; }
+        .qp-form-group { display: flex; flex-direction: column; gap: 6px; }
+        .qp-form-group label { font-size: 0.8rem; font-weight: 700; color: #475569; display: flex; align-items: center; gap: 6px; }
+        .qp-form-input { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 14px; color: #0f172a; font-size: 0.88rem; font-weight: 500; outline: none; transition: border-color 0.2s, box-shadow 0.2s; width: 100%; box-sizing: border-box; }
+        .qp-form-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
         .qp-form-textarea { resize: vertical; font-family: inherit; }
-        .qp-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .qp-opt-label-sm { font-size: 0.67rem; font-weight: 700; color: #fff; border-radius: 4px; padding: 1px 5px; }
-        .qp-form-error { display: flex; align-items: center; gap: 7px; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; padding: 9px 12px; font-size: 0.8rem; color: #f87171; }
-        .qp-modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 22px; border-top: 1px solid rgba(255,255,255,0.08); }
-        .qp-modal-cancel { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; border-radius: 9px; padding: 8px 16px; font-size: 0.86rem; cursor: pointer; }
-        .qp-modal-save { background: linear-gradient(135deg,#6366f1,#818cf8); border: none; color: #fff; border-radius: 9px; padding: 8px 18px; font-size: 0.86rem; font-weight: 600; cursor: pointer; }
+        .qp-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .qp-opt-label-sm { font-size: 0.7rem; font-weight: 800; color: #ffffff; border-radius: 5px; padding: 1px 6px; }
+        .qp-form-error { display: flex; align-items: center; gap: 8px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 10px 14px; font-size: 0.82rem; color: #dc2626; font-weight: 600; }
+        .qp-modal-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 18px 24px; border-top: 1px solid #e2e8f0; background: #f8fafc; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
+        .qp-modal-cancel { background: #ffffff; border: 1px solid #cbd5e1; color: #475569; border-radius: 10px; padding: 9px 18px; font-size: 0.86rem; font-weight: 600; cursor: pointer; }
+        .qp-modal-save { background: #2563eb; border: none; color: #ffffff; border-radius: 10px; padding: 9px 22px; font-size: 0.86rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.3); }
+        .qp-modal-save:hover { background: #1d4ed8; }
         .qp-modal-save:disabled { opacity: 0.6; cursor: not-allowed; }
-        .qp-pagination { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 24px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.07); }
-        .qp-page-btn { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3); color: #818cf8; border-radius: 9px; padding: 8px 16px; font-size: 0.84rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-        .qp-page-btn:hover:not(:disabled) { background: rgba(99,102,241,0.2); }
-        .qp-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-        .qp-page-info { font-size: 0.84rem; color: #94a3b8; text-align: center; }
-        .qp-page-info strong { color: #e2e8f0; }
-        .qp-page-count { margin-left: 6px; font-size: 0.76rem; color: #475569; }
+        
+        @media (max-width: 600px) {
           .qp-options { grid-template-columns: 1fr; }
           .qp-form-row { grid-template-columns: 1fr; }
         }

@@ -347,7 +347,7 @@ export default function AdminCandidatesPage() {
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 font-bold text-slate-700 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                ← Previous
+                Previous
               </button>
               <div className="text-slate-600 font-semibold">
                 Page <strong className="text-slate-900">{currentPage}</strong> of <strong className="text-slate-900">{totalPages}</strong>
@@ -358,7 +358,7 @@ export default function AdminCandidatesPage() {
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 className="px-3 py-1.5 rounded-lg border border-slate-200 font-bold text-slate-700 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Next →
+                Next
               </button>
             </div>
           )}

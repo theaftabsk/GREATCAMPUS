@@ -2,18 +2,48 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { ShieldCheck, Menu, User } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { ShieldCheck, Menu, LayoutDashboard, BookOpen, UserCheck, FileText, Settings } from "lucide-react";
 
 interface NavbarProps {
   onMobileSidebarToggle?: () => void;
 }
 
+const pageTitles: Record<string, { title: string; subtitle: string }> = {
+  "/admin": {
+    title: "Dashboard Overview",
+    subtitle: "ARM Banca Assessment Platform",
+  },
+  "/admin/assessments": {
+    title: "Exams & Assessments",
+    subtitle: "Active Session & Link Generator",
+  },
+  "/admin/candidates": {
+    title: "Candidate Evaluation",
+    subtitle: "Candidate Results & Proctoring Audit",
+  },
+  "/admin/questions": {
+    title: "Question Bank CMS",
+    subtitle: "60 Fixed Questions Shared Pool",
+  },
+  "/admin/settings": {
+    title: "System Settings",
+    subtitle: "HR Administrator Account & Credentials",
+  },
+};
+
 export default function Navbar({ onMobileSidebarToggle }: NavbarProps) {
+  const pathname = usePathname();
+  const current = pageTitles[pathname] || {
+    title: "HR Admin Portal",
+    subtitle: "ARM Banca Assessment Platform",
+  };
+
   return (
     <header className="fixed top-0 left-0 right-0 h-16 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-2xs">
       <div className="w-full h-full px-4 sm:px-6 flex items-center justify-between">
         
-        {/* Niva Bupa Brand Logo & Portal Title */}
+        {/* Left: Brand Logo & Dynamic Active Page Title */}
         <div className="flex items-center space-x-3">
           {onMobileSidebarToggle && (
             <button
@@ -31,30 +61,36 @@ export default function Navbar({ onMobileSidebarToggle }: NavbarProps) {
               width={210}
               height={191}
               style={{
-                height: "42px",
+                height: "40px",
                 width: "auto",
                 borderRadius: "8px",
-                boxShadow: "0 2px 8px rgba(0, 160, 230, 0.2)",
+                boxShadow: "0 2px 8px rgba(0, 160, 230, 0.18)",
                 objectFit: "contain"
               }}
               priority
             />
           </Link>
           
-          <span className="hidden sm:inline-block text-[11px] font-extrabold uppercase text-slate-500 border-l border-slate-200 pl-3 tracking-wider">
-            ARM Banca HR Admin Portal
-          </span>
+          <div className="hidden sm:flex flex-col border-l border-slate-200 pl-3">
+            <span className="text-xs font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+              {current.title}
+            </span>
+            <span className="text-[10px] font-semibold text-slate-500">
+              {current.subtitle}
+            </span>
+          </div>
         </div>
 
         {/* Right Status & Profile Pill */}
         <div className="flex items-center space-x-3">
-          <div className="hidden md:flex items-center space-x-2 bg-blue-50 text-blue-800 px-3.5 py-1.5 rounded-full border border-blue-200 text-xs font-extrabold shadow-2xs">
+          <div className="hidden md:flex items-center space-x-2 bg-blue-50 text-blue-800 px-3.5 py-1.5 rounded-full border border-blue-200 text-xs font-black shadow-2xs">
             <ShieldCheck className="w-4 h-4 text-blue-600" />
             <span>HR Admin Portal</span>
           </div>
 
           <div className="flex items-center space-x-2 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700">
-            <div className="w-6 h-6 rounded-lg bg-blue-600 text-white font-extrabold flex items-center justify-center text-[10px]">
+            <div className="w-6 h-6 rounded-lg bg-blue-600 text-white font-black flex items-center justify-center text-[10px]">
               HR
             </div>
             <span className="hidden sm:inline">System Admin</span>

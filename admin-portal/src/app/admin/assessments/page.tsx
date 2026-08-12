@@ -39,11 +39,11 @@ function getComputedStatus(session: AssessmentSession): "ACTIVE" | "UPCOMING" | 
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
-    ACTIVE:   { label: "● Active",   cls: "status-active" },
-    UPCOMING: { label: "◔ Upcoming", cls: "status-upcoming" },
-    EXPIRED:  { label: "✕ Expired",  cls: "status-expired" },
-    INACTIVE: { label: "○ Inactive", cls: "status-inactive" },
-    DRAFT:    { label: "✎ Draft",    cls: "status-draft" },
+    ACTIVE:   { label: "Active",   cls: "status-active" },
+    UPCOMING: { label: "Upcoming", cls: "status-upcoming" },
+    EXPIRED:  { label: "Expired",  cls: "status-expired" },
+    INACTIVE: { label: "Inactive", cls: "status-inactive" },
+    DRAFT:    { label: "Draft",    cls: "status-draft" },
   };
   const s = map[status] || map["INACTIVE"];
   return <span className={`session-status-badge ${s.cls}`}>{s.label}</span>;
@@ -57,7 +57,7 @@ function formatDatetimeLocal(iso?: string) {
 }
 
 function formatDisplay(iso?: string | null) {
-  if (!iso) return "—";
+  if (!iso) return "Not set";
   return new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
 }
 
