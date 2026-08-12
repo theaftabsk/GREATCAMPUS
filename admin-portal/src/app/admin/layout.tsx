@@ -64,11 +64,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       icon: FileText,
     },
     {
-      href: "/admin/candidates",
-      label: "Candidate Evaluation",
-      icon: UserCheck,
-    },
-    {
       href: "/admin/questions",
       label: "Question Bank CMS",
       icon: BookOpen,

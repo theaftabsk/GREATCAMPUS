@@ -14,7 +14,6 @@ interface NavbarProps {
 const pageTitles: Record<string, string> = {
   "/admin": "Dashboard Overview",
   "/admin/assessments": "Exams & Assessments",
-  "/admin/candidates": "Candidate Evaluation",
   "/admin/questions": "Question Bank CMS",
   "/admin/settings": "System Settings",
 };
