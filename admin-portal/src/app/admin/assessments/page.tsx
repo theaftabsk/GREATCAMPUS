@@ -362,20 +362,6 @@ export default function AdminAssessmentsPage() {
                 </div>
               </div>
 
-              <div className="assess-form-group">
-                <label><Clock size={13} /> Exam Duration (Minutes)</label>
-                <input
-                  type="number"
-                  min={5}
-                  max={300}
-                  value={form.durationMins}
-                  onChange={(e) => setForm({ ...form, durationMins: Number(e.target.value) })}
-                  className="assess-form-input"
-                  placeholder="45"
-                />
-                <span className="assess-form-hint">Countdown timer given to candidates once started</span>
-              </div>
-
               <div className="assess-form-row">
                 <div className="assess-form-group">
                   <label>Passing Percentage (%)</label>
@@ -502,24 +488,25 @@ export default function AdminAssessmentsPage() {
         .assess-action-btn--delete:hover { background: #fecaca; }
 
         /* Modal */
-        .assess-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; backdrop-filter: blur(4px); }
-        .assess-modal { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; width: 100%; max-width: 580px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); }
-        .assess-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; }
-        .assess-modal-header h2 { font-size: 1.15rem; font-weight: 800; color: #0f172a; margin: 0; }
-        .assess-modal-close { background: #f1f5f9; border: none; color: #64748b; cursor: pointer; padding: 6px; border-radius: 8px; display: flex; align-items: center; }
+        .assess-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; backdrop-filter: blur(4px); }
+        .assess-modal { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; width: 100%; max-width: 540px; max-height: 92vh; overflow-y: auto; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); }
+        .assess-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #e2e8f0; }
+        .assess-modal-header h2 { font-size: 1.1rem; font-weight: 800; color: #0f172a; margin: 0; }
+        .assess-modal-close { background: #f1f5f9; border: none; color: #64748b; cursor: pointer; padding: 5px; border-radius: 8px; display: flex; align-items: center; }
         .assess-modal-close:hover { color: #0f172a; background: #e2e8f0; }
-        .assess-modal-fixed-info { display: flex; align-items: center; gap: 8px; padding: 12px 24px; background: #eff6ff; border-bottom: 1px solid #bfdbfe; font-size: 0.82rem; color: #1d4ed8; font-weight: 600; }
-        .assess-modal-body { padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; }
-        .assess-form-group { display: flex; flex-direction: column; gap: 6px; }
-        .assess-form-group label { font-size: 0.8rem; font-weight: 700; color: #475569; display: flex; align-items: center; gap: 6px; }
-        .assess-form-input { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 14px; color: #0f172a; font-size: 0.88rem; font-weight: 500; outline: none; transition: border-color 0.2s, box-shadow 0.2s; width: 100%; box-sizing: border-box; }
+        .assess-modal-fixed-info { display: flex; align-items: center; gap: 8px; padding: 10px 20px; background: #eff6ff; border-bottom: 1px solid #bfdbfe; font-size: 0.8rem; color: #1d4ed8; font-weight: 600; }
+        .assess-modal-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+        .assess-form-group { display: flex; flex-direction: column; gap: 4px; }
+        .assess-form-group label { font-size: 0.78rem; font-weight: 700; color: #475569; display: flex; align-items: center; gap: 5px; }
+        .assess-form-input { background: #ffffff; border: 1px solid #cbd5e1; border-radius: 9px; padding: 8px 12px; color: #0f172a; font-size: 0.85rem; font-weight: 500; outline: none; transition: border-color 0.2s, box-shadow 0.2s; width: 100%; box-sizing: border-box; }
         .assess-form-input:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
-        .assess-form-hint { font-size: 0.74rem; color: #64748b; font-weight: 500; }
-        .assess-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-        .assess-form-error { display: flex; align-items: center; gap: 8px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 10px 14px; font-size: 0.82rem; color: #dc2626; font-weight: 600; }
-        .assess-modal-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 18px 24px; border-top: 1px solid #e2e8f0; background: #f8fafc; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
-        .assess-modal-cancel { background: #ffffff; border: 1px solid #cbd5e1; color: #475569; border-radius: 10px; padding: 9px 18px; font-size: 0.86rem; font-weight: 600; cursor: pointer; }
-        .assess-modal-save { background: #2563eb; border: none; color: #ffffff; border-radius: 10px; padding: 9px 22px; font-size: 0.86rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.3); }
+        .assess-form-hint { font-size: 0.72rem; color: #64748b; font-weight: 500; }
+        .assess-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .assess-form-row--3 { grid-template-columns: 1fr 1fr 1fr; }
+        .assess-form-error { display: flex; align-items: center; gap: 8px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 9px 12px; font-size: 0.8rem; color: #dc2626; font-weight: 600; }
+        .assess-modal-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 14px 20px; border-top: 1px solid #e2e8f0; background: #f8fafc; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
+        .assess-modal-cancel { background: #ffffff; border: 1px solid #cbd5e1; color: #475569; border-radius: 9px; padding: 8px 16px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+        .assess-modal-save { background: #2563eb; border: none; color: #ffffff; border-radius: 9px; padding: 8px 20px; font-size: 0.85rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 6px rgba(37,99,235,0.3); }
         .assess-modal-save:hover { background: #1d4ed8; }
         .assess-modal-save:disabled { opacity: 0.6; cursor: not-allowed; }
         
