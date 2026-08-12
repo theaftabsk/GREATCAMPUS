@@ -646,26 +646,28 @@ export class CandidatesService {
       where: {
         OR: [{ id: identifier }, { slug: identifier }],
       },
-      include: {
-        subjects: {
-          include: {
-            sections: {
-              include: {
-                questions: { where: { status: 'ACTIVE' } },
-              },
-            },
-          },
-        },
-      },
     });
 
     if (!assessment) {
-      throw new NotFoundException(`Assessment '${identifier}' not found.`);
+      throw new NotFoundException(`Assessment session '${identifier}' not found.`);
+    }
+
+    // Check if session link has expired
+    let isExpired = assessment.status === 'EXPIRED' || assessment.status === 'INACTIVE';
+    if (assessment.activeUntil && new Date() > new Date(assessment.activeUntil)) {
+      isExpired = true;
+      if (assessment.status !== 'EXPIRED') {
+        await this.prisma.assessment.update({
+          where: { id: assessment.id },
+          data: { status: 'EXPIRED' },
+        });
+      }
     }
 
     const frontendBaseUrl = process.env.FRONTEND_CANDIDATE_URL || 'https://greatcampus-1.onrender.com';
     return {
       ...assessment,
+      isExpired,
       uniqueCandidateLink: `${frontendBaseUrl}/exam?assessment=${assessment.slug || assessment.id}`,
     };
   }
@@ -676,6 +678,7 @@ export class CandidatesService {
     slug?: string;
     description?: string;
     durationMins?: number;
+    activeHours?: number;
     passingPercentage?: number;
     maxProctorWarnings?: number;
     status?: string;
@@ -684,6 +687,9 @@ export class CandidatesService {
     if (!tenant) throw new NotFoundException('Default tenant not found.');
 
     const slug = data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const activeUntil = data.activeHours && data.activeHours > 0
+      ? new Date(Date.now() + data.activeHours * 3600 * 1000)
+      : null;
 
     if (data.id) {
       return this.prisma.assessment.update({
@@ -692,10 +698,11 @@ export class CandidatesService {
           name: data.name,
           slug,
           description: data.description,
-          durationMins: data.durationMins || 45,
+          durationMins: 45, // Fixed 45 mins exam duration
           passingPercentage: data.passingPercentage || 50.0,
           maxProctorWarnings: data.maxProctorWarnings || 3,
           status: data.status || 'ACTIVE',
+          ...(activeUntil && { activeUntil }),
         },
       });
     }
@@ -705,11 +712,12 @@ export class CandidatesService {
         tenantId: tenant.id,
         name: data.name,
         slug,
-        description: data.description || 'Custom HR Recruitment Assessment',
-        durationMins: data.durationMins || 45,
+        description: data.description || 'Niva Bupa Health Insurance Assessment Session',
+        durationMins: 45, // Fixed 45 mins exam duration
         passingPercentage: data.passingPercentage || 50.0,
         maxProctorWarnings: data.maxProctorWarnings || 3,
         status: data.status || 'ACTIVE',
+        activeUntil,
       },
     });
   }
