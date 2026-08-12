@@ -620,4 +620,102 @@ export class CandidatesService {
   async deleteCandidate(id: string) {
     return this.prisma.candidate.delete({ where: { id } });
   }
+
+  // --- ASSESSMENT MANAGEMENT & UNIQUE LINKS ---
+  async getAllAssessments() {
+    const assessments = await this.prisma.assessment.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: {
+          select: { candidates: true },
+        },
+      },
+    });
+
+    const frontendBaseUrl = process.env.FRONTEND_CANDIDATE_URL || 'https://greatcampus-1.onrender.com';
+
+    return assessments.map((ass) => ({
+      ...ass,
+      totalCandidates: ass._count.candidates,
+      uniqueCandidateLink: `${frontendBaseUrl}/exam?assessment=${ass.slug || ass.id}`,
+    }));
+  }
+
+  async getAssessmentByIdentifier(identifier: string) {
+    const assessment = await this.prisma.assessment.findFirst({
+      where: {
+        OR: [{ id: identifier }, { slug: identifier }],
+      },
+      include: {
+        subjects: {
+          include: {
+            sections: {
+              include: {
+                questions: { where: { status: 'ACTIVE' } },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!assessment) {
+      throw new NotFoundException(`Assessment '${identifier}' not found.`);
+    }
+
+    const frontendBaseUrl = process.env.FRONTEND_CANDIDATE_URL || 'https://greatcampus-1.onrender.com';
+    return {
+      ...assessment,
+      uniqueCandidateLink: `${frontendBaseUrl}/exam?assessment=${assessment.slug || assessment.id}`,
+    };
+  }
+
+  async createOrUpdateAssessment(data: {
+    id?: string;
+    name: string;
+    slug?: string;
+    description?: string;
+    durationMins?: number;
+    passingPercentage?: number;
+    maxProctorWarnings?: number;
+    status?: string;
+  }) {
+    const tenant = await this.prisma.tenant.findFirst();
+    if (!tenant) throw new NotFoundException('Default tenant not found.');
+
+    const slug = data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+
+    if (data.id) {
+      return this.prisma.assessment.update({
+        where: { id: data.id },
+        data: {
+          name: data.name,
+          slug,
+          description: data.description,
+          durationMins: data.durationMins || 45,
+          passingPercentage: data.passingPercentage || 50.0,
+          maxProctorWarnings: data.maxProctorWarnings || 3,
+          status: data.status || 'ACTIVE',
+        },
+      });
+    }
+
+    return this.prisma.assessment.create({
+      data: {
+        tenantId: tenant.id,
+        name: data.name,
+        slug,
+        description: data.description || 'Custom HR Recruitment Assessment',
+        durationMins: data.durationMins || 45,
+        passingPercentage: data.passingPercentage || 50.0,
+        maxProctorWarnings: data.maxProctorWarnings || 3,
+        status: data.status || 'ACTIVE',
+      },
+    });
+  }
+
+  async deleteAssessment(id: string) {
+    return this.prisma.assessment.delete({ where: { id } });
+  }
 }
+

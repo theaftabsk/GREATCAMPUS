@@ -84,4 +84,42 @@ export class CandidatesController {
     await this.candidatesService.deleteCandidate(id);
     return { success: true, message: 'Candidate deleted' };
   }
+
+  // --- ASSESSMENT MANAGEMENT ROUTES ---
+  @Get('assessments/list')
+  async getAllAssessments() {
+    const assessments = await this.candidatesService.getAllAssessments();
+    return { success: true, assessments };
+  }
+
+  @Get('assessments/details/:identifier')
+  async getAssessmentByIdentifier(@Param('identifier') identifier: string) {
+    const assessment = await this.candidatesService.getAssessmentByIdentifier(identifier);
+    return { success: true, assessment };
+  }
+
+  @Post('assessments/save')
+  async createOrUpdateAssessment(
+    @Body()
+    body: {
+      id?: string;
+      name: string;
+      slug?: string;
+      description?: string;
+      durationMins?: number;
+      passingPercentage?: number;
+      maxProctorWarnings?: number;
+      status?: string;
+    }
+  ) {
+    const assessment = await this.candidatesService.createOrUpdateAssessment(body);
+    return { success: true, assessment };
+  }
+
+  @Delete('assessments/:id')
+  async deleteAssessment(@Param('id') id: string) {
+    await this.candidatesService.deleteAssessment(id);
+    return { success: true, message: 'Assessment deleted successfully' };
+  }
 }
+
