@@ -305,9 +305,9 @@ export default function AdminQuestionsPage() {
       )}
 
       <style>{`
-        .qp-page { padding: 28px; max-width: 960px; margin: 0 auto; background-color: #f8fafc; min-height: 100vh; }
+        .qp-page { padding: 28px 36px; width: 100%; max-width: 100%; margin: 0; background-color: #f8fafc; min-height: calc(100vh - 64px); box-sizing: border-box; }
         
-        .qp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+        .qp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; width: 100%; }
         .qp-header-left { display: flex; align-items: center; gap: 14px; }
         .qp-header-icon { width: 44px; height: 44px; border-radius: 12px; background: #2563eb; display: flex; align-items: center; justify-content: center; color: #ffffff; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
         .qp-title { font-size: 1.4rem; font-weight: 800; color: #0f172a; margin: 0; tracking: -0.02em; }
@@ -316,7 +316,7 @@ export default function AdminQuestionsPage() {
         .qp-refresh-btn { background: #ffffff; border: 1px solid #cbd5e1; color: #334155; border-radius: 10px; padding: 9px 16px; font-size: 0.84rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
         .qp-refresh-btn:hover { background: #f1f5f9; border-color: #94a3b8; color: #0f172a; }
 
-        .qp-search-wrap { position: relative; margin-bottom: 24px; }
+        .qp-search-wrap { position: relative; margin-bottom: 24px; width: 100%; }
         .qp-search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #64748b; }
         .qp-search { width: 100%; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 12px 14px 12px 42px; color: #0f172a; font-size: 0.9rem; font-weight: 500; outline: none; box-sizing: border-box; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: border-color 0.2s, box-shadow 0.2s; }
         .qp-search:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.15); }
