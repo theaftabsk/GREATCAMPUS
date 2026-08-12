@@ -5,6 +5,47 @@ import { CandidatesService } from './candidates.service';
 export class CandidatesController {
   constructor(private readonly candidatesService: CandidatesService) {}
 
+  // --- ASSESSMENT SESSION ROUTES (MUST COME BEFORE :id DYNAMIC ROUTES) ---
+  @Get('assessments/list')
+  async getAllAssessments() {
+    const assessments = await this.candidatesService.getAllAssessments();
+    return { success: true, assessments };
+  }
+
+  @Get('assessments/details/:identifier')
+  async getAssessmentByIdentifier(@Param('identifier') identifier: string) {
+    const assessment = await this.candidatesService.getAssessmentByIdentifier(identifier);
+    return { success: true, assessment };
+  }
+
+  @Post('assessments/save')
+  async createOrUpdateAssessment(
+    @Body()
+    body: {
+      id?: string;
+      name: string;
+      slug?: string;
+      description?: string;
+      durationMins?: number;
+      activeFrom?: string;
+      activeUntil?: string;
+      activeHours?: number;
+      passingPercentage?: number;
+      maxProctorWarnings?: number;
+      status?: string;
+    }
+  ) {
+    const assessment = await this.candidatesService.createOrUpdateAssessment(body);
+    return { success: true, assessment };
+  }
+
+  @Delete('assessments/:id')
+  async deleteAssessment(@Param('id') id: string) {
+    await this.candidatesService.deleteAssessment(id);
+    return { success: true, message: 'Assessment deleted successfully' };
+  }
+
+  // --- CANDIDATE ROUTES ---
   @Get()
   async getCandidates(@Query('assessmentId') assessmentId?: string) {
     const candidates = await this.candidatesService.getCandidates(assessmentId);
@@ -84,44 +125,4 @@ export class CandidatesController {
     await this.candidatesService.deleteCandidate(id);
     return { success: true, message: 'Candidate deleted' };
   }
-
-  // --- ASSESSMENT MANAGEMENT ROUTES ---
-  @Get('assessments/list')
-  async getAllAssessments() {
-    const assessments = await this.candidatesService.getAllAssessments();
-    return { success: true, assessments };
-  }
-
-  @Get('assessments/details/:identifier')
-  async getAssessmentByIdentifier(@Param('identifier') identifier: string) {
-    const assessment = await this.candidatesService.getAssessmentByIdentifier(identifier);
-    return { success: true, assessment };
-  }
-
-  @Post('assessments/save')
-  async createOrUpdateAssessment(
-    @Body()
-    body: {
-      id?: string;
-      name: string;
-      slug?: string;
-      description?: string;
-      activeFrom?: string;          // ISO datetime — when link becomes accessible
-      activeUntil?: string;         // ISO datetime — when link expires
-      activeHours?: number;         // Convenience: activeUntil = now + N hours
-      passingPercentage?: number;
-      maxProctorWarnings?: number;
-      status?: string;
-    }
-  ) {
-    const assessment = await this.candidatesService.createOrUpdateAssessment(body);
-    return { success: true, assessment };
-  }
-
-  @Delete('assessments/:id')
-  async deleteAssessment(@Param('id') id: string) {
-    await this.candidatesService.deleteAssessment(id);
-    return { success: true, message: 'Assessment deleted successfully' };
-  }
 }
-

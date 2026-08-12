@@ -17,12 +17,15 @@ export class AssessmentsController {
     return { success: true, assessment: data };
   }
 
-  @Post()
-  async createAssessment(
+  @Post('save')
+  async saveAssessment(
     @Body()
     body: {
+      id?: string;
       name: string;
+      slug?: string;
       description?: string;
+      durationMins?: number;
       activeFrom?: string;
       activeUntil?: string;
       passingPercentage?: number;
@@ -30,7 +33,27 @@ export class AssessmentsController {
       status?: string;
     }
   ) {
-    const assessment = await this.assessmentsService.createAssessment(body);
+    const assessment = await this.assessmentsService.saveAssessment(body);
+    return { success: true, assessment };
+  }
+
+  @Post()
+  async createAssessment(
+    @Body()
+    body: {
+      id?: string;
+      name: string;
+      slug?: string;
+      description?: string;
+      durationMins?: number;
+      activeFrom?: string;
+      activeUntil?: string;
+      passingPercentage?: number;
+      maxProctorWarnings?: number;
+      status?: string;
+    }
+  ) {
+    const assessment = await this.assessmentsService.saveAssessment(body);
     return { success: true, assessment };
   }
 
@@ -41,6 +64,7 @@ export class AssessmentsController {
     body: {
       name?: string;
       description?: string;
+      durationMins?: number;
       activeFrom?: string;
       activeUntil?: string;
       passingPercentage?: number;
@@ -48,7 +72,7 @@ export class AssessmentsController {
       status?: string;
     }
   ) {
-    const assessment = await this.assessmentsService.updateAssessment(id, body);
+    const assessment = await this.assessmentsService.saveAssessment({ id, ...body, name: body.name || 'Assessment' });
     return { success: true, assessment };
   }
 

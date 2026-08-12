@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
-// Fixed constants — cannot be changed by Admin
 const EXAM_DURATION_MINS = 45;
 const TOTAL_QUESTIONS = 60;
 
@@ -49,7 +48,7 @@ export class AssessmentsService {
         maxProctorWarnings: ass.maxProctorWarnings,
         createdAt: ass.createdAt,
         totalCandidates: ass._count.candidates,
-        durationMins: EXAM_DURATION_MINS,
+        durationMins: ass.durationMins || EXAM_DURATION_MINS,
         totalQuestions: TOTAL_QUESTIONS,
         uniqueCandidateLink: `${frontendBaseUrl}/exam?assessment=${ass.slug || ass.id}`,
       };
@@ -68,21 +67,22 @@ export class AssessmentsService {
       throw new NotFoundException(`Assessment not found`);
     }
 
-    const questionCount = await this.prisma.question.count({ where: { status: 'ACTIVE' } });
     const frontendBaseUrl = process.env.FRONTEND_CANDIDATE_URL || 'https://greatcampus-1.onrender.com';
 
     return {
       ...assessment,
-      durationMins: EXAM_DURATION_MINS,
+      durationMins: assessment.durationMins || EXAM_DURATION_MINS,
       totalQuestions: TOTAL_QUESTIONS,
-      activeQuestions: questionCount,
       uniqueCandidateLink: `${frontendBaseUrl}/exam?assessment=${assessment.slug || assessment.id}`,
     };
   }
 
-  async createAssessment(data: {
+  async saveAssessment(data: {
+    id?: string;
     name: string;
+    slug?: string;
     description?: string;
+    durationMins?: number;
     activeFrom?: string;
     activeUntil?: string;
     passingPercentage?: number;
@@ -90,45 +90,31 @@ export class AssessmentsService {
     status?: string;
   }) {
     const tenant = await this.getOrCreateTenant();
-    const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + '-' + Date.now().toString().slice(-4);
+    const slug = data.slug || (data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + '-' + Date.now().toString().slice(-4));
+
+    const payload: any = {
+      name: data.name,
+      slug,
+      description: data.description || '',
+      durationMins: data.durationMins ? Number(data.durationMins) : 45,
+      passingPercentage: data.passingPercentage !== undefined ? Number(data.passingPercentage) : 50,
+      maxProctorWarnings: data.maxProctorWarnings !== undefined ? Number(data.maxProctorWarnings) : 3,
+      status: data.status || 'ACTIVE',
+      ...(data.activeFrom !== undefined && { activeFrom: data.activeFrom ? new Date(data.activeFrom) : null }),
+      ...(data.activeUntil !== undefined && { activeUntil: data.activeUntil ? new Date(data.activeUntil) : null }),
+    };
+
+    if (data.id) {
+      return this.prisma.assessment.update({
+        where: { id: data.id },
+        data: payload,
+      });
+    }
 
     return this.prisma.assessment.create({
       data: {
         tenantId: tenant.id,
-        name: data.name,
-        slug,
-        description: data.description || '',
-        passingPercentage: data.passingPercentage ?? 50,
-        maxProctorWarnings: data.maxProctorWarnings ?? 3,
-        status: data.status || 'ACTIVE',
-        activeFrom: data.activeFrom ? new Date(data.activeFrom) : null,
-        activeUntil: data.activeUntil ? new Date(data.activeUntil) : null,
-      },
-    });
-  }
-
-  async updateAssessment(
-    id: string,
-    data: {
-      name?: string;
-      description?: string;
-      activeFrom?: string;
-      activeUntil?: string;
-      passingPercentage?: number;
-      maxProctorWarnings?: number;
-      status?: string;
-    }
-  ) {
-    return this.prisma.assessment.update({
-      where: { id },
-      data: {
-        ...(data.name !== undefined && { name: data.name }),
-        ...(data.description !== undefined && { description: data.description }),
-        ...(data.passingPercentage !== undefined && { passingPercentage: data.passingPercentage }),
-        ...(data.maxProctorWarnings !== undefined && { maxProctorWarnings: data.maxProctorWarnings }),
-        ...(data.status !== undefined && { status: data.status }),
-        ...(data.activeFrom !== undefined && { activeFrom: data.activeFrom ? new Date(data.activeFrom) : null }),
-        ...(data.activeUntil !== undefined && { activeUntil: data.activeUntil ? new Date(data.activeUntil) : null }),
+        ...payload,
       },
     });
   }

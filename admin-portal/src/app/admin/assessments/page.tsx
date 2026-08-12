@@ -89,7 +89,7 @@ export default function AdminAssessmentsPage() {
   const loadSessions = useCallback(async () => {
     setLoading(true);
     try {
-      const res  = await fetch(`${getApiBaseUrl()}/api/v1/candidates/assessments/list`);
+      const res  = await fetch(`${getApiBaseUrl()}/api/v1/assessments`);
       const data = await res.json();
       if (data.success) setSessions(data.assessments || []);
     } catch { /* silent */ } finally { setLoading(false); }
@@ -143,7 +143,7 @@ export default function AdminAssessmentsPage() {
       };
       if (isEdit && editTarget) payload.id = editTarget.id;
 
-      const res  = await fetch(`${getApiBaseUrl()}/api/v1/candidates/assessments/save`, {
+      const res  = await fetch(`${getApiBaseUrl()}/api/v1/assessments/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -162,7 +162,7 @@ export default function AdminAssessmentsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this assessment session? This will also remove candidate records linked to it.")) return;
     try {
-      await fetch(`${getApiBaseUrl()}/api/v1/candidates/assessments/${id}`, { method: "DELETE" });
+      await fetch(`${getApiBaseUrl()}/api/v1/assessments/${id}`, { method: "DELETE" });
       await loadSessions();
     } catch { /* silent */ }
   };
@@ -170,7 +170,7 @@ export default function AdminAssessmentsPage() {
   const handleToggleStatus = async (session: AssessmentSession) => {
     const newStatus = session.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
     try {
-      await fetch(`${getApiBaseUrl()}/api/v1/candidates/assessments/save`, {
+      await fetch(`${getApiBaseUrl()}/api/v1/assessments/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: session.id, name: session.name, status: newStatus }),
