@@ -50,7 +50,7 @@ export class AssessmentsService {
         totalCandidates: ass._count.candidates,
         durationMins: ass.durationMins || EXAM_DURATION_MINS,
         totalQuestions: TOTAL_QUESTIONS,
-        uniqueCandidateLink: `${frontendBaseUrl}/exam?assessment=${ass.slug || ass.id}`,
+        uniqueCandidateLink: `${frontendBaseUrl}/${ass.slug || ass.id}`,
       };
     });
   }

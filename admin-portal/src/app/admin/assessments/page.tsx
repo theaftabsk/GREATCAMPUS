@@ -64,9 +64,14 @@ function formatDisplay(iso?: string | null) {
 function getDisplayExamLink(rawLink: string) {
   if (!rawLink) return "";
   if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
-    const slugOrId = rawLink.includes("assessment=") ? rawLink.split("assessment=")[1] : rawLink;
-    const port = typeof window !== "undefined" && window.location.port === "3001" ? "3000" : "3000";
-    return `http://localhost:${port}/exam?assessment=${slugOrId}`;
+    let slugOrId = rawLink;
+    if (rawLink.includes("assessment=")) {
+      slugOrId = rawLink.split("assessment=")[1];
+    } else if (rawLink.includes("/")) {
+      const parts = rawLink.split("/");
+      slugOrId = parts[parts.length - 1];
+    }
+    return `http://localhost:3000/${slugOrId}`;
   }
   return rawLink;
 }
