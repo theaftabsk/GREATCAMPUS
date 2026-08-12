@@ -1,268 +1,206 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Settings as SettingsIcon, Save, CheckCircle2, ShieldAlert, Clock, Award, Copy, ExternalLink, Link2 } from "lucide-react";
+import { useState } from "react";
+import { Settings as SettingsIcon, Save, CheckCircle2, ShieldCheck, User, Lock, KeyRound, AlertCircle } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 
-interface AssessmentItem {
-  id: string;
-  name: string;
-  slug: string;
-  description: string;
-  durationMins: number;
-  passingPercentage: number;
-  maxProctorWarnings: number;
-  status: string;
-}
-
 export default function AdminSettingsPage() {
-  const [activeAssessment, setActiveAssessment] = useState<AssessmentItem | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [savedSuccess, setSavedSuccess] = useState(false);
+  const [username, setUsername] = useState("admin");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const [saving, setSaving] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const [settings, setSettings] = useState({
-    companyName: "Niva Bupa Health Insurance - ARM Banca Assessment",
-    examDurationMins: 45,
-    passingMarksPercent: 50.0,
-    maxProctorWarnings: 3,
-    negativeMarking: false,
-  });
-
-  const loadActiveSettings = async () => {
-    setLoading(true);
-    try {
-      const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/v1/assessments`);
-      const data = await res.json();
-      if (data.success && Array.isArray(data.assessments) && data.assessments.length > 0) {
-        const active = data.assessments.find((a: AssessmentItem) => a.status === "ACTIVE") || data.assessments[0];
-        setActiveAssessment(active);
-        setSettings({
-          companyName: active.name,
-          examDurationMins: active.durationMins || 45,
-          passingMarksPercent: active.passingPercentage || 50.0,
-          maxProctorWarnings: active.maxProctorWarnings || 3,
-          negativeMarking: false,
-        });
-      }
-    } catch (err) {
-      console.error("Failed to load settings:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadActiveSettings();
-  }, []);
-
-  const getCandidateExamLink = () => {
-    const candidateBaseUrl = "https://greatcampus-1.onrender.com";
-    if (!activeAssessment) return `${candidateBaseUrl}/exam`;
-    return `${candidateBaseUrl}/exam?assessment=${activeAssessment.slug || activeAssessment.id}`;
-  };
-
-  const handleCopyLink = () => {
-    const link = getCandidateExamLink();
-    navigator.clipboard.writeText(link);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 3000);
-  };
-
-  const handleSaveSettings = async (e: React.FormEvent) => {
+  const handleUpdateCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!activeAssessment) return;
+    setErrorMsg("");
+    setSuccessMsg("");
+
+    if (!username.trim()) {
+      setErrorMsg("Username cannot be empty.");
+      return;
+    }
+
+    if (newPassword && newPassword !== confirmPassword) {
+      setErrorMsg("New Password and Confirm Password do not match.");
+      return;
+    }
+
+    if (newPassword && newPassword.length < 6) {
+      setErrorMsg("New password must be at least 6 characters long.");
+      return;
+    }
 
     setSaving(true);
-    setSavedSuccess(false);
 
     try {
       const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/v1/assessments/save`, {
+      const res = await fetch(`${baseUrl}/api/v1/auth/update-credentials`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: activeAssessment.id,
-          name: settings.companyName,
-          durationMins: Number(settings.examDurationMins),
-          passingPercentage: Number(settings.passingMarksPercent),
-          maxProctorWarnings: Number(settings.maxProctorWarnings),
+          username: username.trim(),
+          currentPassword,
+          newPassword: newPassword || undefined,
         }),
       });
 
       const data = await res.json();
-      if (data.success) {
-        setSavedSuccess(true);
-        loadActiveSettings();
-        setTimeout(() => setSavedSuccess(false), 4000);
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || "Failed to update admin credentials.");
       }
-    } catch (err) {
-      console.error("Failed to save settings:", err);
+
+      setSuccessMsg("Admin credentials updated successfully!");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setTimeout(() => setSuccessMsg(""), 5000);
+    } catch (err: any) {
+      setErrorMsg(err.message || "An error occurred while saving settings.");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-extrabold text-slate-900 flex items-center gap-3">
-          <SettingsIcon className="w-7 h-7 text-blue-600" />
-          System & Exam Settings
-        </h1>
-        <p className="text-xs text-slate-500 mt-1 font-medium">
-          Configure active exam duration, pass marks, proctoring limits, and copy unique candidate exam share link.
-        </p>
-      </div>
-
-      {/* Shareable Unique Exam Link Card */}
-      <div className="bg-gradient-to-r from-blue-900 to-indigo-950 p-6 rounded-2xl text-white shadow-lg space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2 text-blue-300 font-extrabold text-xs uppercase tracking-wider">
-            <Link2 className="w-4 h-4 text-blue-400" />
-            <span>Shareable Candidate Exam Link</span>
-          </div>
-          <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-500/30">
-            ACTIVE ASSESSMENT
-          </span>
+    <div className="set-page">
+      {/* Header */}
+      <div className="set-header">
+        <div className="set-header-icon">
+          <ShieldCheck size={22} />
         </div>
-
-        <p className="text-xs text-slate-300 font-medium">
-          Share this unique URL with candidates or configure it inside Headstart CRM for direct assessment entrance:
-        </p>
-
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <input
-            type="text"
-            readOnly
-            value={getCandidateExamLink()}
-            className="flex-1 px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-xs text-blue-100 font-mono select-all outline-none"
-          />
-          <button
-            type="button"
-            onClick={handleCopyLink}
-            className="inline-flex items-center justify-center space-x-2 px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-extrabold text-xs rounded-xl transition-all shadow-md active:scale-95"
-          >
-            {copiedLink ? (
-              <>
-                <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-                <span>Copied!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-4 h-4" />
-                <span>Copy Exam Link</span>
-              </>
-            )}
-          </button>
-          <a
-            href={getCandidateExamLink()}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center justify-center space-x-1 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-slate-200 font-bold text-xs rounded-xl transition-all"
-          >
-            <ExternalLink className="w-4 h-4" />
-            <span>Test Open</span>
-          </a>
+        <div>
+          <h1 className="set-title">Admin Account & Credentials</h1>
+          <p className="set-subtitle">Update HR Administrator username and access password</p>
         </div>
       </div>
 
-      {savedSuccess && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl flex items-center space-x-3 text-xs font-bold shadow-sm">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          <span>✅ System & Exam Settings updated successfully in database! All future candidate attempts will use these settings.</span>
+      {/* Success Alert */}
+      {successMsg && (
+        <div className="set-alert set-alert--success">
+          <CheckCircle2 size={16} />
+          <span>{successMsg}</span>
         </div>
       )}
 
-      <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-        <form onSubmit={handleSaveSettings} className="space-y-6">
+      {/* Error Alert */}
+      {errorMsg && (
+        <div className="set-alert set-alert--error">
+          <AlertCircle size={16} />
+          <span>{errorMsg}</span>
+        </div>
+      )}
 
+      {/* Credentials Card */}
+      <div className="set-card">
+        <div className="set-card-header">
+          <KeyRound size={18} className="set-card-icon" />
           <div>
-            <label className="block text-xs font-extrabold uppercase text-slate-700 mb-1.5">
-              Active Assessment Name / Title *
+            <h2 className="set-card-title">Security & Credentials</h2>
+            <p className="set-card-sub">Manage login credentials for HR Admin portal</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleUpdateCredentials} className="set-form">
+          <div className="set-form-group">
+            <label className="set-label">
+              <User size={14} /> Admin Username
             </label>
             <input
               type="text"
               required
-              value={settings.companyName}
-              onChange={(e) => setSettings({ ...settings, companyName: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="set-input"
+              placeholder="e.g. admin"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-extrabold uppercase text-slate-700 mb-1.5 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-blue-600" />
-                <span>Exam Duration (Mins)</span>
-              </label>
-              <input
-                type="number"
-                required
-                min={1}
-                value={settings.examDurationMins}
-                onChange={(e) => setSettings({ ...settings, examDurationMins: Number(e.target.value) })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-extrabold uppercase text-slate-700 mb-1.5 flex items-center gap-1.5">
-                <Award className="w-3.5 h-3.5 text-blue-600" />
-                <span>Passing Score %</span>
-              </label>
-              <input
-                type="number"
-                required
-                min={1}
-                max={100}
-                value={settings.passingMarksPercent}
-                onChange={(e) => setSettings({ ...settings, passingMarksPercent: Number(e.target.value) })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-extrabold uppercase text-slate-700 mb-1.5 flex items-center gap-1.5">
-                <ShieldAlert className="w-3.5 h-3.5 text-blue-600" />
-                <span>Max Warnings</span>
-              </label>
-              <input
-                type="number"
-                required
-                min={1}
-                value={settings.maxProctorWarnings}
-                onChange={(e) => setSettings({ ...settings, maxProctorWarnings: Number(e.target.value) })}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900 outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
-            <div>
-              <p className="font-extrabold text-slate-900 text-xs">Negative Marking</p>
-              <p className="text-[11px] text-slate-500 font-medium mt-0.5">Deduct 0.25 marks for incorrect candidate answers</p>
-            </div>
+          <div className="set-form-group">
+            <label className="set-label">
+              <Lock size={14} /> Current Password (optional for first change)
+            </label>
             <input
-              type="checkbox"
-              checked={settings.negativeMarking}
-              onChange={(e) => setSettings({ ...settings, negativeMarking: e.target.checked })}
-              className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="set-input"
+              placeholder="Enter current password"
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={saving || loading}
-            className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white font-extrabold text-xs rounded-xl hover:bg-blue-700 transition-colors shadow-md shadow-blue-500/20 disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            <span>{saving ? "Saving Settings..." : "Save Settings"}</span>
-          </button>
+          <div className="set-form-row">
+            <div className="set-form-group">
+              <label className="set-label">
+                <Lock size={14} /> New Password
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="set-input"
+                placeholder="Enter new password (min 6 chars)"
+              />
+            </div>
+
+            <div className="set-form-group">
+              <label className="set-label">
+                <Lock size={14} /> Confirm New Password
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="set-input"
+                placeholder="Re-enter new password"
+              />
+            </div>
+          </div>
+
+          <div className="set-form-footer">
+            <button type="submit" disabled={saving} className="set-save-btn">
+              <Save size={16} />
+              {saving ? "Updating Credentials…" : "Save Password & Username"}
+            </button>
+          </div>
         </form>
       </div>
+
+      <style>{`
+        .set-page { padding: 28px; max-width: 680px; margin: 0 auto; }
+        .set-header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+        .set-header-icon { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg,#6366f1,#818cf8); display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0; }
+        .set-title { font-size: 1.35rem; font-weight: 700; color: #e2e8f0; margin: 0; }
+        .set-subtitle { font-size: 0.82rem; color: #64748b; margin: 2px 0 0; }
+
+        .set-alert { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 12px; font-size: 0.86rem; margin-bottom: 20px; font-weight: 500; }
+        .set-alert--success { background: rgba(52,211,153,0.12); border: 1px solid rgba(52,211,153,0.3); color: #34d399; }
+        .set-alert--error { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: #f87171; }
+
+        .set-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 24px; }
+        .set-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .set-card-icon { color: #6366f1; }
+        .set-card-title { font-size: 1.05rem; font-weight: 700; color: #e2e8f0; margin: 0; }
+        .set-card-sub { font-size: 0.78rem; color: #64748b; margin: 2px 0 0; }
+
+        .set-form { display: flex; flex-direction: column; gap: 16px; }
+        .set-form-group { display: flex; flex-direction: column; gap: 6px; }
+        .set-label { font-size: 0.8rem; font-weight: 600; color: #94a3b8; display: flex; align-items: center; gap: 6px; }
+        .set-input { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px 14px; color: #e2e8f0; font-size: 0.88rem; outline: none; transition: border-color 0.2s; width: 100%; box-sizing: border-box; }
+        .set-input:focus { border-color: rgba(99,102,241,0.5); }
+        .set-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+        .set-form-footer { display: flex; justify-content: flex-end; margin-top: 8px; }
+        .set-save-btn { background: linear-gradient(135deg,#6366f1,#818cf8); border: none; color: #fff; border-radius: 10px; padding: 10px 22px; font-size: 0.88rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 7px; transition: opacity 0.2s; }
+        .set-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        @media (max-width: 580px) {
+          .set-form-row { grid-template-columns: 1fr; }
+        }
+      `}</style>
     </div>
   );
 }

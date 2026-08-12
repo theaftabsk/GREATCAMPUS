@@ -28,52 +28,33 @@ model Admin {
   createdAt DateTime @default(now())
 }
 
+// Assessment = a single exam session. Each session has a unique link and an active time window.
+// The exam itself is always: 60 Questions + 45 Minutes (fixed constants, not stored here).
 model Assessment {
-  id                   String              @id @default(uuid())
-  tenantId             String
-  tenant               Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name                 String
-  slug                 String              @unique
-  description          String?
-  durationMins         Int                 @default(45)
-  passingPercentage    Float               @default(50.0)
-  maxProctorWarnings   Int                 @default(3)
-  enableTabSwitch      Boolean             @default(true)
-  enableFullscreen     Boolean             @default(true)
-  enableCopyPaste      Boolean             @default(true)
-  status               String              @default("ACTIVE") // ACTIVE, DRAFT, INACTIVE, EXPIRED
-  activeUntil          DateTime?
-  subjects             AssessmentSubject[]
-  candidates           Candidate[]
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
+  id                 String      @id @default(uuid())
+  tenantId           String
+  tenant             Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name               String
+  slug               String      @unique
+  description        String?
+  durationMins       Int         @default(45)
+  passingPercentage  Float       @default(50.0)
+  maxProctorWarnings Int         @default(3)
+  enableTabSwitch    Boolean     @default(true)
+  enableFullscreen   Boolean     @default(true)
+  enableCopyPaste    Boolean     @default(true)
+  status             String      @default("ACTIVE") // ACTIVE, DRAFT, INACTIVE — EXPIRED/UPCOMING computed at runtime from activeFrom/activeUntil
+  activeFrom         DateTime?   // When the session link becomes accessible to candidates
+  activeUntil        DateTime?   // When the session link expires
+  candidates         Candidate[]
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 }
 
-model AssessmentSubject {
-  id           String           @id @default(uuid())
-  assessmentId String
-  assessment   Assessment       @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  name         String           // e.g. "Banking & Financial Awareness", "Management & Leadership"
-  displayOrder Int              @default(0)
-  sections     SubjectSection[]
-  createdAt    DateTime         @default(now())
-}
-
-model SubjectSection {
-  id                 String            @id @default(uuid())
-  subjectId          String
-  subject            AssessmentSubject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  name               String            // e.g. "General Banking", "RBI Guidelines"
-  questionsToAsk     Int               @default(5)
-  displayOrder       Int               @default(0)
-  questions          Question[]
-  createdAt          DateTime          @default(now())
-}
-
+// Shared Question Bank — 60 fixed questions used across ALL assessments.
+// No subject/section hierarchy. Questions belong directly to this shared pool.
 model Question {
   id               String            @id @default(uuid())
-  sectionId        String
-  section          SubjectSection    @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   question         String
   optionA          String
   optionB          String
@@ -94,7 +75,7 @@ model Candidate {
   name           String
   email          String
   phone          String
-  applicationId  String?       // Headstart CRM Application ID (not unique to allow multiple exams per candidate)
+  applicationId  String?       // Headstart CRM Application ID
   crmCandidateId String?       // Headstart CRM Candidate ID
   referenceId    String        @unique
   status         String        @default("REGISTERED") // REGISTERED, IN_PROGRESS, COMPLETED, DISQUALIFIED
@@ -106,31 +87,31 @@ model IntegrationConfig {
   id                       String   @id @default(uuid())
   tenantId                 String   @unique
   crmBaseUrl               String   @default("https://api.headstartcrm.com")
-  crmApiKey                String?  
+  crmApiKey                String?
   api1Endpoint             String   @default("/api/candidates/verify")
   api2Endpoint             String   @default("/api/candidates/check-assignment")
-  webhookStatusUrl         String?  
-  webhookResultUrl         String?  
-  webhookReportUrl         String?  
+  webhookStatusUrl         String?
+  webhookResultUrl         String?
+  webhookReportUrl         String?
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
 }
 
 model ExamAttempt {
-  id                         String            @id @default(uuid())
+  id                         String               @id @default(uuid())
   candidateId                String
-  candidate                  Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  status                     String            @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, DISQUALIFIED, EXPIRED
-  durationMinsSnapshot       Int
-  passingPercentageSnapshot  Float
-  maxProctorWarningsSnapshot Int
-  startedAt                  DateTime          @default(now())
+  candidate                  Candidate            @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  status                     String               @default("IN_PROGRESS") // IN_PROGRESS, COMPLETED, DISQUALIFIED, EXPIRED
+  durationMinsSnapshot       Int                  @default(45)
+  passingPercentageSnapshot  Float                @default(50.0)
+  maxProctorWarningsSnapshot Int                  @default(3)
+  startedAt                  DateTime             @default(now())
   submittedAt                DateTime?
-  score                      Float             @default(0)
-  totalPossibleScore         Float             @default(0)
-  percentage                 Float             @default(0)
-  isPassed                   Boolean           @default(false)
-  warningCount               Int               @default(0)
+  score                      Float                @default(0)
+  totalPossibleScore         Float                @default(0)
+  percentage                 Float                @default(0)
+  isPassed                   Boolean              @default(false)
+  warningCount               Int                  @default(0)
   attemptQuestions           AttemptQuestion[]
   submissions                Submission[]
   proctoringLogs             ProctoringLog[]
@@ -143,8 +124,6 @@ model AttemptQuestion {
   attempt       ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   questionId    String
   question      Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  subjectId     String
-  sectionId     String
   questionOrder Int
   marks         Float       @default(1.0)
 }
@@ -152,7 +131,7 @@ model AttemptQuestion {
 model Submission {
   id             String      @id @default(uuid())
   attemptId      String
-  attempt       ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  attempt        ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   questionId     String
   question       Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
   selectedOption String?

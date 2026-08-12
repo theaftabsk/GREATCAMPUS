@@ -9,4 +9,9 @@ export class AuthController {
   async login(@Body() body: { username: string; password: string }) {
     return this.authService.validateAdmin(body.username, body.password);
   }
+
+  @Post('update-credentials')
+  async updateCredentials(@Body() body: { username: string; newPassword?: string; currentPassword?: string }) {
+    return this.authService.updateAdminCredentials(body);
+  }
 }

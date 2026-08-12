@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Query, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
 import { QuestionsService } from './questions.service';
 
 @Controller('api/v1/questions')
@@ -6,12 +6,8 @@ export class QuestionsController {
   constructor(private questionsService: QuestionsService) {}
 
   @Get()
-  async getQuestions(
-    @Query('sectionId') sectionId?: string,
-    @Query('subjectId') subjectId?: string,
-    @Query('assessmentId') assessmentId?: string
-  ) {
-    const questions = await this.questionsService.getQuestions(sectionId, subjectId, assessmentId);
+  async getQuestions() {
+    const questions = await this.questionsService.getQuestions();
     return { success: true, questions };
   }
 
@@ -19,7 +15,6 @@ export class QuestionsController {
   async addQuestion(
     @Body()
     body: {
-      sectionId: string;
       question: string;
       optionA: string;
       optionB: string;
@@ -45,6 +40,7 @@ export class QuestionsController {
       optionD?: string;
       correctAnswer?: string;
       marks?: number;
+      status?: string;
     }
   ) {
     const question = await this.questionsService.updateQuestion(id, body);

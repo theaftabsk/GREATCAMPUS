@@ -1049,131 +1049,85 @@ async function main() {
   });
   console.log('✅ Created Admin user:', admin.username);
 
-  // Check if Assessment already exists to ensure idempotency and preserve existing candidate data
-  let singleFixedAssessment = await prisma.assessment.findFirst({
+  // Check if questions already exist — idempotency guard
+  const existingQuestionCount = await prisma.question.count();
+  if (existingQuestionCount >= 60) {
+    console.log(`ℹ️ Question bank already seeded (${existingQuestionCount} questions found). Skipping question creation.`);
+  } else {
+    // Seed all questions directly into the shared flat Question Bank (no subject/section hierarchy)
+    let totalSeeded = 0;
+
+    for (const group of nivaBupaAumQuestions) {
+      for (const q of group.questions) {
+        await prisma.question.create({
+          data: {
+            question: q.question,
+            optionA: q.optionA,
+            optionB: q.optionB,
+            optionC: q.optionC,
+            optionD: q.optionD,
+            correctAnswer: q.correctAnswer,
+            marks: 1.0,
+            status: 'ACTIVE',
+          },
+        });
+        totalSeeded++;
+      }
+    }
+
+    for (const group of nivaBupaArmQuestions) {
+      for (const q of group.questions) {
+        await prisma.question.create({
+          data: {
+            question: q.question,
+            optionA: q.optionA,
+            optionB: q.optionB,
+            optionC: q.optionC,
+            optionD: q.optionD,
+            correctAnswer: q.correctAnswer,
+            marks: 1.0,
+            status: 'ACTIVE',
+          },
+        });
+        totalSeeded++;
+      }
+    }
+
+    console.log(`✅ Shared Question Bank Seeded: ${totalSeeded} questions added.`);
+  }
+
+  // Seed default assessment session if not yet present
+  const existingAssessment = await prisma.assessment.findFirst({
     where: { slug: 'niva-bupa-assessment' },
   });
 
-  if (singleFixedAssessment) {
-    console.log(`ℹ️ Existing Assessment Found: ${singleFixedAssessment.name} (${singleFixedAssessment.id}). Skipping seed question creation to preserve candidate data.`);
-    return;
-  }
-
-  // Single Fixed Assessment: Niva Bupa Health Insurance Assessment
-  singleFixedAssessment = await prisma.assessment.create({
-    data: {
-      tenantId: tenant.id,
-      name: 'Niva Bupa Health Insurance Assessment',
-      slug: 'niva-bupa-assessment',
-      description: 'Single Fixed Official Assessment for Niva Bupa Health Insurance covering Agency Unit Manager (AUM) and Assistant Relationship Manager (ARM Banca) modules.',
-      durationMins: 45,
-      passingPercentage: 50.0,
-      maxProctorWarnings: 3,
-      status: 'ACTIVE',
-    },
-  });
-
-  console.log(`✅ Single Fixed Assessment Created: ${singleFixedAssessment.name} (${singleFixedAssessment.id})`);
-
-  // Seed Subject 1: AUM Module with 6 Sections
-  let order1 = 1;
-  for (const group of nivaBupaAumQuestions) {
-    let subject = await prisma.assessmentSubject.findFirst({
-      where: {
-        assessmentId: singleFixedAssessment.id,
-        name: group.subjectName,
-      },
-    });
-
-    if (!subject) {
-      subject = await prisma.assessmentSubject.create({
-        data: {
-          assessmentId: singleFixedAssessment.id,
-          name: group.subjectName,
-          displayOrder: order1++,
-        },
-      });
-    }
-
-    const section = await prisma.subjectSection.create({
+  if (existingAssessment) {
+    console.log(`ℹ️ Default Assessment already exists: ${existingAssessment.name} (${existingAssessment.id}). Skipping.`);
+  } else {
+    const defaultAssessment = await prisma.assessment.create({
       data: {
-        subjectId: subject.id,
-        name: group.sectionName,
-        questionsToAsk: group.questionsToAsk,
-        displayOrder: 1,
+        tenantId: tenant.id,
+        name: 'Niva Bupa Health Insurance Assessment',
+        slug: 'niva-bupa-assessment',
+        description: 'Official Assessment for Niva Bupa Health Insurance — AUM & ARM Banca Modules. Fixed: 60 Questions, 45 Minutes.',
+        passingPercentage: 50.0,
+        maxProctorWarnings: 3,
+        status: 'ACTIVE',
       },
     });
-
-    for (const q of group.questions) {
-      await prisma.question.create({
-        data: {
-          sectionId: section.id,
-          question: q.question,
-          optionA: q.optionA,
-          optionB: q.optionB,
-          optionC: q.optionC,
-          optionD: q.optionD,
-          correctAnswer: q.correctAnswer,
-          marks: 1.0,
-          status: 'ACTIVE',
-        },
-      });
-    }
+    console.log(`✅ Default Assessment Created: ${defaultAssessment.name} (${defaultAssessment.id})`);
   }
 
-  // Seed Subject 2: ARM Banca Module with 6 Sections
-  let order2 = 2;
-  for (const group of nivaBupaArmQuestions) {
-    let subject = await prisma.assessmentSubject.findFirst({
-      where: {
-        assessmentId: singleFixedAssessment.id,
-        name: group.subjectName,
-      },
-    });
-
-    if (!subject) {
-      subject = await prisma.assessmentSubject.create({
-        data: {
-          assessmentId: singleFixedAssessment.id,
-          name: group.subjectName,
-          displayOrder: order2++,
-        },
-      });
-    }
-
-    const section = await prisma.subjectSection.create({
-      data: {
-        subjectId: subject.id,
-        name: group.sectionName,
-        questionsToAsk: group.questionsToAsk,
-        displayOrder: 1,
-      },
-    });
-
-    for (const q of group.questions) {
-      await prisma.question.create({
-        data: {
-          sectionId: section.id,
-          question: q.question,
-          optionA: q.optionA,
-          optionB: q.optionB,
-          optionC: q.optionC,
-          optionD: q.optionD,
-          correctAnswer: q.correctAnswer,
-          marks: 1.0,
-          status: 'ACTIVE',
-        },
-      });
-    }
-  }
-
-  console.log('🎉 Single Fixed Assessment (1 Exam, 2 Subjects, 12 Sections, 115 Pool Qs, 60 Attempt Qs) Created Successfully!');
+  console.log('🎉 Seed complete! Shared Question Bank (60Q) + Default Assessment ready.');
 }
 
 main()
   .catch((e) => {
     console.error('❌ Error during main seed:', e);
     process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
   })
   .finally(async () => {
     await prisma.$disconnect();

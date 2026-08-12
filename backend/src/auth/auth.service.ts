@@ -40,4 +40,38 @@ export class AuthService {
 
     throw new UnauthorizedException('Invalid admin credentials');
   }
+
+  async updateAdminCredentials(data: { username: string; newPassword?: string; currentPassword?: string }) {
+    let admin = await this.prisma.admin.findFirst();
+    if (!admin) {
+      throw new UnauthorizedException('Admin account not found.');
+    }
+
+    if (data.currentPassword && admin.password !== data.currentPassword) {
+      throw new UnauthorizedException('Current password is incorrect.');
+    }
+
+    const updateData: any = {};
+    if (data.username && data.username.trim() !== '') {
+      updateData.username = data.username.trim();
+    }
+    if (data.newPassword && data.newPassword.trim() !== '') {
+      updateData.password = data.newPassword.trim();
+    }
+
+    const updatedAdmin = await this.prisma.admin.update({
+      where: { id: admin.id },
+      data: updateData,
+    });
+
+    return {
+      success: true,
+      message: 'Admin login credentials updated successfully.',
+      admin: {
+        id: updatedAdmin.id,
+        username: updatedAdmin.username,
+        name: updatedAdmin.name,
+      },
+    };
+  }
 }

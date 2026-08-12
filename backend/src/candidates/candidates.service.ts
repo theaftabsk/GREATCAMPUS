@@ -3,6 +3,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { HeadstartClientService } from '../integration/headstart/headstart-client.service';
 import { HeadstartWebhookService } from '../integration/headstart/headstart-webhook.service';
 
+// ─── SYSTEM CONSTANTS ─────────────────────────────────────────────────────────
+// These are fixed for ALL assessments. Admins cannot override them.
+const EXAM_DURATION_MINS = 45;
+const TOTAL_QUESTIONS = 60;
+// ──────────────────────────────────────────────────────────────────────────────
+
 @Injectable()
 export class CandidatesService {
   private readonly logger = new Logger(CandidatesService.name);
@@ -13,6 +19,7 @@ export class CandidatesService {
     private headstartWebhook: HeadstartWebhookService,
   ) {}
 
+  // ─── GET CANDIDATES ────────────────────────────────────────────────────────
   async getCandidates(assessmentId?: string) {
     const whereClause: any = {};
     if (assessmentId) whereClause.assessmentId = assessmentId;
@@ -20,30 +27,12 @@ export class CandidatesService {
     const candidates = await this.prisma.candidate.findMany({
       where: whereClause,
       include: {
-        assessment: {
-          include: {
-            subjects: {
-              include: {
-                sections: true,
-              },
-            },
-          },
-        },
+        assessment: true,
         attempts: {
           orderBy: { startedAt: 'desc' },
           include: {
             attemptQuestions: {
-              include: {
-                question: {
-                  include: {
-                    section: {
-                      include: {
-                        subject: true,
-                      },
-                    },
-                  },
-                },
-              },
+              include: { question: true },
             },
             submissions: true,
             proctoringLogs: { orderBy: { timestamp: 'asc' } },
@@ -55,56 +44,22 @@ export class CandidatesService {
 
     return candidates.map((cand) => {
       const latestAttempt = cand.attempts[0] || null;
-      let subjectBreakdown: Record<string, { subjectName: string; correct: number; total: number; percentage: number }> = {};
-      let sectionBreakdown: Record<string, { sectionName: string; subjectName: string; correct: number; total: number }> = {};
       let questionAudit: any[] = [];
 
       if (latestAttempt) {
-        // Build subject and section performance breakdown
-        for (const aq of latestAttempt.attemptQuestions) {
-          const subName = aq.question.section.subject.name;
-          const secName = aq.question.section.name;
-          const secKey = `${subName}___${secName}`;
-
-          if (!subjectBreakdown[subName]) {
-            subjectBreakdown[subName] = { subjectName: subName, correct: 0, total: 0, percentage: 0 };
-          }
-          if (!sectionBreakdown[secKey]) {
-            sectionBreakdown[secKey] = { sectionName: secName, subjectName: subName, correct: 0, total: 0 };
-          }
-
-          subjectBreakdown[subName].total += 1;
-          sectionBreakdown[secKey].total += 1;
-
-          const submission = latestAttempt.submissions.find((s) => s.questionId === aq.questionId);
-          if (submission && submission.isCorrect) {
-            subjectBreakdown[subName].correct += 1;
-            sectionBreakdown[secKey].correct += 1;
-          }
-        }
-
-        Object.keys(subjectBreakdown).forEach((k) => {
-          const item = subjectBreakdown[k];
-          item.percentage = item.total > 0 ? Math.round((item.correct / item.total) * 100) : 0;
-        });
-
         questionAudit = latestAttempt.attemptQuestions.map((aq) => {
           const q = aq.question;
           const sub = latestAttempt.submissions.find((s) => s.questionId === q.id);
-          const selected = sub?.selectedOption || null;
-          const isCorrect = sub?.isCorrect || false;
           return {
             questionOrder: aq.questionOrder,
             questionText: q.question,
-            subjectName: q.section.subject.name,
-            sectionName: q.section.name,
             optionA: q.optionA,
             optionB: q.optionB,
             optionC: q.optionC,
             optionD: q.optionD,
-            selectedOption: selected,
+            selectedOption: sub?.selectedOption || null,
             correctAnswer: q.correctAnswer,
-            isCorrect,
+            isCorrect: sub?.isCorrect || false,
             marks: aq.marks,
           };
         });
@@ -115,6 +70,7 @@ export class CandidatesService {
         name: cand.name,
         email: cand.email,
         phone: cand.phone,
+        applicationId: cand.applicationId,
         referenceId: cand.referenceId,
         status: cand.status,
         createdAt: cand.createdAt,
@@ -135,10 +91,8 @@ export class CandidatesService {
               isPassed: latestAttempt.isPassed,
               warningCount: latestAttempt.warningCount,
               maxProctorWarnings: latestAttempt.maxProctorWarningsSnapshot,
-              durationMins: latestAttempt.durationMinsSnapshot,
-              subjectBreakdown: Object.values(subjectBreakdown),
-              sectionBreakdown: Object.values(sectionBreakdown),
-              questionAudit: questionAudit || [],
+              durationMins: EXAM_DURATION_MINS,
+              questionAudit,
               proctoringLogs: latestAttempt.proctoringLogs,
             }
           : null,
@@ -146,6 +100,7 @@ export class CandidatesService {
     });
   }
 
+  // ─── REGISTER CANDIDATE ────────────────────────────────────────────────────
   async registerCandidate(data: {
     name: string;
     email: string;
@@ -161,7 +116,6 @@ export class CandidatesService {
 
     const refId = data.referenceId || `REF-${Date.now().toString().slice(-6)}`;
 
-    // Check if candidate with referenceId or email or applicationId exists
     const existing = await this.prisma.candidate.findFirst({
       where: {
         OR: [
@@ -173,7 +127,6 @@ export class CandidatesService {
     });
 
     if (existing) {
-      // Update assigned assessment if re-registering
       return this.prisma.candidate.update({
         where: { id: existing.id },
         data: {
@@ -199,9 +152,7 @@ export class CandidatesService {
     });
   }
 
-  /**
-   * Verified Exam Entrance Flow (Headstart CRM API 1 + API 2 + API 4 Webhook)
-   */
+  // ─── VERIFY AND START EXAM (Headstart CRM Flow) ───────────────────────────
   async verifyAndStartExam(data: {
     applicationId: string;
     assessmentId: string;
@@ -209,21 +160,21 @@ export class CandidatesService {
     email?: string;
     phone?: string;
   }) {
-    this.logger.log(`Verifying candidate exam start for Application ID: ${data.applicationId}, Assessment: ${data.assessmentId}`);
+    this.logger.log(`Verifying candidate for Application ID: ${data.applicationId}, Assessment: ${data.assessmentId}`);
 
-    // Step 1: Call CRM API 1 to verify candidate details
+    // Step 1: Verify candidate with Headstart CRM
     const crmDetails = await this.headstartClient.verifyCandidate(data.applicationId);
     if (!crmDetails.success) {
       throw new BadRequestException(crmDetails.message || 'Failed to verify candidate with Headstart CRM.');
     }
 
-    // Step 2: Call CRM API 2 to verify candidate assignment
+    // Step 2: Verify assignment in Headstart CRM
     const crmAssignment = await this.headstartClient.verifyAssignment(data.applicationId, data.assessmentId);
     if (!crmAssignment.assigned) {
       throw new BadRequestException('Candidate is NOT assigned to this assessment in Headstart CRM.');
     }
 
-    // Step 3: Register / Find Candidate in local DB
+    // Step 3: Register / Find candidate locally
     const name = data.name || crmDetails.name || 'Candidate';
     const email = data.email || crmDetails.email || `${data.applicationId.toLowerCase()}@candidate.com`;
     const phone = data.phone || crmDetails.phone || '0000000000';
@@ -262,7 +213,7 @@ export class CandidatesService {
       });
     }
 
-    // Step 4: Initialize Exam Session
+    // Step 4: Start exam session
     const sessionData = await this.startExamSession(candidate.id);
 
     // Step 5: Fire API 4 Status Webhook (Status = Started)
@@ -273,34 +224,19 @@ export class CandidatesService {
     return sessionData;
   }
 
-  // --- START EXAM SESSION & SAMPLING ---
+  // ─── START EXAM SESSION ────────────────────────────────────────────────────
+  // Fixed: EXAM_DURATION_MINS = 45, TOTAL_QUESTIONS = 60 from Shared Question Bank
   async startExamSession(candidateIdentifier: string) {
     const candidate = await this.prisma.candidate.findFirst({
       where: { OR: [{ id: candidateIdentifier }, { referenceId: candidateIdentifier }] },
-      include: {
-        assessment: {
-          include: {
-            subjects: {
-              orderBy: { displayOrder: 'asc' },
-              include: {
-                sections: {
-                  orderBy: { displayOrder: 'asc' },
-                  include: {
-                    questions: { where: { status: 'ACTIVE' } },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
+      include: { assessment: true },
     });
 
     if (!candidate) {
       throw new NotFoundException('Candidate not found.');
     }
 
-    // RULE 3: Active Attempt Check (status = "IN_PROGRESS")
+    // Check for an existing active attempt (resume support)
     const activeAttempt = await this.prisma.examAttempt.findFirst({
       where: {
         candidateId: candidate.id,
@@ -309,24 +245,14 @@ export class CandidatesService {
       include: {
         attemptQuestions: {
           orderBy: { questionOrder: 'asc' },
-          include: {
-            question: {
-              include: {
-                section: {
-                  include: {
-                    subject: true,
-                  },
-                },
-              },
-            },
-          },
+          include: { question: true },
         },
         submissions: true,
       },
     });
 
     if (activeAttempt) {
-      // Return existing active attempt with locked questions
+      // Return the existing attempt so candidate can resume
       return {
         candidate: {
           id: candidate.id,
@@ -336,16 +262,12 @@ export class CandidatesService {
         },
         attemptId: activeAttempt.id,
         assessmentName: candidate.assessment.name,
-        durationMins: activeAttempt.durationMinsSnapshot,
+        durationMins: activeAttempt.durationMinsSnapshot || candidate.assessment.durationMins || EXAM_DURATION_MINS,
         maxProctorWarnings: activeAttempt.maxProctorWarningsSnapshot,
         warningCount: activeAttempt.warningCount,
         questions: activeAttempt.attemptQuestions.map((aq) => ({
           attemptQuestionId: aq.id,
           id: aq.question.id,
-          subjectId: aq.subjectId,
-          subjectName: aq.question.section.subject.name,
-          sectionId: aq.sectionId,
-          sectionName: aq.question.section.name,
           question: aq.question.question,
           optionA: aq.question.optionA,
           optionB: aq.question.optionB,
@@ -357,73 +279,52 @@ export class CandidatesService {
       };
     }
 
-    // Simplified Flat Attempt Creation (45 Mins, 60 Questions Direct from DB)
+    // Create a new attempt with configurable session minute snapshot
     const attempt = await this.prisma.examAttempt.create({
       data: {
         candidateId: candidate.id,
         status: 'IN_PROGRESS',
-        durationMinsSnapshot: 45,
+        durationMinsSnapshot: candidate.assessment.durationMins || EXAM_DURATION_MINS,
         passingPercentageSnapshot: candidate.assessment.passingPercentage || 50.0,
         maxProctorWarningsSnapshot: candidate.assessment.maxProctorWarnings || 3,
         startedAt: new Date(),
       },
     });
 
-    // Fetch questions directly from DB for this assessment
-    const allDbQuestions = await this.prisma.question.findMany({
+    // Fetch all active questions from the Shared Question Bank
+    const allQuestions = await this.prisma.question.findMany({
       where: { status: 'ACTIVE' },
-      orderBy: { id: 'asc' },
+      orderBy: { createdAt: 'asc' },
+      take: TOTAL_QUESTIONS,
     });
 
-    const selectedQuestionRecords: Array<{
-      attemptId: string;
-      questionId: string;
-      subjectId: string;
-      sectionId: string;
-      questionOrder: number;
-      marks: number;
-    }> = [];
-
-    let order = 1;
-    for (const q of allDbQuestions) {
-      selectedQuestionRecords.push({
-        attemptId: attempt.id,
-        questionId: q.id,
-        subjectId: q.sectionId,
-        sectionId: q.sectionId,
-        questionOrder: order++,
-        marks: q.marks || 1.0,
-      });
+    if (allQuestions.length === 0) {
+      throw new BadRequestException('No active questions found in the question bank. Please contact the administrator.');
     }
 
-    // Batch insert AttemptQuestion records
+    // Create AttemptQuestion records (1 per question, sequential order)
     await this.prisma.attemptQuestion.createMany({
-      data: selectedQuestionRecords,
+      data: allQuestions.map((q, idx) => ({
+        attemptId: attempt.id,
+        questionId: q.id,
+        questionOrder: idx + 1,
+        marks: q.marks || 1.0,
+      })),
     });
 
-    // Update Candidate status to IN_PROGRESS
+    // Update candidate status
     await this.prisma.candidate.update({
       where: { id: candidate.id },
       data: { status: 'IN_PROGRESS' },
     });
 
-    // Retrieve attempt with relational questions
+    // Retrieve the created attempt with questions
     const createdAttempt = await this.prisma.examAttempt.findUnique({
       where: { id: attempt.id },
       include: {
         attemptQuestions: {
           orderBy: { questionOrder: 'asc' },
-          include: {
-            question: {
-              include: {
-                section: {
-                  include: {
-                    subject: true,
-                  },
-                },
-              },
-            },
-          },
+          include: { question: true },
         },
       },
     });
@@ -447,10 +348,6 @@ export class CandidatesService {
       questions: createdAttempt.attemptQuestions.map((aq) => ({
         attemptQuestionId: aq.id,
         id: aq.question.id,
-        subjectId: aq.subjectId,
-        subjectName: aq.question.section.subject.name,
-        sectionId: aq.sectionId,
-        sectionName: aq.question.section.name,
         question: aq.question.question,
         optionA: aq.question.optionA,
         optionB: aq.question.optionB,
@@ -462,19 +359,12 @@ export class CandidatesService {
     };
   }
 
-  // --- SUBMIT EXAM ---
-  async submitExam(
-    attemptId: string,
-    answers: Record<string, any>
-  ) {
+  // ─── SUBMIT EXAM ───────────────────────────────────────────────────────────
+  async submitExam(attemptId: string, answers: Record<string, any>) {
     const attempt = await this.prisma.examAttempt.findUnique({
       where: { id: attemptId },
       include: {
-        attemptQuestions: {
-          include: {
-            question: true,
-          },
-        },
+        attemptQuestions: { include: { question: true } },
         candidate: true,
       },
     });
@@ -542,7 +432,7 @@ export class CandidatesService {
       data: { status: 'COMPLETED' },
     });
 
-    // Fire Headstart OUT Webhooks (API 4 Status = Completed, API 5 Result, API 6 Report Card)
+    // Fire Headstart OUT Webhooks
     try {
       await this.headstartWebhook.sendAssessmentStatus(attempt.id, 'Completed');
       await this.headstartWebhook.sendAssessmentResultAndReportCard(attempt.id);
@@ -553,35 +443,23 @@ export class CandidatesService {
     return updatedAttempt;
   }
 
-  // --- PROCTORING VIOLATION LOGGING ---
+  // ─── PROCTORING ────────────────────────────────────────────────────────────
   async logProctoringEvent(attemptId: string, eventType: string, details?: string) {
-    const attempt = await this.prisma.examAttempt.findUnique({
-      where: { id: attemptId },
-    });
-
+    const attempt = await this.prisma.examAttempt.findUnique({ where: { id: attemptId } });
     if (!attempt) throw new NotFoundException('Exam attempt not found.');
 
     await this.prisma.proctoringLog.create({
-      data: {
-        attemptId: attempt.id,
-        eventType,
-        details,
-      },
+      data: { attemptId: attempt.id, eventType, details },
     });
 
     const newWarningCount = attempt.warningCount + 1;
-
-    // RULE 6: Strict Warning Threshold (Max warnings reached -> DISQUALIFIED & Auto-submit)
     const isDisqualified = newWarningCount >= attempt.maxProctorWarningsSnapshot;
 
     const updatedAttempt = await this.prisma.examAttempt.update({
       where: { id: attempt.id },
       data: {
         warningCount: newWarningCount,
-        ...(isDisqualified && {
-          status: 'DISQUALIFIED',
-          submittedAt: new Date(),
-        }),
+        ...(isDisqualified && { status: 'DISQUALIFIED', submittedAt: new Date() }),
       },
     });
 
@@ -602,17 +480,14 @@ export class CandidatesService {
     };
   }
 
+  // ─── CANDIDATE MANAGEMENT ──────────────────────────────────────────────────
   async resetCandidate(id: string) {
     const candidate = await this.prisma.candidate.findUnique({ where: { id } });
     if (!candidate) throw new NotFoundException('Candidate not found.');
 
-    // Reset candidate status so candidate can re-enter session & start a fresh attempt
-    // Historical attempt records (ExamAttempt, Submission, ProctoringLog) remain 100% intact in DB
     return this.prisma.candidate.update({
       where: { id },
-      data: {
-        status: 'REGISTERED',
-      },
+      data: { status: 'REGISTERED' },
       include: { assessment: true },
     });
   }
@@ -621,24 +496,44 @@ export class CandidatesService {
     return this.prisma.candidate.delete({ where: { id } });
   }
 
-  // --- ASSESSMENT MANAGEMENT & UNIQUE LINKS ---
+  // ─── ASSESSMENT SESSION MANAGEMENT ────────────────────────────────────────
   async getAllAssessments() {
     const assessments = await this.prisma.assessment.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
-        _count: {
-          select: { candidates: true },
-        },
+        _count: { select: { candidates: true } },
       },
     });
 
     const frontendBaseUrl = process.env.FRONTEND_CANDIDATE_URL || 'https://greatcampus-1.onrender.com';
 
-    return assessments.map((ass) => ({
-      ...ass,
-      totalCandidates: ass._count.candidates,
-      uniqueCandidateLink: `${frontendBaseUrl}/exam?assessment=${ass.slug || ass.id}`,
-    }));
+    return assessments.map((ass) => {
+      // Auto-compute status based on activeFrom/activeUntil
+      const now = new Date();
+      let computedStatus = ass.status;
+      if (ass.activeFrom && now < new Date(ass.activeFrom)) {
+        computedStatus = 'UPCOMING';
+      } else if (ass.activeUntil && now > new Date(ass.activeUntil)) {
+        computedStatus = 'EXPIRED';
+      }
+
+      return {
+        id: ass.id,
+        name: ass.name,
+        slug: ass.slug,
+        description: ass.description,
+        passingPercentage: ass.passingPercentage,
+        maxProctorWarnings: ass.maxProctorWarnings,
+        status: computedStatus,
+        activeFrom: ass.activeFrom,
+        activeUntil: ass.activeUntil,
+        createdAt: ass.createdAt,
+        totalCandidates: ass._count.candidates,
+        durationMins: ass.durationMins || EXAM_DURATION_MINS,
+        totalQuestions: TOTAL_QUESTIONS,
+        uniqueCandidateLink: `${frontendBaseUrl}/exam?assessment=${ass.slug || ass.id}`,
+      };
+    });
   }
 
   async getAssessmentByIdentifier(identifier: string) {
@@ -652,22 +547,32 @@ export class CandidatesService {
       throw new NotFoundException(`Assessment session '${identifier}' not found.`);
     }
 
-    // Check if session link has expired
-    let isExpired = assessment.status === 'EXPIRED' || assessment.status === 'INACTIVE';
-    if (assessment.activeUntil && new Date() > new Date(assessment.activeUntil)) {
+    const now = new Date();
+
+    // Check if session hasn't started yet (activeFrom in the future)
+    const isNotStarted = !!(assessment.activeFrom && now < new Date(assessment.activeFrom));
+
+    // Check if session has expired (activeUntil in the past) — computed at runtime, NOT persisted to DB
+    let isExpired = assessment.status === 'INACTIVE';
+    if (!isNotStarted && assessment.activeUntil && now > new Date(assessment.activeUntil)) {
       isExpired = true;
-      if (assessment.status !== 'EXPIRED') {
-        await this.prisma.assessment.update({
-          where: { id: assessment.id },
-          data: { status: 'EXPIRED' },
-        });
-      }
+      // No DB write — status stays as set by Admin (ACTIVE/DRAFT/INACTIVE)
     }
 
     const frontendBaseUrl = process.env.FRONTEND_CANDIDATE_URL || 'https://greatcampus-1.onrender.com';
+
     return {
-      ...assessment,
+      id: assessment.id,
+      name: assessment.name,
+      slug: assessment.slug,
+      description: assessment.description,
+      status: isExpired ? 'EXPIRED' : (isNotStarted ? 'UPCOMING' : 'ACTIVE'),
+      activeFrom: assessment.activeFrom,
+      activeUntil: assessment.activeUntil,
+      durationMins: assessment.durationMins || EXAM_DURATION_MINS,
+      totalQuestions: TOTAL_QUESTIONS,
       isExpired,
+      isNotStarted,
       uniqueCandidateLink: `${frontendBaseUrl}/exam?assessment=${assessment.slug || assessment.id}`,
     };
   }
@@ -678,7 +583,9 @@ export class CandidatesService {
     slug?: string;
     description?: string;
     durationMins?: number;
-    activeHours?: number;
+    activeFrom?: string;       // ISO datetime string — when link becomes accessible
+    activeUntil?: string;      // ISO datetime string — when link expires
+    activeHours?: number;      // convenience: set activeUntil = now + activeHours
     passingPercentage?: number;
     maxProctorWarnings?: number;
     status?: string;
@@ -687,37 +594,39 @@ export class CandidatesService {
     if (!tenant) throw new NotFoundException('Default tenant not found.');
 
     const slug = data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    const activeUntil = data.activeHours && data.activeHours > 0
-      ? new Date(Date.now() + data.activeHours * 3600 * 1000)
-      : null;
+
+    // Resolve activeFrom
+    const activeFrom = data.activeFrom ? new Date(data.activeFrom) : null;
+
+    // Resolve activeUntil — prefer explicit ISO, else compute from activeHours
+    let activeUntil: Date | null = null;
+    if (data.activeUntil) {
+      activeUntil = new Date(data.activeUntil);
+    } else if (data.activeHours && data.activeHours > 0) {
+      activeUntil = new Date(Date.now() + data.activeHours * 3600 * 1000);
+    }
+
+    const payload: any = {
+      name: data.name,
+      slug,
+      description: data.description,
+      durationMins: data.durationMins ? Number(data.durationMins) : 45,
+      passingPercentage: data.passingPercentage ? Number(data.passingPercentage) : 50.0,
+      maxProctorWarnings: data.maxProctorWarnings ? Number(data.maxProctorWarnings) : 3,
+      status: data.status || 'ACTIVE',
+      ...(activeFrom !== null && { activeFrom }),
+      ...(activeUntil !== null && { activeUntil }),
+    };
 
     if (data.id) {
-      return this.prisma.assessment.update({
-        where: { id: data.id },
-        data: {
-          name: data.name,
-          slug,
-          description: data.description,
-          durationMins: 45, // Fixed 45 mins exam duration
-          passingPercentage: data.passingPercentage || 50.0,
-          maxProctorWarnings: data.maxProctorWarnings || 3,
-          status: data.status || 'ACTIVE',
-          ...(activeUntil && { activeUntil }),
-        },
-      });
+      return this.prisma.assessment.update({ where: { id: data.id }, data: payload });
     }
 
     return this.prisma.assessment.create({
       data: {
         tenantId: tenant.id,
-        name: data.name,
-        slug,
-        description: data.description || 'Niva Bupa Health Insurance Assessment Session',
-        durationMins: 45, // Fixed 45 mins exam duration
-        passingPercentage: data.passingPercentage || 50.0,
-        maxProctorWarnings: data.maxProctorWarnings || 3,
-        status: data.status || 'ACTIVE',
-        activeUntil,
+        ...payload,
+        description: payload.description || 'Assessment Session',
       },
     });
   }
@@ -726,4 +635,3 @@ export class CandidatesService {
     return this.prisma.assessment.delete({ where: { id } });
   }
 }
-

@@ -31,6 +31,7 @@ export default function CandidateRegistration() {
   const [error, setError] = useState("");
   const [activeAssessment, setActiveAssessment] = useState<any>(null);
   const [isAssessmentExpired, setIsAssessmentExpired] = useState<boolean>(false);
+  const [isAssessmentNotStarted, setIsAssessmentNotStarted] = useState<boolean>(false);
 
   useEffect(() => {
     async function loadAssessmentFromUrl() {
@@ -48,6 +49,12 @@ export default function CandidateRegistration() {
             if (data.assessment.isExpired) {
               setIsAssessmentExpired(true);
               setError("This assessment session link is no longer active or has expired. Please contact your HR Administrator for a valid link.");
+            } else if (data.assessment.isNotStarted) {
+              setIsAssessmentNotStarted(true);
+              const fromTime = data.assessment.activeFrom
+                ? new Date(data.assessment.activeFrom).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })
+                : "a scheduled time";
+              setError(`This assessment session hasn't started yet. It will be accessible from ${fromTime}.`);
             }
             return;
           }
@@ -268,7 +275,7 @@ export default function CandidateRegistration() {
 
               <button
                 type="submit"
-                disabled={loading || isAssessmentExpired}
+                disabled={loading || isAssessmentExpired || isAssessmentNotStarted}
                 className="exam-submit-btn"
               >
                 {loading ? (

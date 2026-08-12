@@ -71,28 +71,12 @@ export class HeadstartWebhookService {
         include: {
           candidate: {
             include: {
-              assessment: {
-                include: {
-                  subjects: {
-                    include: {
-                      sections: true,
-                    },
-                  },
-                },
-              },
+              assessment: true,
             },
           },
           submissions: {
             include: {
-              question: {
-                include: {
-                  section: {
-                    include: {
-                      subject: true,
-                    },
-                  },
-                },
-              },
+              question: true,
             },
           },
         },
@@ -112,27 +96,22 @@ export class HeadstartWebhookService {
       const endTime = attempt.submittedAt ? new Date(attempt.submittedAt).getTime() : Date.now();
       const timeTakenSec = Math.max(0, Math.floor((endTime - startTime) / 1000));
 
-      // Calculate subject & section wise performance
-      const subjectMap = new Map<string, { subjectName: string; totalMarks: number; obtainedMarks: number }>();
-
+      // Subject breakdown (Flat question bank — general module)
+      let correctCount = 0;
+      let totalCount = 0;
       attempt.submissions.forEach((sub) => {
-        const subjectName = sub.question?.section?.subject?.name || 'General';
-        const marks = sub.question?.marks || 1;
-        const current = subjectMap.get(subjectName) || { subjectName, totalMarks: 0, obtainedMarks: 0 };
-        
-        current.totalMarks += marks;
-        if (sub.isCorrect) {
-          current.obtainedMarks += marks;
-        }
-        subjectMap.set(subjectName, current);
+        totalCount++;
+        if (sub.isCorrect) correctCount++;
       });
 
-      const subjectBreakdown = Array.from(subjectMap.values()).map((s) => ({
-        subjectName: s.subjectName,
-        totalMarks: s.totalMarks,
-        obtainedMarks: s.obtainedMarks,
-        percentage: s.totalMarks > 0 ? Number(((s.obtainedMarks / s.totalMarks) * 100).toFixed(2)) : 0,
-      }));
+      const subjectBreakdown = [
+        {
+          subjectName: "General Insurance & Banca Assessment",
+          totalMarks: attempt.totalPossibleScore || totalCount,
+          obtainedMarks: attempt.score || correctCount,
+          percentage: attempt.percentage,
+        },
+      ];
 
       // API 5 Payload: Result
       const api5Payload = {

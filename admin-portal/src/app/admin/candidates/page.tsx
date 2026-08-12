@@ -18,8 +18,10 @@ export default function AdminCandidatesPage() {
   const [candidates, setCandidates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Search & Filter
+  // Search & Filter & Pagination
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
 
   // Modals
   const [showAddCandidateModal, setShowAddCandidateModal] = useState(false);
@@ -159,6 +161,14 @@ export default function AdminCandidatesPage() {
     );
   });
 
+  const totalPages = Math.max(1, Math.ceil(filteredCandidates.length / ITEMS_PER_PAGE));
+  const paginatedCandidates = filteredCandidates.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val);
+    setCurrentPage(1);
+  };
+
   return (
     <div className="p-8 space-y-8 max-w-7xl mx-auto">
 
@@ -207,7 +217,7 @@ export default function AdminCandidatesPage() {
               type="text"
               placeholder="Search by Name, Email, or Reference ID..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 font-medium text-slate-800 outline-none"
             />
           </div>
@@ -239,7 +249,7 @@ export default function AdminCandidatesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-              {filteredCandidates.map((c) => {
+              {paginatedCandidates.map((c) => {
                 const attempt = c.attempt;
                 const status = c.status;
 
@@ -327,6 +337,30 @@ export default function AdminCandidatesPage() {
               })}
             </tbody>
           </table>
+
+          {/* Pagination Footer */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-t border-slate-200 text-xs">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 font-bold text-slate-700 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                ← Previous
+              </button>
+              <div className="text-slate-600 font-semibold">
+                Page <strong className="text-slate-900">{currentPage}</strong> of <strong className="text-slate-900">{totalPages}</strong>
+                <span className="text-slate-400 ml-2">({filteredCandidates.length} total candidates)</span>
+              </div>
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 font-bold text-slate-700 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </div>
       )}
 

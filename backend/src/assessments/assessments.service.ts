@@ -1,5 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+
+// Fixed constants — cannot be changed by Admin
+const EXAM_DURATION_MINS = 45;
+const TOTAL_QUESTIONS = 60;
 
 @Injectable()
 export class AssessmentsService {
@@ -18,52 +22,36 @@ export class AssessmentsService {
   async getAssessments() {
     const assessments = await this.prisma.assessment.findMany({
       include: {
-        subjects: {
-          include: {
-            sections: {
-              include: {
-                _count: { select: { questions: true } },
-              },
-            },
-          },
-        },
         _count: { select: { candidates: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    return assessments.map((assessment) => {
-      let totalSections = 0;
-      let totalPoolQuestions = 0;
-      let totalAttemptQuestions = 0;
-      const validationErrors: Array<{ sectionName: string; required: number; available: number }> = [];
+    const frontendBaseUrl = process.env.FRONTEND_CANDIDATE_URL || 'https://greatcampus-1.onrender.com';
+    const now = new Date();
 
-      for (const sub of assessment.subjects) {
-        totalSections += sub.sections.length;
-        for (const sec of sub.sections) {
-          const count = sec._count.questions;
-          totalPoolQuestions += count;
-          totalAttemptQuestions += sec.questionsToAsk;
-          if (count < sec.questionsToAsk) {
-            validationErrors.push({
-              sectionName: `${sub.name} ➔ ${sec.name}`,
-              required: sec.questionsToAsk,
-              available: count,
-            });
-          }
-        }
+    return assessments.map((ass) => {
+      let computedStatus = ass.status;
+      if (ass.status !== 'INACTIVE' && ass.status !== 'DRAFT') {
+        if (ass.activeFrom && now < new Date(ass.activeFrom)) computedStatus = 'UPCOMING';
+        else if (ass.activeUntil && now > new Date(ass.activeUntil)) computedStatus = 'EXPIRED';
       }
 
       return {
-        ...assessment,
-        stats: {
-          subjectCount: assessment.subjects.length,
-          sectionCount: totalSections,
-          totalPoolQuestions,
-          totalAttemptQuestions,
-          isValid: validationErrors.length === 0,
-          validationErrors,
-        },
+        id: ass.id,
+        name: ass.name,
+        slug: ass.slug,
+        description: ass.description,
+        status: computedStatus,
+        activeFrom: ass.activeFrom,
+        activeUntil: ass.activeUntil,
+        passingPercentage: ass.passingPercentage,
+        maxProctorWarnings: ass.maxProctorWarnings,
+        createdAt: ass.createdAt,
+        totalCandidates: ass._count.candidates,
+        durationMins: EXAM_DURATION_MINS,
+        totalQuestions: TOTAL_QUESTIONS,
+        uniqueCandidateLink: `${frontendBaseUrl}/exam?assessment=${ass.slug || ass.id}`,
       };
     });
   }
@@ -72,18 +60,7 @@ export class AssessmentsService {
     const assessment = await this.prisma.assessment.findFirst({
       where: { OR: [{ id }, { slug: id }] },
       include: {
-        subjects: {
-          orderBy: { displayOrder: 'asc' },
-          include: {
-            sections: {
-              orderBy: { displayOrder: 'asc' },
-              include: {
-                questions: true,
-                _count: { select: { questions: true } },
-              },
-            },
-          },
-        },
+        _count: { select: { candidates: true } },
       },
     });
 
@@ -91,55 +68,29 @@ export class AssessmentsService {
       throw new NotFoundException(`Assessment not found`);
     }
 
-    // Pool Validation Check
-    const validationErrors: Array<{ sectionId: string; sectionName: string; required: number; available: number }> = [];
-    let totalAttemptQuestions = 0;
-    let totalPoolQuestions = 0;
-
-    for (const sub of assessment.subjects) {
-      for (const sec of sub.sections) {
-        const count = sec._count.questions;
-        totalPoolQuestions += count;
-        totalAttemptQuestions += sec.questionsToAsk;
-        if (count < sec.questionsToAsk) {
-          validationErrors.push({
-            sectionId: sec.id,
-            sectionName: `${sub.name} ➔ ${sec.name}`,
-            required: sec.questionsToAsk,
-            available: count,
-          });
-        }
-      }
-    }
+    const questionCount = await this.prisma.question.count({ where: { status: 'ACTIVE' } });
+    const frontendBaseUrl = process.env.FRONTEND_CANDIDATE_URL || 'https://greatcampus-1.onrender.com';
 
     return {
       ...assessment,
-      stats: {
-        subjectCount: assessment.subjects.length,
-        sectionCount: assessment.subjects.reduce((sum, s) => sum + s.sections.length, 0),
-        totalPoolQuestions,
-        totalAttemptQuestions,
-        isValid: validationErrors.length === 0,
-        validationErrors,
-      },
+      durationMins: EXAM_DURATION_MINS,
+      totalQuestions: TOTAL_QUESTIONS,
+      activeQuestions: questionCount,
+      uniqueCandidateLink: `${frontendBaseUrl}/exam?assessment=${assessment.slug || assessment.id}`,
     };
   }
 
   async createAssessment(data: {
     name: string;
     description?: string;
-    durationMins?: number;
+    activeFrom?: string;
+    activeUntil?: string;
     passingPercentage?: number;
     maxProctorWarnings?: number;
+    status?: string;
   }) {
     const tenant = await this.getOrCreateTenant();
     const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') + '-' + Date.now().toString().slice(-4);
-
-    // Deactivate all existing assessments so ONLY 1 SINGLE ACTIVE EXAM exists!
-    await this.prisma.assessment.updateMany({
-      where: { status: 'ACTIVE' },
-      data: { status: 'ARCHIVED' },
-    });
 
     return this.prisma.assessment.create({
       data: {
@@ -147,10 +98,11 @@ export class AssessmentsService {
         name: data.name,
         slug,
         description: data.description || '',
-        durationMins: data.durationMins ?? 60,
         passingPercentage: data.passingPercentage ?? 50,
         maxProctorWarnings: data.maxProctorWarnings ?? 3,
-        status: 'ACTIVE',
+        status: data.status || 'ACTIVE',
+        activeFrom: data.activeFrom ? new Date(data.activeFrom) : null,
+        activeUntil: data.activeUntil ? new Date(data.activeUntil) : null,
       },
     });
   }
@@ -160,77 +112,28 @@ export class AssessmentsService {
     data: {
       name?: string;
       description?: string;
-      durationMins?: number;
+      activeFrom?: string;
+      activeUntil?: string;
       passingPercentage?: number;
       maxProctorWarnings?: number;
       status?: string;
     }
   ) {
-    if (data.status === 'ACTIVE') {
-      // Deactivate all other assessments
-      await this.prisma.assessment.updateMany({
-        where: { id: { not: id } },
-        data: { status: 'ARCHIVED' },
-      });
-    }
-
     return this.prisma.assessment.update({
       where: { id },
-      data,
+      data: {
+        ...(data.name !== undefined && { name: data.name }),
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.passingPercentage !== undefined && { passingPercentage: data.passingPercentage }),
+        ...(data.maxProctorWarnings !== undefined && { maxProctorWarnings: data.maxProctorWarnings }),
+        ...(data.status !== undefined && { status: data.status }),
+        ...(data.activeFrom !== undefined && { activeFrom: data.activeFrom ? new Date(data.activeFrom) : null }),
+        ...(data.activeUntil !== undefined && { activeUntil: data.activeUntil ? new Date(data.activeUntil) : null }),
+      },
     });
   }
 
   async deleteAssessment(id: string) {
     return this.prisma.assessment.delete({ where: { id } });
-  }
-
-  // --- SUBJECT OPERATIONS ---
-  async addSubject(assessmentId: string, name: string) {
-    const count = await this.prisma.assessmentSubject.count({ where: { assessmentId } });
-    return this.prisma.assessmentSubject.create({
-      data: {
-        assessmentId,
-        name,
-        displayOrder: count + 1,
-      },
-    });
-  }
-
-  async updateSubject(id: string, name: string) {
-    return this.prisma.assessmentSubject.update({
-      where: { id },
-      data: { name },
-    });
-  }
-
-  async deleteSubject(id: string) {
-    return this.prisma.assessmentSubject.delete({ where: { id } });
-  }
-
-  // --- SECTION OPERATIONS ---
-  async addSection(subjectId: string, name: string, questionsToAsk: number = 5) {
-    const count = await this.prisma.subjectSection.count({ where: { subjectId } });
-    return this.prisma.subjectSection.create({
-      data: {
-        subjectId,
-        name,
-        questionsToAsk,
-        displayOrder: count + 1,
-      },
-    });
-  }
-
-  async updateSection(id: string, name?: string, questionsToAsk?: number) {
-    return this.prisma.subjectSection.update({
-      where: { id },
-      data: {
-        ...(name !== undefined && { name }),
-        ...(questionsToAsk !== undefined && { questionsToAsk }),
-      },
-    });
-  }
-
-  async deleteSection(id: string) {
-    return this.prisma.subjectSection.delete({ where: { id } });
   }
 }

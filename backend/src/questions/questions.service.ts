@@ -1,40 +1,18 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class QuestionsService {
   constructor(private prisma: PrismaService) {}
 
-  async getQuestions(sectionId?: string, subjectId?: string, assessmentId?: string) {
-    let whereClause: any = {};
-
-    if (sectionId) {
-      whereClause.sectionId = sectionId;
-    } else if (subjectId) {
-      whereClause.section = { subjectId };
-    } else if (assessmentId) {
-      whereClause.section = { subject: { assessmentId } };
-    }
-
+  // Get all questions from the shared question bank
+  async getQuestions() {
     return this.prisma.question.findMany({
-      where: whereClause,
-      include: {
-        section: {
-          include: {
-            subject: {
-              include: {
-                assessment: true,
-              },
-            },
-          },
-        },
-      },
       orderBy: { createdAt: 'asc' },
     });
   }
 
   async addQuestion(data: {
-    sectionId: string;
     question: string;
     optionA: string;
     optionB: string;
@@ -43,14 +21,8 @@ export class QuestionsService {
     correctAnswer: string;
     marks?: number;
   }) {
-    const section = await this.prisma.subjectSection.findUnique({ where: { id: data.sectionId } });
-    if (!section) {
-      throw new NotFoundException(`Section not found for ID: ${data.sectionId}`);
-    }
-
     return this.prisma.question.create({
       data: {
-        sectionId: data.sectionId,
         question: data.question,
         optionA: data.optionA,
         optionB: data.optionB,
@@ -58,9 +30,6 @@ export class QuestionsService {
         optionD: data.optionD,
         correctAnswer: data.correctAnswer,
         marks: data.marks ?? 1,
-      },
-      include: {
-        section: { include: { subject: true } },
       },
     });
   }
@@ -75,6 +44,7 @@ export class QuestionsService {
       optionD?: string;
       correctAnswer?: string;
       marks?: number;
+      status?: string;
     }
   ) {
     return this.prisma.question.update({

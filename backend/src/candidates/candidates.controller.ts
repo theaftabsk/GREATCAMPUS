@@ -106,7 +106,9 @@ export class CandidatesController {
       name: string;
       slug?: string;
       description?: string;
-      durationMins?: number;
+      activeFrom?: string;          // ISO datetime — when link becomes accessible
+      activeUntil?: string;         // ISO datetime — when link expires
+      activeHours?: number;         // Convenience: activeUntil = now + N hours
       passingPercentage?: number;
       maxProctorWarnings?: number;
       status?: string;
