@@ -26,7 +26,7 @@ export class AssessmentsService {
       orderBy: { createdAt: 'desc' },
     });
 
-    const frontendBaseUrl = process.env.FRONTEND_CANDIDATE_URL || 'https://greatcampus-1.onrender.com';
+    const frontendBaseUrl = process.env.CANDIDATE_PORTAL_URL || process.env.FRONTEND_CANDIDATE_URL || 'http://localhost:3002';
     const now = new Date();
 
     return assessments.map((ass) => {

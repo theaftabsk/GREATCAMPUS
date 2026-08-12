@@ -79,7 +79,16 @@ export class HeadstartWebhookService {
             include: { assessment: true },
           },
           submissions: {
-            include: { question: true },
+            include: {
+              question: {
+                select: {
+                  id: true,
+                  sectionName: true,
+                  sectionOrder: true,
+                  marks: true,
+                },
+              },
+            },
           },
         },
       });
@@ -105,13 +114,14 @@ export class HeadstartWebhookService {
 
       for (const sub of attempt.submissions) {
         const sectionName = sub.question.sectionName || 'General';
-        const sectionOrder = (sub.question as any).sectionOrder || 0;
+        const sectionOrder = sub.question.sectionOrder || 0;
+        const questionMarks = sub.question.marks || 1;
 
         if (!sectionMap[sectionName]) {
           sectionMap[sectionName] = { sectionOrder, total: 0, correct: 0, marks: 0 };
         }
         sectionMap[sectionName].total += 1;
-        sectionMap[sectionName].marks += (sub.question as any).marks || 1;
+        sectionMap[sectionName].marks += questionMarks;
         if (sub.isCorrect) sectionMap[sectionName].correct += 1;
       }
 

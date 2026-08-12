@@ -61,6 +61,15 @@ function formatDisplay(iso?: string | null) {
   return new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
 }
 
+function getDisplayExamLink(rawLink: string) {
+  if (!rawLink) return "";
+  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+    const slugOrId = rawLink.includes("assessment=") ? rawLink.split("assessment=")[1] : rawLink;
+    return `http://localhost:3002/exam?assessment=${slugOrId}`;
+  }
+  return rawLink;
+}
+
 export default function AdminAssessmentsPage() {
   const [sessions, setSessions] = useState<AssessmentSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -98,7 +107,8 @@ export default function AdminAssessmentsPage() {
   useEffect(() => { loadSessions(); }, [loadSessions]);
 
   const copyLink = (session: AssessmentSession) => {
-    navigator.clipboard.writeText(session.uniqueCandidateLink).then(() => {
+    const linkToCopy = getDisplayExamLink(session.uniqueCandidateLink);
+    navigator.clipboard.writeText(linkToCopy).then(() => {
       setCopiedId(session.id);
       setTimeout(() => setCopiedId(null), 2000);
     });
@@ -256,8 +266,8 @@ export default function AdminAssessmentsPage() {
                 <div className="assess-link-row">
                   <div className="assess-link-box">
                     <Link2 size={13} />
-                    <span className="assess-link-text" title={session.uniqueCandidateLink}>
-                      {session.uniqueCandidateLink}
+                    <span className="assess-link-text" title={getDisplayExamLink(session.uniqueCandidateLink)}>
+                      {getDisplayExamLink(session.uniqueCandidateLink)}
                     </span>
                   </div>
                   <button
