@@ -234,86 +234,95 @@ export default function AdminAssessmentsPage() {
           </button>
         </div>
       ) : (
-        <div className="assess-list">
-          {sessions.map((session) => {
-            const computedStatus = getComputedStatus(session);
-            const isCopied = copiedId === session.id;
-            const displayLink = getDisplayExamLink(session.uniqueCandidateLink);
-            return (
-              <div key={session.id} className={`assess-item assess-item--${computedStatus.toLowerCase()}`}>
-                
-                {/* Section 1: Title, Status Badge & Description */}
-                <div className="assess-item-main">
-                  <div className="assess-item-title-row">
-                    <h2 className="assess-item-name">{session.name}</h2>
-                    <StatusBadge status={computedStatus} />
-                  </div>
-                  {session.description && (
-                    <p className="assess-item-desc">{session.description}</p>
-                  )}
-                  
-                  {/* Stats Pills */}
-                  <div className="assess-item-stats">
-                    <div className="assess-stat"><BookOpen size={13} /> {TOTAL_QUESTIONS} Questions</div>
-                    <div className="assess-stat"><Clock size={13} /> {session.durationMins || EXAM_DURATION_MINS} Mins</div>
-                    <div className="assess-stat"><Users size={13} /> {session.totalCandidates} Candidates</div>
-                  </div>
-                </div>
+        <div className="assess-excel-wrapper">
+          <table className="assess-excel-table">
+            <thead>
+              <tr>
+                <th style={{ width: "22%" }}>Session Name</th>
+                <th style={{ width: "10%" }}>Status</th>
+                <th style={{ width: "18%" }}>Configuration</th>
+                <th style={{ width: "22%" }}>Access Schedule Window</th>
+                <th style={{ width: "20%" }}>Unique Candidate Link</th>
+                <th style={{ width: "8%", textAlign: "right" }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sessions.map((session) => {
+                const computedStatus = getComputedStatus(session);
+                const isCopied = copiedId === session.id;
+                const displayLink = getDisplayExamLink(session.uniqueCandidateLink);
+                return (
+                  <tr key={session.id} className={`assess-excel-row assess-excel-row--${computedStatus.toLowerCase()}`}>
+                    
+                    {/* Col 1: Session Name & Description */}
+                    <td>
+                      <div className="excel-session-name">{session.name}</div>
+                      {session.description && <div className="excel-session-desc">{session.description}</div>}
+                    </td>
 
-                {/* Section 2: Active Window Schedule */}
-                <div className="assess-item-window">
-                  <Calendar size={14} className="assess-window-icon" />
-                  <div className="assess-window-times">
-                    <div>
-                      <span className="assess-window-label">From: </span>
-                      <span className="assess-window-value">{formatDisplay(session.activeFrom)}</span>
-                    </div>
-                    <div>
-                      <span className="assess-window-label">Until: </span>
-                      <span className="assess-window-value">{formatDisplay(session.activeUntil)}</span>
-                    </div>
-                  </div>
-                </div>
+                    {/* Col 2: Status */}
+                    <td>
+                      <StatusBadge status={computedStatus} />
+                    </td>
 
-                {/* Section 3: Link & Actions */}
-                <div className="assess-item-actions-col">
-                  {/* Exam Link Box */}
-                  <div className="assess-link-row">
-                    <div className="assess-link-box">
-                      <Link2 size={13} />
-                      <span className="assess-link-text" title={displayLink}>
-                        {displayLink}
-                      </span>
-                    </div>
-                    <button
-                      className={`assess-copy-btn ${isCopied ? "assess-copy-btn--copied" : ""}`}
-                      onClick={() => copyLink(session)}
-                    >
-                      {isCopied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
-                      {isCopied ? "Copied" : "Copy"}
-                    </button>
-                  </div>
+                    {/* Col 3: Configuration Specs */}
+                    <td>
+                      <div className="excel-specs">
+                        <span className="excel-spec-tag"><BookOpen size={12} /> {TOTAL_QUESTIONS} Qs</span>
+                        <span className="excel-spec-tag"><Clock size={12} /> {session.durationMins || EXAM_DURATION_MINS} Mins</span>
+                        <span className="excel-spec-tag"><Users size={12} /> {session.totalCandidates} Users</span>
+                      </div>
+                    </td>
 
-                  {/* Action Buttons */}
-                  <div className="assess-card-actions">
-                    <button className="assess-action-btn assess-action-btn--edit" onClick={() => openEdit(session)}>
-                      <Edit2 size={13} /> Edit
-                    </button>
-                    <button
-                      className={`assess-action-btn ${session.status === "ACTIVE" ? "assess-action-btn--deactivate" : "assess-action-btn--activate"}`}
-                      onClick={() => handleToggleStatus(session)}
-                    >
-                      {session.status === "ACTIVE" ? <><EyeOff size={13} /> Deactivate</> : <><Eye size={13} /> Activate</>}
-                    </button>
-                    <button className="assess-action-btn assess-action-btn--delete" onClick={() => handleDelete(session.id)}>
-                      <Trash2 size={13} /> Delete
-                    </button>
-                  </div>
-                </div>
+                    {/* Col 4: Active Schedule Window */}
+                    <td>
+                      <div className="excel-window-box">
+                        <div><span className="excel-window-lbl">From:</span> {formatDisplay(session.activeFrom)}</div>
+                        <div><span className="excel-window-lbl">Until:</span> {formatDisplay(session.activeUntil)}</div>
+                      </div>
+                    </td>
 
-              </div>
-            );
-          })}
+                    {/* Col 5: Candidate Exam Link */}
+                    <td>
+                      <div className="excel-link-cell">
+                        <div className="excel-link-box" title={displayLink}>
+                          <Link2 size={12} className="text-blue-600 flex-shrink-0" />
+                          <span className="excel-link-text">{displayLink}</span>
+                        </div>
+                        <button
+                          className={`excel-copy-btn ${isCopied ? "excel-copy-btn--copied" : ""}`}
+                          onClick={() => copyLink(session)}
+                        >
+                          {isCopied ? <CheckCircle2 size={13} /> : <Copy size={13} />}
+                          {isCopied ? "Copied" : "Copy"}
+                        </button>
+                      </div>
+                    </td>
+
+                    {/* Col 6: Actions */}
+                    <td>
+                      <div className="excel-actions">
+                        <button className="excel-act-btn excel-act-edit" onClick={() => openEdit(session)} title="Edit Session">
+                          <Edit2 size={13} />
+                        </button>
+                        <button
+                          className={`excel-act-btn ${session.status === "ACTIVE" ? "excel-act-deactivate" : "excel-act-activate"}`}
+                          onClick={() => handleToggleStatus(session)}
+                          title={session.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                        >
+                          {session.status === "ACTIVE" ? <EyeOff size={13} /> : <Eye size={13} />}
+                        </button>
+                        <button className="excel-act-btn excel-act-delete" onClick={() => handleDelete(session.id)} title="Delete Session">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
@@ -459,37 +468,40 @@ export default function AdminAssessmentsPage() {
         .assess-empty { text-align: center; padding: 80px 20px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; color: #64748b; width: 100%; box-sizing: border-box; }
         .assess-empty-icon { margin: 0 auto 12px; color: #94a3b8; }
 
-        .assess-list { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+        .assess-excel-wrapper { width: 100%; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        .assess-excel-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+        .assess-excel-table th { background: #f1f5f9; color: #334155; font-size: 0.76rem; font-weight: 800; text-transform: uppercase; padding: 14px 16px; border-bottom: 2px solid #cbd5e1; letter-spacing: 0.5px; }
+        .assess-excel-table td { padding: 14px 16px; vertical-align: middle; border-bottom: 1px solid #e2e8f0; }
+        .assess-excel-row { transition: background 0.15s; }
+        .assess-excel-row:hover { background: #f8fafc; }
+        .assess-excel-row--expired { opacity: 0.85; }
 
-        .assess-item { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px 22px; display: flex; items-center; justify-content: space-between; gap: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: all 0.2s; border-left: 5px solid #cbd5e1; }
-        .assess-item:hover { border-color: #cbd5e1; box-shadow: 0 6px 16px rgba(0,0,0,0.06); transform: translateY(-1px); }
-        .assess-item--active   { border-left-color: #16a34a; }
-        .assess-item--upcoming { border-left-color: #d97706; }
-        .assess-item--expired  { border-left-color: #dc2626; opacity: 0.88; }
-        .assess-item--inactive { opacity: 0.75; }
+        .excel-session-name { font-weight: 800; color: #0f172a; font-size: 0.95rem; }
+        .excel-session-desc { font-size: 0.76rem; color: #64748b; font-weight: 500; margin-top: 3px; }
 
-        .assess-item-main { display: flex; flex-direction: column; gap: 6px; flex: 1.2; min-width: 240px; }
-        .assess-item-title-row { display: flex; items-center; gap: 12px; }
-        .assess-item-name { font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0; line-height: 1.3; }
-        .assess-item-desc { font-size: 0.8rem; color: #64748b; margin: 0; font-weight: 500; }
-        .assess-item-stats { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+        .excel-specs { display: flex; flex-wrap: wrap; gap: 6px; }
+        .excel-spec-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; font-weight: 700; background: #f1f5f9; color: #334155; padding: 4px 9px; border-radius: 6px; border: 1px solid #cbd5e1; white-space: nowrap; }
 
-        .assess-item-window { display: flex; align-items: center; gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 16px; flex: 1; min-width: 220px; }
-        .assess-window-icon { color: #2563eb; flex-shrink: 0; }
-        .assess-window-times { display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; }
-        .assess-window-label { color: #64748b; font-weight: 600; }
-        .assess-window-value { color: #0f172a; font-weight: 700; }
+        .excel-window-box { font-size: 0.78rem; display: flex; flex-direction: column; gap: 3px; color: #0f172a; font-weight: 600; }
+        .excel-window-lbl { color: #64748b; font-weight: 500; font-size: 0.75rem; }
 
-        .assess-item-actions-col { display: flex; flex-direction: column; gap: 10px; flex: 1.3; min-width: 280px; }
-        .assess-link-row { display: flex; gap: 8px; align-items: center; width: 100%; }
-        .assess-link-box { display: flex; align-items: center; gap: 7px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 8px 12px; flex: 1; min-width: 0; }
-        .assess-link-box > svg { color: #2563eb; flex-shrink: 0; }
-        .assess-link-text { font-size: 0.76rem; color: #334155; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; }
-        .assess-copy-btn { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 700; padding: 8px 14px; border-radius: 10px; border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; cursor: pointer; white-space: nowrap; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
-        .assess-copy-btn:hover { background: #dbeafe; }
-        .assess-copy-btn--copied { border-color: #86efac; background: #f0fdf4; color: #166534; }
+        .excel-link-cell { display: flex; align-items: center; gap: 8px; }
+        .excel-link-box { display: flex; align-items: center; gap: 6px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 10px; font-family: monospace; font-size: 0.75rem; color: #1e293b; font-weight: 600; overflow: hidden; flex: 1; min-width: 0; }
+        .excel-link-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .excel-copy-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; font-weight: 700; padding: 6px 12px; border-radius: 8px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+        .excel-copy-btn:hover { background: #dbeafe; }
+        .excel-copy-btn--copied { border-color: #86efac; background: #f0fdf4; color: #166534; }
 
-        .assess-card-actions { display: flex; gap: 8px; justify-content: flex-end; width: 100%; }
+        .excel-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+        .excel-act-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; transition: all 0.2s; }
+        .excel-act-edit       { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+        .excel-act-edit:hover { background: #dbeafe; }
+        .excel-act-deactivate       { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+        .excel-act-deactivate:hover { background: #fde68a; }
+        .excel-act-activate       { background: #dcfce7; color: #166534; border-color: #86efac; }
+        .excel-act-activate:hover { background: #bbf7d0; }
+        .excel-act-delete       { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+        .excel-act-delete:hover { background: #fecaca; }
         .assess-action-btn { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 700; padding: 7px 13px; border-radius: 9px; border: 1px solid transparent; cursor: pointer; transition: all 0.2s; }
         .assess-action-btn--edit       { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
         .assess-action-btn--edit:hover { background: #dbeafe; }
