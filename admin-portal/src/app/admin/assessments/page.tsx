@@ -234,72 +234,83 @@ export default function AdminAssessmentsPage() {
           </button>
         </div>
       ) : (
-        <div className="assess-grid">
+        <div className="assess-list">
           {sessions.map((session) => {
             const computedStatus = getComputedStatus(session);
             const isCopied = copiedId === session.id;
+            const displayLink = getDisplayExamLink(session.uniqueCandidateLink);
             return (
-              <div key={session.id} className={`assess-card assess-card--${computedStatus.toLowerCase()}`}>
-                <div className="assess-card-header">
-                  <div className="assess-card-title-row">
-                    <h2 className="assess-card-name">{session.name}</h2>
+              <div key={session.id} className={`assess-item assess-item--${computedStatus.toLowerCase()}`}>
+                
+                {/* Section 1: Title, Status Badge & Description */}
+                <div className="assess-item-main">
+                  <div className="assess-item-title-row">
+                    <h2 className="assess-item-name">{session.name}</h2>
                     <StatusBadge status={computedStatus} />
                   </div>
                   {session.description && (
-                    <p className="assess-card-desc">{session.description}</p>
+                    <p className="assess-item-desc">{session.description}</p>
                   )}
+                  
+                  {/* Stats Pills */}
+                  <div className="assess-item-stats">
+                    <div className="assess-stat"><BookOpen size={13} /> {TOTAL_QUESTIONS} Questions</div>
+                    <div className="assess-stat"><Clock size={13} /> {session.durationMins || EXAM_DURATION_MINS} Mins</div>
+                    <div className="assess-stat"><Users size={13} /> {session.totalCandidates} Candidates</div>
+                  </div>
                 </div>
 
-                {/* Session Stats */}
-                <div className="assess-card-stats">
-                  <div className="assess-stat"><BookOpen size={13} /> {TOTAL_QUESTIONS} Questions</div>
-                  <div className="assess-stat"><Clock size={13} /> {session.durationMins || EXAM_DURATION_MINS} Mins</div>
-                  <div className="assess-stat"><Users size={13} /> {session.totalCandidates} Candidates</div>
-                </div>
-
-                {/* Active Window */}
-                <div className="assess-card-window">
+                {/* Section 2: Active Window Schedule */}
+                <div className="assess-item-window">
                   <Calendar size={14} className="assess-window-icon" />
                   <div className="assess-window-times">
-                    <span className="assess-window-label">From:</span>
-                    <span className="assess-window-value">{formatDisplay(session.activeFrom)}</span>
-                    <span className="assess-window-label">Until:</span>
-                    <span className="assess-window-value">{formatDisplay(session.activeUntil)}</span>
+                    <div>
+                      <span className="assess-window-label">From: </span>
+                      <span className="assess-window-value">{formatDisplay(session.activeFrom)}</span>
+                    </div>
+                    <div>
+                      <span className="assess-window-label">Until: </span>
+                      <span className="assess-window-value">{formatDisplay(session.activeUntil)}</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Unique Candidate Exam Link */}
-                <div className="assess-link-row">
-                  <div className="assess-link-box">
-                    <Link2 size={13} />
-                    <span className="assess-link-text" title={getDisplayExamLink(session.uniqueCandidateLink)}>
-                      {getDisplayExamLink(session.uniqueCandidateLink)}
-                    </span>
+                {/* Section 3: Link & Actions */}
+                <div className="assess-item-actions-col">
+                  {/* Exam Link Box */}
+                  <div className="assess-link-row">
+                    <div className="assess-link-box">
+                      <Link2 size={13} />
+                      <span className="assess-link-text" title={displayLink}>
+                        {displayLink}
+                      </span>
+                    </div>
+                    <button
+                      className={`assess-copy-btn ${isCopied ? "assess-copy-btn--copied" : ""}`}
+                      onClick={() => copyLink(session)}
+                    >
+                      {isCopied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+                      {isCopied ? "Copied" : "Copy"}
+                    </button>
                   </div>
-                  <button
-                    className={`assess-copy-btn ${isCopied ? "assess-copy-btn--copied" : ""}`}
-                    onClick={() => copyLink(session)}
-                  >
-                    {isCopied ? <CheckCircle2 size={14} /> : <Copy size={14} />}
-                    {isCopied ? "Copied" : "Copy"}
-                  </button>
+
+                  {/* Action Buttons */}
+                  <div className="assess-card-actions">
+                    <button className="assess-action-btn assess-action-btn--edit" onClick={() => openEdit(session)}>
+                      <Edit2 size={13} /> Edit
+                    </button>
+                    <button
+                      className={`assess-action-btn ${session.status === "ACTIVE" ? "assess-action-btn--deactivate" : "assess-action-btn--activate"}`}
+                      onClick={() => handleToggleStatus(session)}
+                    >
+                      {session.status === "ACTIVE" ? <><EyeOff size={13} /> Deactivate</> : <><Eye size={13} /> Activate</>}
+                    </button>
+                    <button className="assess-action-btn assess-action-btn--delete" onClick={() => handleDelete(session.id)}>
+                      <Trash2 size={13} /> Delete
+                    </button>
+                  </div>
                 </div>
 
-                {/* Actions */}
-                <div className="assess-card-actions">
-                  <button className="assess-action-btn assess-action-btn--edit" onClick={() => openEdit(session)}>
-                    <Edit2 size={13} /> Edit
-                  </button>
-                  <button
-                    className={`assess-action-btn ${session.status === "ACTIVE" ? "assess-action-btn--deactivate" : "assess-action-btn--activate"}`}
-                    onClick={() => handleToggleStatus(session)}
-                  >
-                    {session.status === "ACTIVE" ? <><EyeOff size={13} /> Deactivate</> : <><Eye size={13} /> Activate</>}
-                  </button>
-                  <button className="assess-action-btn assess-action-btn--delete" onClick={() => handleDelete(session.id)}>
-                    <Trash2 size={13} /> Delete
-                  </button>
-                </div>
               </div>
             );
           })}
@@ -448,37 +459,29 @@ export default function AdminAssessmentsPage() {
         .assess-empty { text-align: center; padding: 80px 20px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; color: #64748b; width: 100%; box-sizing: border-box; }
         .assess-empty-icon { margin: 0 auto 12px; color: #94a3b8; }
 
-        .assess-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 24px; width: 100%; }
+        .assess-list { display: flex; flex-direction: column; gap: 16px; width: 100%; }
 
-        .assess-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 20px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: border-color 0.2s, box-shadow 0.2s; }
-        .assess-card:hover { border-color: #cbd5e1; box-shadow: 0 6px 16px rgba(0,0,0,0.06); }
-        .assess-card--active { border-top: 4px solid #16a34a; }
-        .assess-card--upcoming { border-top: 4px solid #d97706; }
-        .assess-card--expired { border-top: 4px solid #dc2626; opacity: 0.85; }
-        .assess-card--inactive { opacity: 0.75; }
+        .assess-item { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px 22px; display: flex; items-center; justify-content: space-between; gap: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: all 0.2s; border-left: 5px solid #cbd5e1; }
+        .assess-item:hover { border-color: #cbd5e1; box-shadow: 0 6px 16px rgba(0,0,0,0.06); transform: translateY(-1px); }
+        .assess-item--active   { border-left-color: #16a34a; }
+        .assess-item--upcoming { border-left-color: #d97706; }
+        .assess-item--expired  { border-left-color: #dc2626; opacity: 0.88; }
+        .assess-item--inactive { opacity: 0.75; }
 
-        .assess-card-header { display: flex; flex-direction: column; gap: 6px; }
-        .assess-card-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-        .assess-card-name { font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0; line-height: 1.3; }
-        .assess-card-desc { font-size: 0.8rem; color: #64748b; margin: 0; font-weight: 500; }
+        .assess-item-main { display: flex; flex-direction: column; gap: 6px; flex: 1.2; min-width: 240px; }
+        .assess-item-title-row { display: flex; items-center; gap: 12px; }
+        .assess-item-name { font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0; line-height: 1.3; }
+        .assess-item-desc { font-size: 0.8rem; color: #64748b; margin: 0; font-weight: 500; }
+        .assess-item-stats { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
 
-        .session-status-badge { font-size: 0.74rem; font-weight: 800; padding: 4px 10px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
-        .status-active   { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
-        .status-upcoming { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
-        .status-expired  { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
-        .status-inactive { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
-        .status-draft    { background: #f1f5f9; color: #64748b; border: 1px dashed #cbd5e1; }
-
-        .assess-card-stats { display: flex; gap: 10px; flex-wrap: wrap; }
-        .assess-stat { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 700; color: #334155; background: #f1f5f9; padding: 5px 11px; border-radius: 20px; border: 1px solid #e2e8f0; }
-
-        .assess-card-window { display: flex; align-items: flex-start; gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 14px; }
-        .assess-window-icon { color: #2563eb; margin-top: 2px; flex-shrink: 0; }
-        .assess-window-times { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 0.8rem; }
+        .assess-item-window { display: flex; align-items: center; gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 16px; flex: 1; min-width: 220px; }
+        .assess-window-icon { color: #2563eb; flex-shrink: 0; }
+        .assess-window-times { display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; }
         .assess-window-label { color: #64748b; font-weight: 600; }
         .assess-window-value { color: #0f172a; font-weight: 700; }
 
-        .assess-link-row { display: flex; gap: 8px; align-items: center; }
+        .assess-item-actions-col { display: flex; flex-direction: column; gap: 10px; flex: 1.3; min-width: 280px; }
+        .assess-link-row { display: flex; gap: 8px; align-items: center; width: 100%; }
         .assess-link-box { display: flex; align-items: center; gap: 7px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 8px 12px; flex: 1; min-width: 0; }
         .assess-link-box > svg { color: #2563eb; flex-shrink: 0; }
         .assess-link-text { font-size: 0.76rem; color: #334155; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; }
@@ -486,7 +489,7 @@ export default function AdminAssessmentsPage() {
         .assess-copy-btn:hover { background: #dbeafe; }
         .assess-copy-btn--copied { border-color: #86efac; background: #f0fdf4; color: #166534; }
 
-        .assess-card-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+        .assess-card-actions { display: flex; gap: 8px; justify-content: flex-end; width: 100%; }
         .assess-action-btn { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 700; padding: 7px 13px; border-radius: 9px; border: 1px solid transparent; cursor: pointer; transition: all 0.2s; }
         .assess-action-btn--edit       { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
         .assess-action-btn--edit:hover { background: #dbeafe; }
