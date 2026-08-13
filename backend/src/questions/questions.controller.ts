@@ -13,7 +13,12 @@ export class QuestionsController {
 
   @Post('seed-30')
   async seed30Questions() {
-    return this.questionsService.seed30OfficialQuestions();
+    return this.questionsService.seed60OfficialQuestions();
+  }
+
+  @Post('seed-60')
+  async seed60Questions() {
+    return this.questionsService.seed60OfficialQuestions();
   }
 
   @Post()

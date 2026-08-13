@@ -413,7 +413,7 @@ async function seed() {
         correctAnswer: q.correctAnswer,
         marks: q.marks,
         order: i + 1,
-      },
+      } as any,
     });
   }
 
