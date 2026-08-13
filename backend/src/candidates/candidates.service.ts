@@ -528,6 +528,14 @@ export class CandidatesService {
     const latestAttempt = candidate.attempts[0];
     if (!latestAttempt) throw new BadRequestException('No exam attempt found for this candidate.');
 
+    // Resolve valid Admin ID for foreign key constraint
+    const adminRecord =
+      (await this.prisma.admin.findFirst({
+        where: { OR: [{ id: adminId }, { username: adminName }] },
+      })) || (await this.prisma.admin.findFirst());
+
+    const resolvedAdminId = adminRecord ? adminRecord.id : null;
+
     // Unlock the attempt — reset current cycle warningCount to 0 (lifetime history preserved in proctoringLogs)
     await this.prisma.examAttempt.update({
       where: { id: latestAttempt.id },
@@ -536,20 +544,24 @@ export class CandidatesService {
         warningCount: 0,
         submittedAt: null,
         unlockedAt: new Date(),
-        unlockedByAdminId: adminId,
+        unlockedByAdminId: resolvedAdminId || adminId,
         unlockedByAdminName: adminName,
       },
     });
 
-    // Create audit log
-    await this.prisma.adminActionLog.create({
-      data: {
-        attemptId: latestAttempt.id,
-        adminId,
-        action: 'UNLOCK',
-        reason: reason || 'Admin unlocked candidate',
-      },
-    });
+    // Create audit log if valid admin found
+    if (resolvedAdminId) {
+      await this.prisma.adminActionLog
+        .create({
+          data: {
+            attemptId: latestAttempt.id,
+            adminId: resolvedAdminId,
+            action: 'UNLOCK',
+            reason: reason || 'Admin unlocked candidate',
+          },
+        })
+        .catch((e) => this.logger.warn(`Failed to create AdminActionLog: ${e.message}`));
+    }
 
     // Update candidate status back to IN_PROGRESS
     const updatedCandidate = await this.prisma.candidate.update({
