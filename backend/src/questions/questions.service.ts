@@ -1,5 +1,5 @@
-import { Injectable } = require('@nestjs/common');
-import { PrismaService } = require('../prisma/prisma.service');
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class QuestionsService {
@@ -132,22 +132,26 @@ export class QuestionsService {
     await this.prisma.submission.deleteMany({});
     await this.prisma.question.deleteMany({});
 
-    const dataToInsert = questions30.map((q, idx) => ({
-      assessmentId: assessment.id,
-      sectionName: q.sectionName,
-      sectionOrder: q.sectionOrder,
-      question: q.question,
-      optionA: q.optionA,
-      optionB: q.optionB,
-      optionC: q.optionC,
-      optionD: q.optionD,
-      correctAnswer: q.correctAnswer,
-      marks: 1,
-      order: idx + 1,
-      status: 'ACTIVE',
-    }));
+    for (let i = 0; i < questions30.length; i++) {
+      const q = questions30[i];
+      await this.prisma.question.create({
+        data: {
+          assessment: { connect: { id: assessment.id } },
+          sectionName: q.sectionName,
+          sectionOrder: q.sectionOrder,
+          question: q.question,
+          optionA: q.optionA,
+          optionB: q.optionB,
+          optionC: q.optionC,
+          optionD: q.optionD,
+          correctAnswer: q.correctAnswer,
+          marks: 1,
+          order: i + 1,
+          status: 'ACTIVE',
+        },
+      });
+    }
 
-    await this.prisma.question.createMany({ data: dataToInsert });
     const count = await this.prisma.question.count();
 
     return {
