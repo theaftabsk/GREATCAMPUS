@@ -59,6 +59,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       icon: LayoutDashboard,
     },
     {
+      href: "/admin/candidates",
+      label: "Candidate Evaluation",
+      icon: UserCheck,
+    },
+    {
       href: "/admin/assessments",
       label: "Exams & Assessments",
       icon: FileText,
