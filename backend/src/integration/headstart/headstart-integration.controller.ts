@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Logger, Headers, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Controller('api/v1/integration/headstart')
@@ -12,8 +12,22 @@ export class HeadstartIntegrationController {
    * Provides list of currently active assessments so candidates can be assigned from Headstart CRM.
    */
   @Get('assessments/active')
-  async getActiveAssessments(@Query('startDate') startDate?: string, @Query('endDate') endDate?: string) {
+  async getActiveAssessments(
+    @Headers('x-api-key') apiKeyHeader?: string,
+    @Headers('authorization') authHeader?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
     this.logger.log(`API 3 (OUT): Fetching Active Assessments for Headstart CRM.`);
+
+    // Inbound API Key Validation Guard
+    const requiredApiKey = process.env.HEADSTART_INBOUND_API_KEY || process.env.HEADSTART_CRM_API_KEY;
+    if (requiredApiKey) {
+      const providedKey = apiKeyHeader || (authHeader ? authHeader.replace(/^Bearer\s+/i, '') : null);
+      if (!providedKey || providedKey !== requiredApiKey) {
+        throw new UnauthorizedException('Invalid or missing Headstart API key.');
+      }
+    }
 
     try {
       const now = new Date();
