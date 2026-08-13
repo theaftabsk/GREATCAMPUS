@@ -134,62 +134,66 @@ export class QuestionsService {
       { sectionName: 'Applied Insurance Awareness', sectionOrder: 6, question: `A customer believes the most expensive health insurance policy must automatically provide the best protection. What should the advisor do?`, optionA: `He should recommend the highest-priced option for maximum protection for the customer.`, optionB: `Explain that higher premiums usually mean better protection.`, optionC: `Understand the customer's needs before recommending suitable coverage.`, optionD: `Allow the customer to choose without offering a recommendation.`, correctAnswer: `C`, marks: 1 },
     ];
 
-    let tenant = await this.prisma.tenant.findFirst({ where: { slug: 'niva-bupa' } });
-    if (!tenant) {
-      tenant = await this.prisma.tenant.create({ data: { name: 'Niva Bupa Health Insurance', slug: 'niva-bupa' } });
+    try {
+      let tenant = await this.prisma.tenant.findFirst({ where: { slug: 'niva-bupa' } });
+      if (!tenant) {
+        tenant = await this.prisma.tenant.create({ data: { name: 'Niva Bupa Health Insurance', slug: 'niva-bupa' } });
+      }
+
+      let assessment = await this.prisma.assessment.findFirst({ where: { slug: 'aa-2812' } });
+      if (!assessment) {
+        assessment = await this.prisma.assessment.create({
+          data: {
+            tenantId: tenant.id,
+            name: 'Agency Unit Manager & ARM Banca Assessment',
+            slug: 'aa-2812',
+            description: 'Advanced Graduate & Post-Graduate Assessment for Agency Unit Manager and ARM - Banca Channel',
+            durationMins: 45,
+            passingPercentage: 50,
+            maxProctorWarnings: 3,
+            status: 'ACTIVE',
+          },
+        });
+      } else {
+        await this.prisma.assessment.update({
+          where: { id: assessment.id },
+          data: { durationMins: 45, passingPercentage: 50 },
+        });
+      }
+
+      const assessmentId = assessment.id;
+
+      await this.prisma.attemptQuestion.deleteMany({});
+      await this.prisma.submission.deleteMany({});
+      await this.prisma.question.deleteMany({});
+
+      const dataToInsert = all60Questions.map((q, idx) => ({
+        assessmentId,
+        sectionName: q.sectionName,
+        sectionOrder: q.sectionOrder,
+        question: q.question,
+        optionA: q.optionA,
+        optionB: q.optionB,
+        optionC: q.optionC,
+        optionD: q.optionD,
+        correctAnswer: q.correctAnswer,
+        marks: 1,
+        status: 'ACTIVE',
+      }));
+
+      await (this.prisma.question as any).createMany({ data: dataToInsert });
+
+      const count = await this.prisma.question.count();
+
+      return {
+        success: true,
+        message: 'Re-seeded question bank with all 60 official questions.',
+        count,
+        assessmentDurationMins: 45,
+      };
+    } catch (err: any) {
+      console.error('SEED 60 FAILURE:', err);
+      return { success: false, error: err.message };
     }
-
-    let assessment = await this.prisma.assessment.findFirst({ where: { slug: 'aa-2812' } });
-    if (!assessment) {
-      assessment = await this.prisma.assessment.create({
-        data: {
-          tenantId: tenant.id,
-          name: 'Agency Unit Manager & ARM Banca Assessment',
-          slug: 'aa-2812',
-          description: 'Advanced Graduate & Post-Graduate Assessment for Agency Unit Manager and ARM - Banca Channel',
-          durationMins: 45,
-          passingPercentage: 50,
-          maxProctorWarnings: 3,
-          status: 'ACTIVE',
-        },
-      });
-    } else {
-      await this.prisma.assessment.update({
-        where: { id: assessment.id },
-        data: { durationMins: 45, passingPercentage: 50 },
-      });
-    }
-
-    await this.prisma.attemptQuestion.deleteMany({});
-    await this.prisma.submission.deleteMany({});
-    await this.prisma.question.deleteMany({});
-
-    for (let i = 0; i < all60Questions.length; i++) {
-      const q = all60Questions[i];
-      await this.prisma.question.create({
-        data: {
-          assessmentId: assessment.id,
-          sectionName: q.sectionName,
-          sectionOrder: q.sectionOrder,
-          question: q.question,
-          optionA: q.optionA,
-          optionB: q.optionB,
-          optionC: q.optionC,
-          optionD: q.optionD,
-          correctAnswer: q.correctAnswer,
-          marks: 1,
-          status: 'ACTIVE',
-        } as any,
-      });
-    }
-
-    const count = await this.prisma.question.count();
-
-    return {
-      success: true,
-      message: 'Re-seeded question bank with all 60 official questions.',
-      count,
-      assessmentDurationMins: 45,
-    };
   }
 }
