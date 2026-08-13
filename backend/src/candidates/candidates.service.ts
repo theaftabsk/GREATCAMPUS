@@ -92,6 +92,10 @@ export class CandidatesService {
               warningCount: latestAttempt.warningCount,
               maxProctorWarnings: latestAttempt.maxProctorWarningsSnapshot,
               durationMins: EXAM_DURATION_MINS,
+              lockedAt: latestAttempt.lockedAt,
+              lockReason: latestAttempt.lockReason,
+              unlockedAt: latestAttempt.unlockedAt,
+              unlockedByAdminName: latestAttempt.unlockedByAdminName,
               questionAudit,
               proctoringLogs: latestAttempt.proctoringLogs,
             }
@@ -189,6 +193,7 @@ export class CandidatesService {
     });
 
     if (!candidate) {
+      const refId = `${data.applicationId}-${data.assessmentId.slice(0, 8)}`;
       candidate = await this.prisma.candidate.create({
         data: {
           name,
@@ -196,15 +201,27 @@ export class CandidatesService {
           phone,
           applicationId: data.applicationId,
           crmCandidateId: crmDetails.crmCandidateId || null,
-          referenceId: data.applicationId,
+          referenceId: refId,
           assessmentId: data.assessmentId,
+          status: 'REGISTERED',
         },
       });
     } else {
-      candidate = await this.prisma.candidate.update({
+      // Check if candidate is LOCKED or DISQUALIFIED
+      if (candidate.status === 'LOCKED' || candidate.status === 'DISQUALIFIED') {
+        const lockedAttempt = await this.prisma.examAttempt.findFirst({
+          where: { candidateId: candidate.id, OR: [{ status: 'LOCKED' }, { status: 'DISQUALIFIED' }] },
+        });
+        if (lockedAttempt) {
+          throw new BadRequestException(
+            `Your exam session is LOCKED due to proctoring warnings. Reason: ${lockedAttempt.lockReason || 'Proctoring violations'}. Please contact your HR Administrator to unlock your exam.`
+          );
+        }
+      }
+      // Update candidate snapshot with latest CRM data
+      await this.prisma.candidate.update({
         where: { id: candidate.id },
         data: {
-          assessmentId: data.assessmentId,
           name,
           email,
           phone,
@@ -451,39 +468,110 @@ export class CandidatesService {
     const attempt = await this.prisma.examAttempt.findUnique({ where: { id: attemptId } });
     if (!attempt) throw new NotFoundException('Exam attempt not found.');
 
+    // Log the proctoring event
     await this.prisma.proctoringLog.create({
       data: { attemptId: attempt.id, eventType, details },
     });
 
     const newWarningCount = attempt.warningCount + 1;
     const isDisqualified = newWarningCount >= attempt.maxProctorWarningsSnapshot;
+    const lockReason = isDisqualified
+      ? `Locked after ${newWarningCount} proctoring violations. Last event: ${eventType}`
+      : undefined;
 
     const updatedAttempt = await this.prisma.examAttempt.update({
       where: { id: attempt.id },
       data: {
         warningCount: newWarningCount,
-        ...(isDisqualified && { status: 'DISQUALIFIED', submittedAt: new Date() }),
+        ...(isDisqualified && {
+          status: 'LOCKED',
+          submittedAt: new Date(),
+          lockedAt: new Date(),
+          lockReason,
+        }),
       },
     });
 
     if (isDisqualified) {
+      // Lock candidate status to LOCKED
       await this.prisma.candidate.update({
         where: { id: attempt.candidateId },
-        data: { status: 'DISQUALIFIED' },
+        data: { status: 'LOCKED' },
       });
+
+      // Fire LOCKED status webhook to Headstart CRM (API 4) if enabled
+      await this.headstartWebhook.sendAssessmentStatus(attempt.id, 'LOCKED').catch(() => {});
     }
 
     return {
       warningCount: updatedAttempt.warningCount,
       maxProctorWarnings: updatedAttempt.maxProctorWarningsSnapshot,
       disqualified: isDisqualified,
+      lockedAt: updatedAttempt.lockedAt,
+      lockReason: updatedAttempt.lockReason,
       message: isDisqualified
-        ? 'Maximum proctoring warnings reached. Exam has been auto-submitted and marked as DISQUALIFIED.'
+        ? `🔒 Exam LOCKED: Maximum ${updatedAttempt.maxProctorWarningsSnapshot} proctoring warnings reached. Contact your HR Administrator to unlock.`
         : `Warning ${updatedAttempt.warningCount}/${updatedAttempt.maxProctorWarningsSnapshot}: Proctoring violation logged.`,
     };
   }
 
   // ─── CANDIDATE MANAGEMENT ──────────────────────────────────────────────────
+
+  // Unlock candidate (Admin action) — keeps warning history, only resets lock
+  async unlockCandidate(id: string, adminId: string, adminName: string, reason?: string) {
+    const candidate = await this.prisma.candidate.findUnique({
+      where: { id },
+      include: { attempts: { orderBy: { startedAt: 'desc' }, take: 1 } },
+    });
+    if (!candidate) throw new NotFoundException('Candidate not found.');
+
+    const latestAttempt = candidate.attempts[0];
+    if (!latestAttempt) throw new BadRequestException('No exam attempt found for this candidate.');
+
+    // Unlock the attempt — reset current cycle warningCount to 0 (lifetime history preserved in proctoringLogs)
+    await this.prisma.examAttempt.update({
+      where: { id: latestAttempt.id },
+      data: {
+        status: 'IN_PROGRESS',
+        warningCount: 0,
+        submittedAt: null,
+        unlockedAt: new Date(),
+        unlockedByAdminId: adminId,
+        unlockedByAdminName: adminName,
+      },
+    });
+
+    // Create audit log
+    await this.prisma.adminActionLog.create({
+      data: {
+        attemptId: latestAttempt.id,
+        adminId,
+        action: 'UNLOCK',
+        reason: reason || 'Admin unlocked candidate',
+      },
+    });
+
+    // Update candidate status back to IN_PROGRESS
+    const updatedCandidate = await this.prisma.candidate.update({
+      where: { id },
+      data: { status: 'IN_PROGRESS' },
+      include: { assessment: true },
+    });
+
+    // Fire UNLOCKED webhook to Headstart CRM
+    await this.headstartWebhook.sendAssessmentStatus(latestAttempt.id, 'UNLOCKED').catch(() => {});
+
+    return {
+      success: true,
+      message: `Candidate '${candidate.name}' has been unlocked. Previous warnings kept in audit log.`,
+      candidate: updatedCandidate,
+      unlockedAt: new Date(),
+      unlockedBy: adminName,
+      reason: reason || 'Admin manual unlock',
+    };
+  }
+
+  // Simple reset (full reset — clears warnings too)
   async resetCandidate(id: string) {
     const candidate = await this.prisma.candidate.findUnique({ where: { id } });
     if (!candidate) throw new NotFoundException('Candidate not found.');

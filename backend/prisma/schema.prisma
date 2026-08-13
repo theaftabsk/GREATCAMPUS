@@ -18,14 +18,15 @@ model Tenant {
 }
 
 model Admin {
-  id        String   @id @default(uuid())
-  tenantId  String
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  username  String   @unique
-  password  String
-  name      String   @default("HR Administrator")
-  role      String   @default("ADMIN") // "SUPER_ADMIN", "ADMIN", "RECRUITER"
-  createdAt DateTime @default(now())
+  id             String            @id @default(uuid())
+  tenantId       String
+  tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  username       String            @unique
+  password       String
+  name           String            @default("HR Administrator")
+  role           String            @default("ADMIN") // "SUPER_ADMIN", "ADMIN", "RECRUITER"
+  createdAt      DateTime          @default(now())
+  adminActions   AdminActionLog[]
 }
 
 // Assessment = a single exam session. Each session has a unique link and an active time window.
@@ -114,10 +115,30 @@ model ExamAttempt {
   percentage                 Float                @default(0)
   isPassed                   Boolean              @default(false)
   warningCount               Int                  @default(0)
+  // Lock fields
+  lockedAt                   DateTime?
+  lockReason                 String?
+  // Unlock fields
+  unlockedAt                 DateTime?
+  unlockedByAdminId          String?
+  unlockedByAdminName        String?
   attemptQuestions           AttemptQuestion[]
   submissions                Submission[]
   proctoringLogs             ProctoringLog[]
   screenshots                ProctoringScreenshot[]
+  adminActions               AdminActionLog[]
+}
+
+// Audit trail for every admin unlock action
+model AdminActionLog {
+  id          String      @id @default(uuid())
+  attemptId   String
+  attempt     ExamAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  adminId     String
+  admin       Admin       @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  action      String      // "UNLOCK", "LOCK_OVERRIDE", "RESET"
+  reason      String?
+  createdAt   DateTime    @default(now())
 }
 
 model AttemptQuestion {

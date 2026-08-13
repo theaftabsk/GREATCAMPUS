@@ -114,10 +114,24 @@ export class CandidatesController {
     return { success: true, ...result };
   }
 
+  @Post(':id/unlock')
+  async unlockCandidate(
+    @Param('id') id: string,
+    @Body() body: { adminId?: string; adminName?: string; reason?: string }
+  ) {
+    const result = await this.candidatesService.unlockCandidate(
+      id,
+      body.adminId || 'admin',
+      body.adminName || 'HR Administrator',
+      body.reason,
+    );
+    return result;
+  }
+
   @Post(':id/reset')
   async resetCandidate(@Param('id') id: string) {
     const candidate = await this.candidatesService.resetCandidate(id);
-    return { success: true, message: 'Candidate reset successfully for retake', candidate };
+    return { success: true, message: 'Candidate fully reset', candidate };
   }
 
   @Delete(':id')

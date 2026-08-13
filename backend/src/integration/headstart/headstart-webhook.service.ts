@@ -13,7 +13,10 @@ export class HeadstartWebhookService {
    * Note: IN_PROGRESS is tracked internally in ExamAttempt.status but NOT sent to Headstart.
    * Only STARTED (on exam begin) and COMPLETED (on submit) are sent.
    */
-  async sendAssessmentStatus(attemptId: string, status: 'Started' | 'Completed'): Promise<boolean> {
+  async sendAssessmentStatus(
+    attemptId: string,
+    status: 'Started' | 'Completed' | 'LOCKED' | 'UNLOCKED'
+  ): Promise<boolean> {
     this.logger.log(`API 4 (OUT Webhook): Pushing Assessment Status '${status}' for attempt ${attemptId}`);
 
     try {
