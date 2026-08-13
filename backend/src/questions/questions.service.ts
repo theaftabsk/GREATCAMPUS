@@ -168,7 +168,6 @@ export class QuestionsService {
       await this.prisma.question.deleteMany({});
 
       const dataToInsert = all60Questions.map((q, idx) => ({
-        assessmentId,
         sectionName: q.sectionName,
         sectionOrder: q.sectionOrder,
         question: q.question,
