@@ -63,16 +63,6 @@ export default function CandidatesManagementPage() {
     } finally {
       setActionLoadingId(null);
     }
-
-        await loadCandidates();
-      } else {
-        alert(data.message || "Failed to unlock candidate.");
-      }
-    } catch {
-      alert("Error unlocking candidate.");
-    } finally {
-      setActionLoadingId(null);
-    }
   };
 
   const handleDelete = async (candidateId: string, name: string) => {
