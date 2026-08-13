@@ -4,9 +4,18 @@ import { json, urlencoded } from 'express';
 import * as express from 'express';
 import { join } from 'path';
 import * as fs from 'fs';
+import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Helmet Security Headers (HSTS, X-Frame-Options, X-Content-Type-Options)
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
 
   // Ensure uploads/recordings directory exists
   const uploadDir = join(process.cwd(), 'uploads', 'recordings');
@@ -21,21 +30,27 @@ async function bootstrap() {
   app.use(json({ limit: '50mb' }));
   app.use(urlencoded({ limit: '50mb', extended: true }));
 
-  // Global bulletproof CORS middleware
-  app.use((req: any, res: any, next: any) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS, PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, X-Requested-With');
-    if (req.method === 'OPTIONS') {
-      return res.status(200).end();
-    }
-    next();
-  });
+  // Strict CORS Domain Protection
+  const allowedOrigins = [
+    'https://niva.greatcampus.in',
+    'https://admin.niva.greatcampus.in',
+    'https://api.niva.greatcampus.in',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:4000',
+  ];
 
   app.enableCors({
-    origin: '*',
+    origin: (origin: any, callback: any) => {
+      if (!origin || allowedOrigins.includes(origin) || origin.includes('greatcampus.in')) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type,Accept,Authorization,X-Requested-With',
+    allowedHeaders: 'Content-Type,Accept,Authorization,X-Requested-With,x-api-key',
+    credentials: true,
   });
 
   const port = process.env.PORT || 4000;
