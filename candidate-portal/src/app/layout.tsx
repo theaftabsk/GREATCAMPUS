@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   title: "Niva Bupa – ARM Banca Recruitment Assessment",
   description: "Niva Bupa Health Insurance – Assistant Relationship Manager Banca Channel Recruitment Assessment Portal",
   keywords: "Niva Bupa, ARM, Banca Assessment, Health Insurance Recruitment",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
