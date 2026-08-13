@@ -165,14 +165,6 @@ export default function CandidatesManagementPage() {
         {/* Action Controls */}
         <div className="flex items-center space-x-3">
           <button
-            onClick={exportToCSV}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center space-x-2 border border-emerald-500"
-          >
-            <Download className="w-4 h-4" />
-            <span>Export to Excel / CSV</span>
-          </button>
-
-          <button
             onClick={loadCandidates}
             className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl transition border border-slate-200 shadow-2xs flex items-center space-x-2"
           >
