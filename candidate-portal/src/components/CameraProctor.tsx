@@ -35,7 +35,7 @@ export default function CameraProctor({
   useEffect(() => { onWarningRef.current = onWarningTrigger; });
 
   const SCHEDULED_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
-  const WARNING_COOLDOWN_MS = 5000; // 5 seconds between warning popups
+  const WARNING_COOLDOWN_MS = 10000; // 10 seconds cooldown between warnings
 
   // ── Helper: Upload screenshot ──────────────────────────────────────────
   const uploadScreenshot = useCallback(async (type: "SCHEDULED" | "WARNING", eventType?: string) => {
@@ -112,13 +112,17 @@ export default function CameraProctor({
     };
   }, []);
 
-  // ── Face detection loop (face-api.js TinyFaceDetector) ────────────────
+  const noFaceStreakRef = useRef<number>(0);
+  const multiFaceStreakRef = useRef<number>(0);
+
+  // ── Face detection loop (face-api.js TinyFaceDetector - Medium Sensitivity) ─
   useEffect(() => {
     if (!cameraActive || !modelsLoaded) return;
 
     async function runDetection() {
       const faceapi = await import("face-api.js");
-      const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+      // Medium Sensitivity: scoreThreshold 0.38 (balanced), inputSize 320 (precise multi-face bounding)
+      const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.38 });
 
       detectionLoopRef.current = setInterval(async () => {
         const video = videoRef.current;
@@ -129,35 +133,47 @@ export default function CameraProctor({
           const count = detections.length;
 
           if (count === 0) {
-            // ── No face detected ──
-            setFaceStatus("NO_FACE");
-            if (onVerificationRef.current) onVerificationRef.current(false, "No face detected in camera.");
+            noFaceStreakRef.current += 1;
+            multiFaceStreakRef.current = 0;
 
-            const now = Date.now();
-            if (now - lastWarningTimeRef.current > WARNING_COOLDOWN_MS) {
-              lastWarningTimeRef.current = now;
-              if (onWarningRef.current) {
-                onWarningRef.current("FACE_NOT_DETECTED", "⚠️ Face not detected! Please look straight at the camera.");
+            // Require 3 consecutive failed checks (3 seconds) before triggering NO_FACE alert
+            if (noFaceStreakRef.current >= 3) {
+              setFaceStatus("NO_FACE");
+              if (onVerificationRef.current) onVerificationRef.current(false, "No face detected in camera.");
+
+              const now = Date.now();
+              if (now - lastWarningTimeRef.current > WARNING_COOLDOWN_MS) {
+                lastWarningTimeRef.current = now;
+                if (onWarningRef.current) {
+                  onWarningRef.current("FACE_NOT_DETECTED", "⚠️ Face not detected! Please ensure your face is clearly visible.");
+                }
+                uploadScreenshotRef.current("WARNING", "FACE_NOT_DETECTED");
               }
-              uploadScreenshotRef.current("WARNING", "FACE_NOT_DETECTED");
             }
 
           } else if (count > 1) {
-            // ── Multiple faces detected ──
-            setFaceStatus("MULTIPLE_FACES");
-            if (onVerificationRef.current) onVerificationRef.current(false, "Multiple faces detected.");
+            multiFaceStreakRef.current += 1;
+            noFaceStreakRef.current = 0;
 
-            const now = Date.now();
-            if (now - lastWarningTimeRef.current > WARNING_COOLDOWN_MS) {
-              lastWarningTimeRef.current = now;
-              if (onWarningRef.current) {
-                onWarningRef.current("MULTIPLE_FACES", "⚠️ Multiple faces detected! Only the candidate should be visible.");
+            // Require 2 consecutive checks (2 seconds) of multiple faces before triggering MULTIPLE_FACES alert
+            if (multiFaceStreakRef.current >= 2) {
+              setFaceStatus("MULTIPLE_FACES");
+              if (onVerificationRef.current) onVerificationRef.current(false, "Multiple faces detected.");
+
+              const now = Date.now();
+              if (now - lastWarningTimeRef.current > WARNING_COOLDOWN_MS) {
+                lastWarningTimeRef.current = now;
+                if (onWarningRef.current) {
+                  onWarningRef.current("MULTIPLE_FACES", "⚠️ Multiple faces detected! Only the candidate should be in front of the camera.");
+                }
+                uploadScreenshotRef.current("WARNING", "MULTIPLE_FACES");
               }
-              uploadScreenshotRef.current("WARNING", "MULTIPLE_FACES");
             }
 
           } else {
-            // ── Exactly 1 face — OK ──
+            // Exactly 1 face detected — OK!
+            noFaceStreakRef.current = 0;
+            multiFaceStreakRef.current = 0;
             setFaceStatus("FACE_OK");
             if (onVerificationRef.current) onVerificationRef.current(true, "Face verified ✅");
           }
