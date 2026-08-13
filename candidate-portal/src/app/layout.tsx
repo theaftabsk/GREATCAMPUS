@@ -7,9 +7,12 @@ export const metadata: Metadata = {
   description: "Niva Bupa Health Insurance – Assistant Relationship Manager Banca Channel Recruitment Assessment Portal",
   keywords: "Niva Bupa, ARM, Banca Assessment, Health Insurance Recruitment",
   icons: {
-    icon: "/icon.svg",
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    icon: [
+      { url: "/niva-bupa-logo.png", type: "image/png" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/niva-bupa-logo.png",
+    apple: "/niva-bupa-logo.png",
   },
 };
 

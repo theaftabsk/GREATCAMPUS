@@ -13,9 +13,12 @@ export const metadata: Metadata = {
   title: "NIVA BUPA - HR Admin Evaluation Portal",
   description: "Official HR Administration & Assessment Evaluation Platform for Niva Bupa Health Insurance",
   icons: {
-    icon: "/icon.svg",
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    icon: [
+      { url: "/niva-bupa-logo.png", type: "image/png" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/niva-bupa-logo.png",
+    apple: "/niva-bupa-logo.png",
   },
 };
 
