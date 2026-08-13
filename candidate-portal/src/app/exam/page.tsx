@@ -33,8 +33,13 @@ export default function CandidateRegistration() {
         const targetIdentifier = searchParams.get("assessment") || searchParams.get("assessmentId") || searchParams.get("id");
 
         if (!targetIdentifier) {
-          setHasValidLink(false);
-          setError("No Assessment Link Specified. Candidates must access the exam using an official assessment link (e.g. http://localhost:3000/[slug]) provided by HR or Headstart CRM.");
+          const activeRes = await fetch(`${baseUrl}/api/v1/integration/headstart/assessments/active`);
+          const activeData = await activeRes.json();
+          if (activeData?.success && activeData?.data?.[0]?.assessmentSlug) {
+            router.replace(`/${activeData.data[0].assessmentSlug}`);
+          } else {
+            router.replace("/aa-2812");
+          }
           return;
         }
 
