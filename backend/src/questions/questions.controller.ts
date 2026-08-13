@@ -11,6 +11,11 @@ export class QuestionsController {
     return { success: true, questions };
   }
 
+  @Post('seed-30')
+  async seed30Questions() {
+    return this.questionsService.seed30OfficialQuestions();
+  }
+
   @Post()
   async addQuestion(
     @Body()
@@ -50,6 +55,6 @@ export class QuestionsController {
   @Delete(':id')
   async deleteQuestion(@Param('id') id: string) {
     await this.questionsService.deleteQuestion(id);
-    return { success: true, message: 'Question deleted' };
+    return { success: true, message: 'Question deleted successfully' };
   }
 }
