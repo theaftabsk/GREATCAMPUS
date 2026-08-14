@@ -397,7 +397,13 @@ export class CandidatesService {
     });
 
     if (!attempt) throw new NotFoundException('Exam attempt not found.');
-    if (attempt.status === 'COMPLETED' || attempt.status === 'DISQUALIFIED') {
+
+    // If candidate is already LOCKED, DISQUALIFIED, or reached max warnings, preserve LOCKED status!
+    if (attempt.status === 'LOCKED' || attempt.status === 'DISQUALIFIED' || attempt.warningCount >= attempt.maxProctorWarningsSnapshot) {
+      this.logger.warn(`Submit attempted for LOCKED candidate attempt ${attemptId}. Preserving LOCKED status.`);
+      return attempt;
+    }
+    if (attempt.status === 'COMPLETED') {
       return attempt;
     }
 
