@@ -121,7 +121,6 @@ export default function CandidateThankYou() {
             {/* Info pills */}
             <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "10px", marginBottom: "28px" }}>
               {[
-                { icon: Clock, text: "Results reviewed within 5–7 business days", color: "#F7941D", bg: "#FEF3E2" },
                 { icon: Phone, text: "HR team will contact you directly", color: "#00AEEF", bg: "#EBF7FF" },
               ].map((item) => (
                 <div key={item.text} style={{
