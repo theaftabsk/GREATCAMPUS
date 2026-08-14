@@ -810,15 +810,15 @@ export class CandidatesService {
     const secs = durationSeconds % 60;
     const durationFormatted = `${mins} mins ${secs} secs`;
 
-    // Group submissions by 6 sections
-    const sectionMap: Record<string, { sectionOrder: number; total: number; correct: number; marks: number; questionRange: string }> = {
-      'Communication & Customer Handling': { sectionOrder: 1, total: 10, correct: 0, marks: 10, questionRange: 'Q1–10' },
-      'Advanced English': { sectionOrder: 2, total: 10, correct: 0, marks: 10, questionRange: 'Q11–20' },
-      'Mental Ability & Reasoning': { sectionOrder: 3, total: 10, correct: 0, marks: 10, questionRange: 'Q21–30' },
-      'Numerical & Mathematical Reasoning': { sectionOrder: 4, total: 10, correct: 0, marks: 10, questionRange: 'Q31–40' },
-      'Banking & Financial Awareness': { sectionOrder: 5, total: 10, correct: 0, marks: 10, questionRange: 'Q41–50' },
-      'Sales Orientation & Situational Judgement': { sectionOrder: 6, total: 10, correct: 0, marks: 10, questionRange: 'Q51–60' },
-    };
+    // Pre-initialize exact 6 official Niva Bupa sections
+    const officialSections = [
+      { sectionOrder: 1, name: 'Communication & Customer Handling', questionRange: 'Q1–10', minQ: 1, maxQ: 10, total: 0, correct: 0, marks: 0 },
+      { sectionOrder: 2, name: 'Advanced English & Comprehension', questionRange: 'Q11–20', minQ: 11, maxQ: 20, total: 0, correct: 0, marks: 0 },
+      { sectionOrder: 3, name: 'Mental Ability & Reasoning', questionRange: 'Q21–30', minQ: 21, maxQ: 30, total: 0, correct: 0, marks: 0 },
+      { sectionOrder: 4, name: 'Numerical & Mathematical Reasoning', questionRange: 'Q31–40', minQ: 31, maxQ: 40, total: 0, correct: 0, marks: 0 },
+      { sectionOrder: 5, name: 'Banking & Financial Awareness', questionRange: 'Q41–50', minQ: 41, maxQ: 50, total: 0, correct: 0, marks: 0 },
+      { sectionOrder: 6, name: 'Sales Orientation & Situational Judgement', questionRange: 'Q51–60', minQ: 51, maxQ: 60, total: 0, correct: 0, marks: 0 },
+    ];
 
     let calculatedObtainedMarks = 0;
     let calculatedTotalPossible = 0;
@@ -833,38 +833,35 @@ export class CandidatesService {
       marks: number;
     }> = [];
 
-    // Sort submissions by sectionOrder then question id
+    // Sort submissions by question sectionOrder then question id/order
     const submissions = latestAttempt.submissions || [];
     const sortedSubmissions = submissions.sort((a: any, b: any) => {
+      const qNumA = parseInt(a.question.id.replace(/\D/g, '')) || 0;
+      const qNumB = parseInt(b.question.id.replace(/\D/g, '')) || 0;
       if ((a.question.sectionOrder || 0) !== (b.question.sectionOrder || 0)) {
         return (a.question.sectionOrder || 0) - (b.question.sectionOrder || 0);
       }
-      return a.question.id.localeCompare(b.question.id);
+      return qNumA - qNumB;
     });
 
     sortedSubmissions.forEach((sub: any, idx: number) => {
-      const secName = sub.question.sectionName || 'General';
+      const qOrder = idx + 1;
       const questionMarks = sub.question.marks || 1;
       calculatedTotalPossible += questionMarks;
 
-      if (!sectionMap[secName]) {
-        sectionMap[secName] = {
-          sectionOrder: sub.question.sectionOrder || 99,
-          total: 0,
-          correct: 0,
-          marks: 0,
-          questionRange: `Q${idx + 1}`,
-        };
-      }
+      // Find matching official section by question number range
+      const targetSec = officialSections.find(s => qOrder >= s.minQ && qOrder <= s.maxQ) || officialSections[Math.min(5, Math.floor(idx / 10))];
+      targetSec.total += 1;
+      targetSec.marks += questionMarks;
 
       if (sub.isCorrect) {
-        sectionMap[secName].correct += 1;
+        targetSec.correct += 1;
         calculatedObtainedMarks += questionMarks;
       }
 
       responses.push({
-        questionOrder: idx + 1,
-        sectionName: secName,
+        questionOrder: qOrder,
+        sectionName: targetSec.name,
         questionText: sub.question.question,
         candidateOption: sub.selectedOption,
         correctOption: sub.question.correctAnswer,
@@ -873,17 +870,15 @@ export class CandidatesService {
       });
     });
 
-    // Structure sections array
-    const sections = Object.entries(sectionMap)
-      .sort(([, a], [, b]) => a.sectionOrder - b.sectionOrder)
-      .map(([name, data]) => ({
-        sectionOrder: data.sectionOrder,
-        name,
-        questionRange: data.questionRange,
-        score: data.correct,
-        totalMarks: data.total,
-        percentage: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
-      }));
+    // Structure sections array strictly into 6 objects
+    const sections = officialSections.map((sec) => ({
+      sectionOrder: sec.sectionOrder,
+      name: sec.name,
+      questionRange: sec.questionRange,
+      score: sec.correct,
+      totalMarks: sec.total,
+      percentage: sec.total > 0 ? Math.round((sec.correct / sec.total) * 100) : 0,
+    }));
 
     // Proctoring audit timeline
     const proctoringLogs = latestAttempt.proctoringLogs || [];
