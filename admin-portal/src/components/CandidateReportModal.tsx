@@ -170,7 +170,7 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId }: C
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-md overflow-y-auto print:bg-white print:p-0 animate-in fade-in duration-200">
-      <div className="w-full max-w-4xl bg-slate-50 rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto relative flex flex-col max-h-[92vh] print:max-h-none print:shadow-none print:border-none print:rounded-none">
+      <div className="w-full max-w-6xl bg-slate-50 rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto relative flex flex-col max-h-[95vh] print:max-h-none print:shadow-none print:border-none print:rounded-none">
         
         {/* Top Header Bar */}
         <div className="px-6 py-4 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white flex items-center justify-between shadow-md print:bg-blue-900">
@@ -199,13 +199,6 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId }: C
           </div>
 
           <div className="flex items-center gap-2 print:hidden">
-            <button
-              onClick={handlePrint}
-              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-extrabold transition-all flex items-center gap-1.5 cursor-pointer border border-white/20 shadow-sm"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Print PDF</span>
-            </button>
             <button
               onClick={onClose}
               className="p-1.5 rounded-xl bg-white/10 hover:bg-rose-600 text-white transition-all cursor-pointer border border-white/20"
