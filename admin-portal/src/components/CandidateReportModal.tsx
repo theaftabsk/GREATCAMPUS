@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import {
   X,
   Printer,
@@ -15,9 +16,11 @@ import {
   User,
   Calendar,
   Sparkles,
-  BarChart2,
-  ChevronDown,
-  ChevronUp,
+  BarChart3,
+  ShieldAlert,
+  ChevronRight,
+  Send,
+  HelpCircle
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 
@@ -95,7 +98,6 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId }: C
   const [activeTab, setActiveTab] = useState<"overview" | "responses" | "proctoring" | "remarks">("overview");
   const [newRemark, setNewRemark] = useState("");
   const [savingRemark, setSavingRemark] = useState(false);
-  const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen || !candidateId) return;
@@ -167,21 +169,31 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId }: C
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/70 backdrop-blur-md overflow-y-auto print:bg-white print:p-0">
-      <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto relative flex flex-col max-h-[90vh] print:max-h-none print:shadow-none print:border-none print:rounded-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-md overflow-y-auto print:bg-white print:p-0 animate-in fade-in duration-200">
+      <div className="w-full max-w-4xl bg-slate-50 rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto relative flex flex-col max-h-[92vh] print:max-h-none print:shadow-none print:border-none print:rounded-none">
         
-        {/* Modal Top Header */}
-        <div className="px-6 py-5 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800 print:bg-slate-900">
+        {/* Top Header Bar */}
+        <div className="px-6 py-4 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white flex items-center justify-between shadow-md print:bg-blue-900">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-blue-600/30 text-blue-400 border border-blue-500/30">
-              <Award className="w-6 h-6" />
+            <div className="bg-white/95 p-2 rounded-xl shadow-md flex items-center justify-center">
+              <Image
+                src="/niva-bupa-logo.png"
+                alt="Niva Bupa Health Insurance"
+                width={130}
+                height={35}
+                className="h-7 w-auto object-contain"
+                priority
+              />
             </div>
             <div>
-              <h3 className="text-lg font-black tracking-tight text-white">
-                Candidate Diagnostic Report & Scorecard
+              <h3 className="text-base font-black text-white tracking-tight flex items-center gap-2">
+                Candidate Diagnostic Scorecard
+                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-white/20 text-[10px] uppercase font-bold tracking-wider">
+                  Official Record
+                </span>
               </h3>
-              <p className="text-xs text-slate-400 font-medium">
-                Niva Bupa Health Insurance Assessment Platform
+              <p className="text-[11px] text-blue-100/90 font-medium">
+                Niva Bupa Candidate Assessment Engine
               </p>
             </div>
           </div>
@@ -189,205 +201,212 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId }: C
           <div className="flex items-center gap-2 print:hidden">
             <button
               onClick={handlePrint}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all flex items-center gap-1.5 px-3 cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-extrabold transition-all flex items-center gap-1.5 cursor-pointer border border-white/20 shadow-sm"
             >
-              <Printer className="w-4 h-4" />
+              <Printer className="w-3.5 h-3.5" />
               <span>Print PDF</span>
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white transition-all cursor-pointer"
+              className="p-1.5 rounded-xl bg-white/10 hover:bg-rose-600 text-white transition-all cursor-pointer border border-white/20"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* Loading / Error States */}
+        {/* Modal Body Container */}
         {loading ? (
-          <div className="p-16 flex flex-col items-center justify-center text-center">
-            <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
-            <p className="text-sm font-bold text-slate-700">Loading Candidate Report & Section Diagnostics...</p>
+          <div className="p-16 flex flex-col items-center justify-center text-center bg-white">
+            <div className="relative w-12 h-12 mb-4">
+              <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+              <Sparkles className="w-5 h-5 text-blue-600 absolute inset-0 m-auto animate-pulse" />
+            </div>
+            <p className="text-sm font-extrabold text-slate-900">Calculating Candidate Diagnostic Report...</p>
+            <p className="text-xs text-slate-500 mt-1">Reconstructing 6-Section Performance & Security Audit</p>
           </div>
         ) : error || !report ? (
-          <div className="p-12 text-center">
-            <XCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
-            <h4 className="text-base font-bold text-slate-900">Unable to Load Report</h4>
+          <div className="p-12 text-center bg-white">
+            <XCircle className="w-12 h-12 text-rose-500 mx-auto mb-3 animate-bounce" />
+            <h4 className="text-base font-extrabold text-slate-900">Report Unavailable</h4>
             <p className="text-xs text-slate-500 mt-1">{error || "Candidate report record not found."}</p>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-6">
             
-            {/* Top Candidate Summary Card */}
-            <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white rounded-3xl p-6 shadow-xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+            {/* Top Candidate Hero Banner */}
+            <div className="bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 text-white rounded-3xl p-6 shadow-xl relative overflow-hidden border border-blue-900/40">
+              <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+                
+                {/* Candidate Info */}
                 <div>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20 text-cyan-300 text-xs font-bold uppercase tracking-wider mb-2">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 text-[11px] font-extrabold uppercase tracking-wider mb-3">
                     <User className="w-3.5 h-3.5" />
                     Application ID: {report.candidate.applicationId}
                   </div>
-                  <h2 className="text-2xl font-black text-white">{report.candidate.name}</h2>
-                  <p className="text-xs text-blue-200 mt-1">
+                  <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">{report.candidate.name}</h2>
+                  <p className="text-xs text-blue-200/90 font-medium mt-1">
                     {report.candidate.email} • {report.candidate.phone}
                   </p>
-                  <p className="text-xs text-slate-300 font-medium mt-1">
-                    Assessment: <strong>{report.assessment.title}</strong>
+                  <p className="text-xs text-slate-300 font-semibold mt-1">
+                    Exam Session: <strong className="text-white">{report.assessment.title}</strong>
                   </p>
                 </div>
 
-                {/* Score & Result Pill */}
-                <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20">
+                {/* Score & Result Cards */}
+                <div className="flex flex-wrap items-center gap-3 bg-white/10 backdrop-blur-xl p-4 rounded-2xl border border-white/15 shadow-inner">
+                  
+                  {/* Score */}
                   <div className="text-center px-3">
-                    <span className="block text-xs font-bold text-blue-200 uppercase">Score Marks</span>
+                    <span className="block text-[10px] font-extrabold text-blue-200 uppercase tracking-wider">Score Marks</span>
                     <span className="text-3xl font-black text-white">
-                      {report.result.score} <span className="text-base text-blue-300 font-normal">/ {report.result.totalMarks}</span>
+                      {report.result.score} <span className="text-sm font-medium text-blue-300">/ {report.result.totalMarks}</span>
                     </span>
                   </div>
 
-                  <div className="h-10 w-px bg-white/20" />
+                  <div className="h-9 w-px bg-white/20" />
 
+                  {/* Percentage */}
                   <div className="text-center px-3">
-                    <span className="block text-xs font-bold text-blue-200 uppercase">Percentage</span>
+                    <span className="block text-[10px] font-extrabold text-blue-200 uppercase tracking-wider">Percentage</span>
                     <span className="text-3xl font-black text-cyan-300">{report.result.percentage}%</span>
                   </div>
 
-                  <div className="h-10 w-px bg-white/20" />
+                  <div className="h-9 w-px bg-white/20" />
 
+                  {/* Status Badge */}
                   <div className="text-center px-2">
                     <span
-                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-black tracking-wider uppercase ${
+                      className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black tracking-wider uppercase shadow-md ${
                         report.result.status === "QUALIFIED"
-                          ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30"
+                          ? "bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-emerald-600/30"
                           : report.result.status === "LOCKED"
-                          ? "bg-amber-500 text-white"
-                          : "bg-rose-500 text-white"
+                          ? "bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-amber-600/30"
+                          : "bg-gradient-to-r from-rose-500 to-red-600 text-white shadow-rose-600/30"
                       }`}
                     >
                       {report.result.status === "QUALIFIED" ? (
                         <CheckCircle2 className="w-4 h-4" />
+                      ) : report.result.status === "LOCKED" ? (
+                        <ShieldAlert className="w-4 h-4" />
                       ) : (
                         <XCircle className="w-4 h-4" />
                       )}
                       {report.result.status}
                     </span>
                   </div>
+
                 </div>
               </div>
 
               {/* Timing & Security Bar */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-5 border-t border-white/15 text-xs text-blue-100/90 font-medium">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-4 border-t border-white/15 text-xs text-blue-100/90 font-semibold">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-cyan-400" />
+                  <Calendar className="w-4 h-4 text-cyan-400 shrink-0" />
                   <span>
-                    Started: <strong>{new Date(report.timing.startedAt).toLocaleDateString()}</strong>
+                    Started: <strong className="text-white">{new Date(report.timing.startedAt).toLocaleDateString()}</strong>
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-cyan-400" />
+                  <Clock className="w-4 h-4 text-cyan-400 shrink-0" />
                   <span>
-                    Duration: <strong>{report.timing.durationFormatted}</strong>
+                    Duration: <strong className="text-white">{report.timing.durationFormatted}</strong>
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                  <ShieldCheck className="w-4 h-4 text-cyan-400 shrink-0" />
                   <span>
-                    Warnings: <strong>{report.proctoring.warningCount} / {report.proctoring.maxWarnings}</strong>
+                    Warnings: <strong className="text-white">{report.proctoring.warningCount} / {report.proctoring.maxWarnings}</strong>
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-cyan-400" />
+                  <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
                   <span>
-                    Pass Benchmark: <strong>{report.assessment.passingPercentage}%</strong>
+                    Passing Benchmark: <strong className="text-white">{report.assessment.passingPercentage}%</strong>
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Navigation Tabs */}
-            <div className="flex border-b border-slate-200 space-x-4 print:hidden">
-              <button
-                onClick={() => setActiveTab("overview")}
-                className={`pb-3 text-xs font-extrabold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
-                  activeTab === "overview"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                6-Section Diagnostics
-              </button>
-              <button
-                onClick={() => setActiveTab("responses")}
-                className={`pb-3 text-xs font-extrabold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
-                  activeTab === "responses"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                Question Responses ({report.responses.length})
-              </button>
-              <button
-                onClick={() => setActiveTab("proctoring")}
-                className={`pb-3 text-xs font-extrabold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
-                  activeTab === "proctoring"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                Proctoring Audit ({report.proctoring.events.length})
-              </button>
-              <button
-                onClick={() => setActiveTab("remarks")}
-                className={`pb-3 text-xs font-extrabold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
-                  activeTab === "remarks"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                HR Remarks ({report.remarks.length})
-              </button>
+            {/* Navigation Pill Tabs */}
+            <div className="bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-2 print:hidden overflow-x-auto">
+              {[
+                { id: "overview", label: "6-Section Diagnostics", icon: BarChart3 },
+                { id: "responses", label: `Question Responses (${report.responses.length})`, icon: FileText },
+                { id: "proctoring", label: `Proctoring Audit (${report.proctoring.events.length})`, icon: ShieldAlert },
+                { id: "remarks", label: `HR Remarks (${report.remarks.length})`, icon: MessageSquare },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer whitespace-nowrap ${
+                      isActive
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-600/25"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    }`}
+                  >
+                    <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-slate-400"}`} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {/* TAB 1: 6-Section Diagnostics */}
             {activeTab === "overview" && (
               <div className="space-y-4">
-                <h3 className="text-sm font-black uppercase text-slate-900 tracking-wider">
-                  Section-wise Performance Breakdown
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black uppercase text-slate-900 tracking-wider flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-blue-600" />
+                    Section-wise Performance Breakdown
+                  </h3>
+                  <span className="text-xs font-bold text-slate-500">6 Specialized Modules</span>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {report.sections.map((sec) => (
+                  {report.sections.map((sec, idx) => (
                     <div
                       key={sec.name}
-                      className="p-4 bg-slate-50 border border-slate-200 rounded-2xl hover:border-blue-300 transition-all"
+                      className="p-5 bg-white border border-slate-200/90 rounded-2xl shadow-sm hover:shadow-md hover:border-blue-300 transition-all space-y-3 group"
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="text-xs font-black text-slate-900">{sec.name}</h4>
-                        <span className="text-[11px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-700 text-xs font-black flex items-center justify-center border border-blue-100">
+                            {idx + 1}
+                          </span>
+                          <h4 className="text-xs font-extrabold text-slate-900 group-hover:text-blue-600 transition-colors">
+                            {sec.name}
+                          </h4>
+                        </div>
+                        <span className="text-[10px] font-extrabold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
                           {sec.questionRange}
                         </span>
                       </div>
 
-                      <div className="flex items-baseline justify-between mb-2">
-                        <span className="text-lg font-black text-slate-900">
-                          {sec.score} <span className="text-xs font-normal text-slate-500">/ {sec.totalMarks} Marks</span>
+                      <div className="flex items-baseline justify-between pt-1">
+                        <span className="text-xl font-black text-slate-900">
+                          {sec.score} <span className="text-xs font-semibold text-slate-400">/ {sec.totalMarks} Marks</span>
                         </span>
-                        <span className="text-sm font-extrabold text-blue-600">{sec.percentage}%</span>
+                        <span className="text-sm font-black text-blue-600">{sec.percentage}%</span>
                       </div>
 
-                      {/* Progress Bar */}
-                      <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                      {/* Animated Gradient Progress Bar */}
+                      <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-0.5 border border-slate-200/60">
                         <div
-                          className={`h-full rounded-full transition-all duration-500 ${
+                          className={`h-full rounded-full transition-all duration-700 ${
                             sec.percentage >= 70
-                              ? "bg-emerald-500"
+                              ? "bg-gradient-to-r from-emerald-500 to-teal-500 shadow-sm shadow-emerald-500/30"
                               : sec.percentage >= 50
-                              ? "bg-blue-600"
-                              : "bg-rose-500"
+                              ? "bg-gradient-to-r from-blue-500 to-indigo-600 shadow-sm shadow-blue-500/30"
+                              : "bg-gradient-to-r from-rose-500 to-red-600 shadow-sm shadow-rose-500/30"
                           }`}
                           style={{ width: `${sec.percentage}%` }}
                         />
@@ -398,47 +417,67 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId }: C
               </div>
             )}
 
-            {/* TAB 2: Question Responses Breakdown */}
+            {/* TAB 2: Detailed Question Responses */}
             {activeTab === "responses" && (
               <div className="space-y-4">
-                <h3 className="text-sm font-black uppercase text-slate-900 tracking-wider">
-                  Detailed Question Response Log
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black uppercase text-slate-900 tracking-wider flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-blue-600" />
+                    Detailed Question Response Log
+                  </h3>
+                  <span className="text-xs font-bold text-slate-500">60 Questions Audited</span>
+                </div>
 
                 <div className="space-y-3">
                   {report.responses.map((q) => (
                     <div
                       key={q.questionOrder}
-                      className={`p-4 rounded-2xl border ${
-                        q.isCorrect ? "bg-emerald-50/50 border-emerald-200" : "bg-rose-50/50 border-rose-200"
+                      className={`p-5 rounded-2xl border transition-all ${
+                        q.isCorrect
+                          ? "bg-emerald-50/40 border-emerald-200/80 hover:border-emerald-300"
+                          : "bg-rose-50/40 border-rose-200/80 hover:border-rose-300"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <span className="inline-block text-[11px] font-extrabold uppercase px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 mb-1.5">
-                            Q{q.questionOrder} • {q.sectionName}
-                          </span>
-                          <p className="text-xs font-bold text-slate-900 leading-relaxed">{q.questionText}</p>
+                        <div className="space-y-2 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-black uppercase px-2.5 py-0.5 rounded-md bg-white text-slate-800 border border-slate-200/80 shadow-xs">
+                              Q{q.questionOrder} • {q.sectionName}
+                            </span>
+                          </div>
 
-                          <div className="mt-2.5 space-y-1 text-xs">
-                            <p className="text-slate-700">
-                              Candidate Answer:{" "}
-                              <strong className={q.isCorrect ? "text-emerald-700 font-extrabold" : "text-rose-700 font-extrabold"}>
-                                {q.candidateOption || "Not Answered"}
+                          <p className="text-xs font-extrabold text-slate-900 leading-relaxed pt-1">
+                            {q.questionText}
+                          </p>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-2">
+                            <div className="p-2.5 rounded-xl bg-white border border-slate-200/80">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">
+                                Candidate Answer
+                              </span>
+                              <strong className={q.isCorrect ? "text-emerald-700 font-black" : "text-rose-700 font-black"}>
+                                {q.candidateOption ? `Option ${q.candidateOption}` : "Not Answered"}
                               </strong>
-                            </p>
-                            <p className="text-slate-600">
-                              Correct Answer: <strong className="text-slate-900 font-extrabold">{q.correctOption}</strong>
-                            </p>
+                            </div>
+
+                            <div className="p-2.5 rounded-xl bg-white border border-slate-200/80">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">
+                                Correct Answer
+                              </span>
+                              <strong className="text-slate-900 font-black">Option {q.correctOption}</strong>
+                            </div>
                           </div>
                         </div>
 
                         <span
-                          className={`px-3 py-1 rounded-xl text-xs font-black uppercase whitespace-nowrap ${
-                            q.isCorrect ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
+                          className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase whitespace-nowrap shadow-xs flex items-center gap-1 ${
+                            q.isCorrect
+                              ? "bg-emerald-600 text-white"
+                              : "bg-rose-600 text-white"
                           }`}
                         >
-                          {q.isCorrect ? "✓ Correct" : "✗ Incorrect"}
+                          {q.isCorrect ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                          {q.isCorrect ? "Correct" : "Incorrect"}
                         </span>
                       </div>
                     </div>
@@ -450,29 +489,44 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId }: C
             {/* TAB 3: Proctoring Audit Timeline */}
             {activeTab === "proctoring" && (
               <div className="space-y-4">
-                <h3 className="text-sm font-black uppercase text-slate-900 tracking-wider">
-                  Proctoring Violation Audit Logs
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black uppercase text-slate-900 tracking-wider flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-amber-600" />
+                    Proctoring Violation Audit Logs
+                  </h3>
+                  <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
+                    Max Threshold: {report.proctoring.maxWarnings} Warnings
+                  </span>
+                </div>
 
                 {report.proctoring.events.length === 0 ? (
-                  <div className="p-8 bg-emerald-50 border border-emerald-200 rounded-2xl text-center">
-                    <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
-                    <p className="text-xs font-bold text-emerald-900">Zero Security Warnings Logged</p>
-                    <p className="text-[11px] text-emerald-700">Candidate completed the exam cleanly without any proctoring violations.</p>
+                  <div className="p-10 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl text-center space-y-2">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
+                    <h4 className="text-sm font-black text-emerald-900">Zero Security Warnings Logged</h4>
+                    <p className="text-xs text-emerald-700 font-medium max-w-md mx-auto">
+                      Candidate completed the assessment session cleanly without any tab-switch or face detection security violations.
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     {report.proctoring.events.map((evt, idx) => (
-                      <div key={evt.id || idx} className="p-3.5 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-3">
-                        <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-amber-900 uppercase">{evt.eventType}</span>
-                            <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
+                      <div
+                        key={evt.id || idx}
+                        className="p-4 bg-amber-50/70 border border-amber-200/90 rounded-2xl flex items-start gap-3 shadow-xs"
+                      >
+                        <div className="p-2 rounded-xl bg-amber-500 text-white shrink-0">
+                          <AlertTriangle className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-amber-900 uppercase">
+                              Warning #{idx + 1}: {evt.eventType}
+                            </span>
+                            <span className="text-[11px] font-extrabold text-amber-800 bg-amber-100/90 px-2 py-0.5 rounded-md border border-amber-200">
                               {new Date(evt.timestamp).toLocaleTimeString()}
                             </span>
                           </div>
-                          {evt.details && <p className="text-xs text-amber-800 mt-1">{evt.details}</p>}
+                          {evt.details && <p className="text-xs font-semibold text-amber-800 mt-1.5 leading-relaxed">{evt.details}</p>}
                         </div>
                       </div>
                     ))}
@@ -484,41 +538,61 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId }: C
             {/* TAB 4: HR Remarks */}
             {activeTab === "remarks" && (
               <div className="space-y-4">
-                <h3 className="text-sm font-black uppercase text-slate-900 tracking-wider">
-                  HR Admin Remarks & Notes
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black uppercase text-slate-900 tracking-wider flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-blue-600" />
+                    HR Admin Interview Remarks & Audit Notes
+                  </h3>
+                </div>
 
-                {/* Remark Input Form */}
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 print:hidden">
+                {/* Input Textarea */}
+                <div className="p-5 bg-white border border-slate-200 rounded-2xl space-y-3 shadow-sm print:hidden">
+                  <label className="block text-xs font-bold text-slate-700 uppercase">Add HR Assessment Remark</label>
                   <textarea
                     rows={3}
                     value={newRemark}
                     onChange={(e) => setNewRemark(e.target.value)}
-                    placeholder="Enter HR interview remarks, notes, or verification comments..."
-                    className="w-full p-3 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                    placeholder="Enter candidate interview remarks, verification notes, or HR approval comments..."
+                    className="w-full p-3.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder-slate-400 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:border-blue-600 outline-none transition-all"
                   />
                   <button
                     onClick={handleSaveRemark}
                     disabled={savingRemark || !newRemark.trim()}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl transition-all shadow-md shadow-blue-600/25 active:scale-95 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                   >
-                    {savingRemark ? "Saving..." : "Save HR Remark"}
+                    {savingRemark ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Save HR Remark</span>
+                      </>
+                    )}
                   </button>
                 </div>
 
-                {/* Remark List */}
+                {/* Past Remarks Timeline */}
                 <div className="space-y-3">
-                  {report.remarks.map((rem) => (
-                    <div key={rem.id} className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-slate-700">Admin Remark</span>
-                        <span className="text-[10px] text-slate-400">
-                          {new Date(rem.createdAt).toLocaleString()}
-                        </span>
+                  {report.remarks.length === 0 ? (
+                    <p className="text-xs font-bold text-slate-400 text-center py-6">No HR remarks added yet.</p>
+                  ) : (
+                    report.remarks.map((rem) => (
+                      <div key={rem.id} className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs font-extrabold text-blue-600 flex items-center gap-1">
+                            <User className="w-3.5 h-3.5" /> HR Admin Note
+                          </span>
+                          <span className="text-[11px] font-semibold text-slate-400">
+                            {new Date(rem.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-900 font-semibold leading-relaxed">{rem.reason}</p>
                       </div>
-                      <p className="text-xs text-slate-900 font-semibold leading-relaxed">{rem.reason}</p>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             )}
