@@ -768,7 +768,7 @@ export class CandidatesService {
             proctoringLogs: {
               orderBy: { timestamp: 'asc' },
             },
-            adminActionLogs: {
+            adminActions: {
               orderBy: { createdAt: 'desc' },
             },
           },
@@ -895,8 +895,8 @@ export class CandidatesService {
     }));
 
     // Admin Remarks / Audit logs
-    const adminActionLogs = latestAttempt.adminActionLogs || [];
-    const remarks = adminActionLogs.map((action: any) => ({
+    const adminActions = latestAttempt.adminActions || [];
+    const remarks = adminActions.map((action: any) => ({
       id: action.id,
       adminId: action.adminId,
       action: action.action,
