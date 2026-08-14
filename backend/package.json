@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "prisma db push --accept-data-loss && prisma generate --skip-engine-copy && npx ts-node src/seed-60.ts && nest build",
+    "build": "nest build",
     "dev": "nest start --watch",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",

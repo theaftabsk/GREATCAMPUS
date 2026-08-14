@@ -128,6 +128,19 @@ export class CandidatesController {
     return result;
   }
 
+  @Get(':id/report')
+  async getCandidateReport(@Param('id') id: string) {
+    return this.candidatesService.getCandidateReport(id);
+  }
+
+  @Post(':id/remarks')
+  async saveCandidateRemarks(
+    @Param('id') id: string,
+    @Body() body: { adminId?: string; remark: string }
+  ) {
+    return this.candidatesService.saveCandidateRemarks(id, body.adminId || 'admin', body.remark);
+  }
+
   @Post(':id/reset')
   async resetCandidate(@Param('id') id: string) {
     const candidate = await this.candidatesService.resetCandidate(id);

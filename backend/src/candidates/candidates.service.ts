@@ -750,6 +750,227 @@ export class CandidatesService {
   }
 
   async deleteAssessment(id: string) {
-    return this.prisma.assessment.delete({ where: { id } });
+    return this.prisma.assessment.delete({ where: { id: id } });
+  }
+
+  // ─── CANDIDATE DIAGNOSTIC REPORT CARD ENGINE ──────────────────────────────
+  async getCandidateReport(candidateId: string) {
+    const candidate: any = await (this.prisma.candidate as any).findUnique({
+      where: { id: candidateId },
+      include: {
+        assessment: true,
+        attempts: {
+          orderBy: { startedAt: 'desc' },
+          include: {
+            submissions: {
+              include: { question: true },
+            },
+            proctoringLogs: {
+              orderBy: { timestamp: 'asc' },
+            },
+            adminActionLogs: {
+              orderBy: { createdAt: 'desc' },
+            },
+          },
+        },
+      },
+    });
+
+    if (!candidate) {
+      throw new NotFoundException(`Candidate with ID '${candidateId}' not found.`);
+    }
+
+    const latestAttempt = candidate.attempts ? candidate.attempts[0] : null;
+    if (!latestAttempt) {
+      throw new NotFoundException(`No exam attempt records found for candidate '${candidate.name}'.`);
+    }
+
+    // Determine status badge
+    let isPassed = latestAttempt.isPassed;
+    let resultStatus = 'NOT QUALIFIED';
+    if (latestAttempt.status === 'LOCKED') {
+      resultStatus = 'LOCKED';
+    } else if (latestAttempt.status === 'DISQUALIFIED') {
+      resultStatus = 'DISQUALIFIED';
+    } else if (isPassed || (latestAttempt.percentage >= (latestAttempt.passingPercentageSnapshot || 50))) {
+      resultStatus = 'QUALIFIED';
+      isPassed = true;
+    }
+
+    // Time calculation
+    const startTime = latestAttempt.startedAt ? new Date(latestAttempt.startedAt).getTime() : Date.now();
+    const endTime = latestAttempt.submittedAt
+      ? new Date(latestAttempt.submittedAt).getTime()
+      : latestAttempt.lockedAt
+      ? new Date(latestAttempt.lockedAt).getTime()
+      : Date.now();
+
+    const durationSeconds = Math.max(0, Math.floor((endTime - startTime) / 1000));
+    const mins = Math.floor(durationSeconds / 60);
+    const secs = durationSeconds % 60;
+    const durationFormatted = `${mins} mins ${secs} secs`;
+
+    // Group submissions by 6 sections
+    const sectionMap: Record<string, { sectionOrder: number; total: number; correct: number; marks: number; questionRange: string }> = {
+      'Communication & Customer Handling': { sectionOrder: 1, total: 10, correct: 0, marks: 10, questionRange: 'Q1–10' },
+      'Advanced English': { sectionOrder: 2, total: 10, correct: 0, marks: 10, questionRange: 'Q11–20' },
+      'Mental Ability & Reasoning': { sectionOrder: 3, total: 10, correct: 0, marks: 10, questionRange: 'Q21–30' },
+      'Numerical & Mathematical Reasoning': { sectionOrder: 4, total: 10, correct: 0, marks: 10, questionRange: 'Q31–40' },
+      'Banking & Financial Awareness': { sectionOrder: 5, total: 10, correct: 0, marks: 10, questionRange: 'Q41–50' },
+      'Sales Orientation & Situational Judgement': { sectionOrder: 6, total: 10, correct: 0, marks: 10, questionRange: 'Q51–60' },
+    };
+
+    let calculatedObtainedMarks = 0;
+    let calculatedTotalPossible = 0;
+
+    const responses: Array<{
+      questionOrder: number;
+      sectionName: string;
+      questionText: string;
+      candidateOption: string | null;
+      correctOption: string;
+      isCorrect: boolean;
+      marks: number;
+    }> = [];
+
+    // Sort submissions by sectionOrder then question id
+    const submissions = latestAttempt.submissions || [];
+    const sortedSubmissions = submissions.sort((a: any, b: any) => {
+      if ((a.question.sectionOrder || 0) !== (b.question.sectionOrder || 0)) {
+        return (a.question.sectionOrder || 0) - (b.question.sectionOrder || 0);
+      }
+      return a.question.id.localeCompare(b.question.id);
+    });
+
+    sortedSubmissions.forEach((sub: any, idx: number) => {
+      const secName = sub.question.sectionName || 'General';
+      const questionMarks = sub.question.marks || 1;
+      calculatedTotalPossible += questionMarks;
+
+      if (!sectionMap[secName]) {
+        sectionMap[secName] = {
+          sectionOrder: sub.question.sectionOrder || 99,
+          total: 0,
+          correct: 0,
+          marks: 0,
+          questionRange: `Q${idx + 1}`,
+        };
+      }
+
+      if (sub.isCorrect) {
+        sectionMap[secName].correct += 1;
+        calculatedObtainedMarks += questionMarks;
+      }
+
+      responses.push({
+        questionOrder: idx + 1,
+        sectionName: secName,
+        questionText: sub.question.question,
+        candidateOption: sub.selectedOption,
+        correctOption: sub.question.correctAnswer,
+        isCorrect: sub.isCorrect,
+        marks: questionMarks,
+      });
+    });
+
+    // Structure sections array
+    const sections = Object.entries(sectionMap)
+      .sort(([, a], [, b]) => a.sectionOrder - b.sectionOrder)
+      .map(([name, data]) => ({
+        sectionOrder: data.sectionOrder,
+        name,
+        questionRange: data.questionRange,
+        score: data.correct,
+        totalMarks: data.total,
+        percentage: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
+      }));
+
+    // Proctoring audit timeline
+    const proctoringLogs = latestAttempt.proctoringLogs || [];
+    const proctoringEvents = proctoringLogs.map((log: any) => ({
+      id: log.id,
+      eventType: log.eventType,
+      details: log.details,
+      timestamp: log.timestamp || log.createdAt,
+    }));
+
+    // Admin Remarks / Audit logs
+    const adminActionLogs = latestAttempt.adminActionLogs || [];
+    const remarks = adminActionLogs.map((action: any) => ({
+      id: action.id,
+      adminId: action.adminId,
+      action: action.action,
+      reason: action.reason,
+      createdAt: action.createdAt,
+    }));
+
+    const assessmentObj = candidate.assessment || {};
+
+    return {
+      success: true,
+      candidate: {
+        id: candidate.id,
+        name: candidate.name,
+        email: candidate.email,
+        phone: candidate.phone,
+        applicationId: candidate.applicationId || candidate.referenceId,
+        crmCandidateId: candidate.crmCandidateId,
+        status: candidate.status,
+      },
+      assessment: {
+        id: assessmentObj.id || candidate.assessmentId,
+        title: assessmentObj.name || 'Assessment Session',
+        slug: assessmentObj.slug || '',
+        durationMins: latestAttempt.durationMinsSnapshot || assessmentObj.durationMins || 45,
+        passingPercentage: latestAttempt.passingPercentageSnapshot || assessmentObj.passingPercentage || 50,
+      },
+      result: {
+        status: resultStatus,
+        isPassed,
+        score: latestAttempt.score || calculatedObtainedMarks,
+        totalMarks: latestAttempt.totalPossibleScore || calculatedTotalPossible || 60,
+        percentage: latestAttempt.percentage || (calculatedTotalPossible > 0 ? Math.round((calculatedObtainedMarks / calculatedTotalPossible) * 100) : 0),
+      },
+      timing: {
+        startedAt: latestAttempt.startedAt,
+        submittedAt: latestAttempt.submittedAt || latestAttempt.lockedAt,
+        durationSeconds,
+        durationFormatted,
+      },
+      sections,
+      responses,
+      proctoring: {
+        warningCount: latestAttempt.warningCount,
+        maxWarnings: latestAttempt.maxProctorWarningsSnapshot,
+        lockReason: latestAttempt.lockReason,
+        events: proctoringEvents,
+      },
+      remarks,
+    };
+  }
+
+  async saveCandidateRemarks(candidateId: string, adminId: string, remarkText: string) {
+    const candidate: any = await (this.prisma.candidate as any).findUnique({
+      where: { id: candidateId },
+      include: { attempts: { orderBy: { startedAt: 'desc' } } },
+    });
+
+    if (!candidate) throw new NotFoundException('Candidate not found.');
+
+    const latestAttempt = candidate.attempts[0];
+    if (!latestAttempt) throw new NotFoundException('No attempt found.');
+
+    const admin = (await this.prisma.admin.findFirst()) || { id: adminId };
+
+    const actionLog = await this.prisma.adminActionLog.create({
+      data: {
+        attemptId: latestAttempt.id,
+        adminId: admin.id,
+        action: 'REMARK',
+        reason: remarkText,
+      },
+    });
+
+    return { success: true, remark: actionLog };
   }
 }
