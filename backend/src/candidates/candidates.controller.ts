@@ -89,6 +89,24 @@ export class CandidatesController {
     return { success: true, ...data };
   }
 
+  @Post('save-answer')
+  async saveAnswer(
+    @Body()
+    body: {
+      attemptId: string;
+      questionId: string;
+      selectedOption: string | null;
+      timeTakenSec?: number;
+    }
+  ) {
+    return this.candidatesService.saveAnswer(body);
+  }
+
+  @Get('status/:attemptId')
+  async checkAttemptStatus(@Param('attemptId') attemptId: string) {
+    return this.candidatesService.checkAttemptStatus(attemptId);
+  }
+
   @Post('submit-exam')
   async submitExam(
     @Body()

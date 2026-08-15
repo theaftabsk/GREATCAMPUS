@@ -115,6 +115,7 @@ model ExamAttempt {
   percentage                 Float                @default(0)
   isPassed                   Boolean              @default(false)
   warningCount               Int                  @default(0)
+  totalTimeSpentSec          Int                  @default(0)
   // Lock fields
   lockedAt                   DateTime?
   lockReason                 String?

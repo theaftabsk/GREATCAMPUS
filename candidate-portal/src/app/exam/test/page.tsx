@@ -81,7 +81,8 @@ export default function CandidateTestEngine() {
         setAttemptId(data.attemptId);
         setAssessmentName(data.assessmentName);
         setQuestions(data.questions || []);
-        setTimeLeftSec((data.durationMins || 60) * 60);
+        const calculatedTime = data.remainingTimeSec !== undefined ? data.remainingTimeSec : (data.durationMins || 45) * 60;
+        setTimeLeftSec(calculatedTime);
         setMaxProctorWarnings(data.maxProctorWarnings || 3);
         setWarningCount(data.warningCount || 0);
 
@@ -150,6 +151,53 @@ export default function CandidateTestEngine() {
     }
   };
 
+  // Auto-Check Unlock Status when Disqualified/Locked
+  const [checkingUnlock, setCheckingUnlock] = useState(false);
+  const handleCheckUnlock = async () => {
+    if (!attemptId) return;
+    setCheckingUnlock(true);
+    try {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/v1/candidates/status/${attemptId}`);
+      const data = await res.json();
+      if (data.success && data.isUnlocked) {
+        setDisqualified(false);
+        setWarningCount(0);
+        if (candidate) {
+          await initializeExamSession(candidate.referenceId || candidate.email || candidate.id);
+        }
+      } else {
+        alert("Your exam session is still locked. Please wait for HR Administrator approval.");
+      }
+    } catch {
+      /* silent */
+    } finally {
+      setCheckingUnlock(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!disqualified || !attemptId) return;
+    const pollInterval = setInterval(async () => {
+      try {
+        const baseUrl = getApiBaseUrl();
+        const res = await fetch(`${baseUrl}/api/v1/candidates/status/${attemptId}`);
+        const data = await res.json();
+        if (data.success && data.isUnlocked) {
+          clearInterval(pollInterval);
+          setDisqualified(false);
+          setWarningCount(0);
+          if (candidate) {
+            initializeExamSession(candidate.referenceId || candidate.email || candidate.id);
+          }
+        }
+      } catch {
+        /* silent */
+      }
+    }, 6000);
+    return () => clearInterval(pollInterval);
+  }, [disqualified, attemptId, candidate]);
+
   useEffect(() => {
     if (loading || !attemptId || disqualified) return;
 
@@ -194,10 +242,26 @@ export default function CandidateTestEngine() {
     `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
 
   const handleSelectOption = (qId: string, opt: string) => {
+    // 1. Update React state immediately for snappy UX
     setAnswers((p) => ({
       ...p,
       [qId]: { selectedOption: opt, timeTakenSec: (p[qId]?.timeTakenSec || 0) + 5 },
     }));
+
+    // 2. Real-time background sync to PostgreSQL database
+    if (attemptId) {
+      const baseUrl = getApiBaseUrl();
+      fetch(`${baseUrl}/api/v1/candidates/save-answer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          attemptId,
+          questionId: qId,
+          selectedOption: opt,
+          timeTakenSec: 5,
+        }),
+      }).catch((err) => console.warn("Background answer save warning:", err));
+    }
   };
 
   const handleSubmitExam = async () => {
@@ -241,27 +305,52 @@ export default function CandidateTestEngine() {
     );
   }
 
-  // DISQUALIFIED SCREEN
+  // LOCKED / DISQUALIFIED SCREEN WITH LIVE RESUME SUPPORT
   if (disqualified) {
     return (
-      <div className="loading-screen" style={{ background: "#FEF2F2" }}>
-        <div className="loading-content" style={{ maxWidth: "480px", background: "white", padding: "32px", borderRadius: "16px", boxShadow: "0 20px 40px rgba(220,38,38,0.15)", textAlign: "center" }}>
-          <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "#FEE2E2", color: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-            <AlertOctagon size={36} />
+      <div className="loading-screen" style={{ background: "#F8FAFC" }}>
+        <div className="loading-content" style={{ maxWidth: "520px", background: "white", padding: "36px 32px", borderRadius: "24px", boxShadow: "0 20px 40px rgba(15,23,42,0.1)", textAlign: "center", border: "1px solid #E2E8F0" }}>
+          <div style={{ width: "68px", height: "68px", borderRadius: "20px", background: "#FEF2F2", color: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", border: "1px solid #FEE2E2" }}>
+            <ShieldAlert size={36} />
           </div>
-          <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#991B1B", marginBottom: "8px" }}>EXAM DISQUALIFIED</h2>
-          <p style={{ fontSize: "14px", color: "#7F1D1D", lineHeight: 1.5, marginBottom: "20px" }}>
-            You have exceeded the maximum allowed proctoring violations (<strong>{maxProctorWarnings}/{maxProctorWarnings} Warnings</strong>). Your session has been auto-submitted and flagged for HR review.
+          <h2 style={{ fontSize: "22px", fontWeight: 900, color: "#0F172A", marginBottom: "8px" }}>Exam Session Locked</h2>
+          <p style={{ fontSize: "13px", color: "#64748B", lineHeight: 1.6, marginBottom: "20px" }}>
+            You have reached the maximum allowed proctoring violations (<strong>{maxProctorWarnings}/{maxProctorWarnings} Warnings</strong>).
           </p>
-          <button
-            onClick={() => {
-              localStorage.removeItem("banca_candidate");
-              router.push("/");
-            }}
-            style={{ padding: "12px 24px", background: "#DC2626", color: "white", fontWeight: 700, borderRadius: "10px", border: "none", cursor: "pointer" }}
-          >
-            Return to Home
-          </button>
+
+          <div style={{ background: "#F1F5F9", padding: "14px 18px", borderRadius: "14px", marginBottom: "24px", textAlign: "left", fontSize: "12px", color: "#334155", display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontWeight: 700, color: "#64748B" }}>Questions Answered:</span>
+              <span style={{ fontWeight: 800, color: "#059669" }}>{answeredCount} / {questions.length} Saved</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontWeight: 700, color: "#64748B" }}>Time Remaining:</span>
+              <span style={{ fontWeight: 800, color: "#2563EB" }}>{fmt(timeLeftSec)} Preserved</span>
+            </div>
+          </div>
+
+          <p style={{ fontSize: "12px", color: "#94A3B8", marginBottom: "20px" }}>
+            Please contact your HR Administrator. Once unlocked in the Admin Portal, click Resume below.
+          </p>
+
+          <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+            <button
+              onClick={handleCheckUnlock}
+              disabled={checkingUnlock}
+              style={{ padding: "12px 24px", background: "#2563EB", color: "white", fontWeight: 800, fontSize: "13px", borderRadius: "12px", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
+            >
+              {checkingUnlock ? "Checking..." : "🔄 Check Status & Resume Exam"}
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem("banca_candidate");
+                router.push("/");
+              }}
+              style={{ padding: "12px 18px", background: "#F1F5F9", color: "#475569", fontWeight: 700, fontSize: "13px", borderRadius: "12px", border: "1px solid #CBD5E1", cursor: "pointer" }}
+            >
+              Exit
+            </button>
+          </div>
         </div>
       </div>
     );

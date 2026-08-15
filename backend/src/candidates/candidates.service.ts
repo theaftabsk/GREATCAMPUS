@@ -279,7 +279,17 @@ export class CandidatesService {
     });
 
     if (activeAttempt) {
-      // Return the existing attempt so candidate can resume
+      // Calculate accurate remaining time:
+      // total available seconds - (totalTimeSpentSec from previous sessions + seconds spent in current active session)
+      const totalDurationSec = (activeAttempt.durationMinsSnapshot || candidate.assessment.durationMins || EXAM_DURATION_MINS) * 60;
+      const now = Date.now();
+      const currentSessionElapsed = activeAttempt.startedAt
+        ? Math.floor((now - new Date(activeAttempt.startedAt).getTime()) / 1000)
+        : 0;
+      const totalSpentSec = (activeAttempt.totalTimeSpentSec || 0) + Math.max(0, currentSessionElapsed);
+      const remainingTimeSec = Math.max(30, totalDurationSec - totalSpentSec);
+
+      // Return the existing attempt so candidate can resume seamlessly
       return {
         candidate: {
           id: candidate.id,
@@ -290,11 +300,16 @@ export class CandidatesService {
         attemptId: activeAttempt.id,
         assessmentName: candidate.assessment.name,
         durationMins: activeAttempt.durationMinsSnapshot || candidate.assessment.durationMins || EXAM_DURATION_MINS,
+        remainingTimeSec,
         maxProctorWarnings: activeAttempt.maxProctorWarningsSnapshot,
         warningCount: activeAttempt.warningCount,
         questions: activeAttempt.attemptQuestions.map((aq) => ({
           attemptQuestionId: aq.id,
           id: aq.question.id,
+          subjectId: '',
+          subjectName: aq.question.sectionName || 'General',
+          sectionId: '',
+          sectionName: aq.question.sectionName || 'General',
           question: aq.question.question,
           optionA: aq.question.optionA,
           optionB: aq.question.optionB,
@@ -479,6 +494,96 @@ export class CandidatesService {
     return updatedAttempt;
   }
 
+  // ─── REAL-TIME ANSWER PERSISTENCE ─────────────────────────────────────────
+  async saveAnswer(data: {
+    attemptId: string;
+    questionId: string;
+    selectedOption: string | null;
+    timeTakenSec?: number;
+  }) {
+    const { attemptId, questionId, selectedOption, timeTakenSec = 0 } = data;
+
+    const attempt = await this.prisma.examAttempt.findUnique({
+      where: { id: attemptId },
+    });
+    if (!attempt) throw new NotFoundException('Exam attempt not found.');
+    if (attempt.status === 'LOCKED' || attempt.status === 'COMPLETED' || attempt.status === 'DISQUALIFIED') {
+      throw new BadRequestException(`Cannot save answer. Exam session is ${attempt.status}.`);
+    }
+
+    const question = await this.prisma.question.findUnique({
+      where: { id: questionId },
+    });
+    const isCorrect = !!(
+      question &&
+      selectedOption &&
+      question.correctAnswer?.trim().toUpperCase() === selectedOption?.trim().toUpperCase()
+    );
+
+    const existingSub = await this.prisma.submission.findFirst({
+      where: { attemptId, questionId },
+    });
+
+    let submission;
+    if (existingSub) {
+      submission = await this.prisma.submission.update({
+        where: { id: existingSub.id },
+        data: {
+          selectedOption,
+          isCorrect,
+          timeTakenSec: (existingSub.timeTakenSec || 0) + (timeTakenSec || 0),
+        },
+      });
+    } else {
+      submission = await this.prisma.submission.create({
+        data: {
+          attemptId,
+          questionId,
+          selectedOption,
+          isCorrect,
+          timeTakenSec: timeTakenSec || 0,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      message: 'Answer saved in real-time.',
+      submissionId: submission.id,
+      questionId,
+      selectedOption,
+    };
+  }
+
+  // ─── CHECK ATTEMPT LOCK / RESUME STATUS ────────────────────────────────────
+  async checkAttemptStatus(attemptId: string) {
+    const attempt = await this.prisma.examAttempt.findUnique({
+      where: { id: attemptId },
+      include: { candidate: true },
+    });
+    if (!attempt) throw new NotFoundException('Attempt not found.');
+
+    const totalDurationSec = (attempt.durationMinsSnapshot || EXAM_DURATION_MINS) * 60;
+    const now = Date.now();
+    let currentSessionElapsed = 0;
+    if (attempt.status === 'IN_PROGRESS' && attempt.startedAt) {
+      currentSessionElapsed = Math.floor((now - new Date(attempt.startedAt).getTime()) / 1000);
+    }
+    const totalSpent = (attempt.totalTimeSpentSec || 0) + Math.max(0, currentSessionElapsed);
+    const remainingTimeSec = Math.max(0, totalDurationSec - totalSpent);
+
+    return {
+      success: true,
+      attemptId: attempt.id,
+      status: attempt.status,
+      warningCount: attempt.warningCount,
+      maxProctorWarnings: attempt.maxProctorWarningsSnapshot,
+      lockReason: attempt.lockReason,
+      remainingTimeSec,
+      isUnlocked: attempt.status === 'IN_PROGRESS',
+    };
+  }
+
   // ─── PROCTORING ────────────────────────────────────────────────────────────
   async logProctoringEvent(attemptId: string, eventType: string, details?: string) {
     const attempt = await this.prisma.examAttempt.findUnique({ where: { id: attemptId } });
@@ -495,15 +600,22 @@ export class CandidatesService {
       ? `Locked after ${newWarningCount} proctoring violations. Last event: ${eventType}`
       : undefined;
 
+    let sessionSeconds = 0;
+    if (attempt.startedAt) {
+      sessionSeconds = Math.max(0, Math.floor((Date.now() - new Date(attempt.startedAt).getTime()) / 1000));
+    }
+    const newTotalSpent = (attempt.totalTimeSpentSec || 0) + sessionSeconds;
+
     const updatedAttempt = await this.prisma.examAttempt.update({
       where: { id: attempt.id },
       data: {
         warningCount: newWarningCount,
         ...(isDisqualified && {
           status: 'LOCKED',
-          submittedAt: new Date(),
+          submittedAt: null,
           lockedAt: new Date(),
           lockReason,
+          totalTimeSpentSec: newTotalSpent,
         }),
       },
     });
@@ -553,11 +665,13 @@ export class CandidatesService {
     const resolvedAdminId = adminRecord ? adminRecord.id : null;
 
     // Unlock the attempt — reset current cycle warningCount to 0 (lifetime history preserved in proctoringLogs)
+    // startedAt reset to now() so new active timer session starts fresh against remaining duration
     await this.prisma.examAttempt.update({
       where: { id: latestAttempt.id },
       data: {
         status: 'IN_PROGRESS',
         warningCount: 0,
+        startedAt: new Date(),
         submittedAt: null,
         unlockedAt: new Date(),
         unlockedByAdminId: resolvedAdminId || adminId,
