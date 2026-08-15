@@ -561,8 +561,17 @@ export default function CandidateTestEngine() {
             </div>
           </div>
 
-          {/* Right Column: Question Palette */}
+          {/* Right Column: Question Palette & Live Camera Proctor */}
           <div className={`test-sidebar ${paletteOpen ? "open" : ""}`}>
+            {/* Live Camera Proctor Widget */}
+            <div style={{ marginBottom: "14px" }}>
+              <CameraProctor
+                mode="exam"
+                attemptId={attemptId}
+                onWarningTrigger={(evt, msg) => reportProctoringViolation(evt, msg)}
+              />
+            </div>
+
             <div className="test-palette-card">
               <div className="test-palette-header">
                 <div>
