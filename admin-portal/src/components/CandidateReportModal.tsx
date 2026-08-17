@@ -222,20 +222,10 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId, onR
             <button
               onClick={handleDownloadExcel}
               title="Download Individual Candidate Excel Scorecard (4 Sheets)"
-              className="px-3 py-1.5 rounded-xl bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-100 text-xs font-extrabold transition-all cursor-pointer border border-emerald-400/40 flex items-center gap-1.5 shadow-sm"
+              className="px-3.5 py-2 rounded-xl bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-100 text-xs font-extrabold transition-all cursor-pointer border border-emerald-400/40 flex items-center gap-1.5 shadow-sm"
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
               <span className="hidden sm:inline">Excel Report</span>
-            </button>
-
-            {/* Print / Save PDF Button */}
-            <button
-              onClick={handlePrint}
-              title="Print / Save PDF Report"
-              className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-extrabold transition-all cursor-pointer border border-white/25 flex items-center gap-1.5"
-            >
-              <Printer className="w-4 h-4" />
-              <span className="hidden md:inline">Print / PDF</span>
             </button>
 
             {/* Toggle Fullscreen / Maximize */}

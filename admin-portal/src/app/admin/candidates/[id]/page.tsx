@@ -140,13 +140,6 @@ export default function CandidateDetailPage() {
           >
             <FileSpreadsheet className="w-4 h-4" /> Download Excel
           </button>
-
-          <button
-            onClick={handlePrint}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition flex items-center gap-2 shadow-sm cursor-pointer"
-          >
-            <Printer className="w-4 h-4" /> Print / Save PDF
-          </button>
         </div>
       </div>
 

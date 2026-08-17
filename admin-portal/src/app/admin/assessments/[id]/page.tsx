@@ -199,7 +199,7 @@ export default function AssessmentDashboardPage() {
 
   const handleSendBulkInvites = async () => {
     setSendingEmails(true);
-    setEmailProgress({ status: "SENDING", message: "Dispatching email invitations via SMTP..." });
+    setEmailProgress({ status: "SENDING", message: "Connecting to SMTP and dispatching candidate email invitations..." });
 
     try {
       const baseUrl = getApiBaseUrl();
@@ -214,6 +214,7 @@ export default function AssessmentDashboardPage() {
         total: resData.total,
         sent: resData.sent,
         failed: resData.failed,
+        message: resData.message,
         errors: resData.errors,
       });
       await loadDashboard();
@@ -846,9 +847,52 @@ export default function AssessmentDashboardPage() {
             </p>
 
             {emailProgress && (
-              <div style={{ padding: "12px", borderRadius: "10px", background: emailProgress.status === "COMPLETED" ? "#ECFDF5" : "#EFF6FF", color: emailProgress.status === "COMPLETED" ? "#065F46" : "#0369A1", fontSize: "12px", fontWeight: 700, marginBottom: "16px" }}>
+              <div
+                style={{
+                  padding: "14px",
+                  borderRadius: "12px",
+                  background:
+                    emailProgress.status === "COMPLETED"
+                      ? emailProgress.sent > 0
+                        ? "#ECFDF5"
+                        : "#FEF2F2"
+                      : "#EFF6FF",
+                  color:
+                    emailProgress.status === "COMPLETED"
+                      ? emailProgress.sent > 0
+                        ? "#065F46"
+                        : "#991B1B"
+                      : "#0369A1",
+                  border:
+                    emailProgress.status === "COMPLETED"
+                      ? emailProgress.sent > 0
+                        ? "1px solid #A7F3D0"
+                        : "1px solid #FECACA"
+                      : "1px solid #BAE6FD",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  marginBottom: "16px",
+                  textAlign: "left",
+                }}
+              >
                 {emailProgress.status === "COMPLETED" ? (
-                  <div>✅ Dispatched: {emailProgress.sent} Sent • {emailProgress.failed} Failed (Total: {emailProgress.total})</div>
+                  <div>
+                    <div style={{ fontWeight: 800, marginBottom: "4px" }}>
+                      {emailProgress.sent > 0
+                        ? `✅ Dispatched: ${emailProgress.sent} Sent • ${emailProgress.failed} Failed (Total: ${emailProgress.total})`
+                        : `❌ Dispatch Failed: 0 Sent • ${emailProgress.failed} Failed (Total: ${emailProgress.total})`}
+                    </div>
+                    {emailProgress.message && (
+                      <div style={{ fontSize: "11px", fontWeight: 600, opacity: 0.9 }}>
+                        {emailProgress.message}
+                      </div>
+                    )}
+                    {emailProgress.failed > 0 && emailProgress.sent === 0 && (
+                      <div style={{ fontSize: "11px", marginTop: "6px", color: "#B91C1C", fontWeight: 700 }}>
+                        ⚠️ SMTP is not connected. Go to <a href="/admin/settings" style={{ textDecoration: "underline", color: "#0284C7" }}>System Settings</a> to configure your SMTP credentials.
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div>⏳ {emailProgress.message}</div>
                 )}

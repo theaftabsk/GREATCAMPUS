@@ -213,6 +213,18 @@ export class EmailService {
     if (!candidate) throw new NotFoundException('Candidate not found.');
 
     const config = await this.getSmtpConfig();
+    if (!config.username || !config.password) {
+      await this.prisma.candidate.update({
+        where: { id: candidate.id },
+        data: { emailStatus: 'FAILED' },
+      });
+      return {
+        success: false,
+        message: 'SMTP credentials not configured. Please enter your SMTP Username & App Password in System Settings.',
+        error: 'SMTP_NOT_CONFIGURED',
+      };
+    }
+
     const transporter = await this.createTransporter();
 
     const frontendBaseUrl = process.env.CANDIDATE_PORTAL_URL || process.env.FRONTEND_CANDIDATE_URL || 'https://niva.greatcampus.in';
@@ -300,6 +312,9 @@ export class EmailService {
   async sendBulkInvitations(data: { assessmentId: string; candidateIds?: string[] }) {
     const { assessmentId, candidateIds } = data;
 
+    const config = await this.getSmtpConfig();
+    const isSmtpConfigured = !!(config.username && config.password);
+
     const candidates = await this.prisma.candidate.findMany({
       where: {
         assessmentId,
@@ -312,6 +327,26 @@ export class EmailService {
       return { success: true, total: 0, sent: 0, failed: 0, errors: [] };
     }
 
+    if (!isSmtpConfigured) {
+      // Mark candidates as FAILED with clear reason
+      await this.prisma.candidate.updateMany({
+        where: { id: { in: candidates.map((c) => c.id) } },
+        data: { emailStatus: 'FAILED' },
+      });
+
+      return {
+        success: false,
+        total: candidates.length,
+        sent: 0,
+        failed: candidates.length,
+        message: 'SMTP Credentials Not Configured: Please configure SMTP Host, Username, and Password in System Settings before sending real emails.',
+        errors: candidates.map((c) => ({
+          email: c.email,
+          error: 'SMTP not configured in System Settings (/admin/settings).',
+        })),
+      };
+    }
+
     let sent = 0;
     let failed = 0;
     const errors: Array<{ email: string; error: string }> = [];
@@ -322,19 +357,19 @@ export class EmailService {
       const batch = candidates.slice(i, i + batchSize);
       await Promise.all(
         batch.map(async (candidate) => {
-          try {
-            await this.sendCandidateInvitation(candidate.id);
+          const res = await this.sendCandidateInvitation(candidate.id);
+          if (res.success) {
             sent++;
-          } catch (err: any) {
+          } else {
             failed++;
-            errors.push({ email: candidate.email, error: err.message || 'Send error' });
+            errors.push({ email: candidate.email, error: res.message || 'Send error' });
           }
         }),
       );
     }
 
     return {
-      success: true,
+      success: sent > 0,
       total: candidates.length,
       sent,
       failed,
