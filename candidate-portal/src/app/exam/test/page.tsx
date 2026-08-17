@@ -125,9 +125,18 @@ export default function CandidateTestEngine() {
     return () => clearInterval(interval);
   }, [loading, disqualified]);
 
-  // Real-Time Proctoring Event Logger & Listener
+  // Real-Time Proctoring Event Logger & Listener with 3.5s cooldown debounce
+  const lastViolationTimeRef = useRef<number>(0);
+
   const reportProctoringViolation = async (eventType: string, details?: string) => {
     if (!attemptId || disqualified) return;
+
+    const now = Date.now();
+    // 3.5s debounce prevents simultaneous events (e.g. TAB_SWITCH and FULLSCREEN_EXIT firing together)
+    if (now - lastViolationTimeRef.current < 3500) {
+      return;
+    }
+    lastViolationTimeRef.current = now;
 
     try {
       const baseUrl = getApiBaseUrl();

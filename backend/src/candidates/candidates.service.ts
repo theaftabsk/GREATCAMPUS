@@ -599,13 +599,22 @@ export class CandidatesService {
     const attempt = await this.prisma.examAttempt.findUnique({ where: { id: attemptId } });
     if (!attempt) throw new NotFoundException('Exam attempt not found.');
 
-    // Log the proctoring event
+    // Check if a warning was already logged in the last 3.5 seconds (avoids double counting simultaneous TAB_SWITCH + FULLSCREEN_EXIT)
+    const recentLog = await this.prisma.proctoringLog.findFirst({
+      where: { attemptId: attempt.id },
+      orderBy: { timestamp: 'desc' },
+    });
+
+    const isDuplicateBurst = recentLog && (Date.now() - new Date(recentLog.timestamp).getTime()) < 3500;
+
+    // Log the proctoring event for full security audit trail
     await this.prisma.proctoringLog.create({
       data: { attemptId: attempt.id, eventType, details },
     });
 
-    const newWarningCount = attempt.warningCount + 1;
-    const isDisqualified = newWarningCount >= attempt.maxProctorWarningsSnapshot;
+    const maxWarnings = Math.max(3, attempt.maxProctorWarningsSnapshot || 3);
+    const newWarningCount = isDuplicateBurst ? attempt.warningCount : attempt.warningCount + 1;
+    const isDisqualified = newWarningCount >= maxWarnings;
     const lockReason = isDisqualified
       ? `Locked after ${newWarningCount} proctoring violations. Last event: ${eventType}`
       : undefined;
@@ -620,6 +629,7 @@ export class CandidatesService {
       where: { id: attempt.id },
       data: {
         warningCount: newWarningCount,
+        maxProctorWarningsSnapshot: maxWarnings,
         ...(isDisqualified && {
           status: 'LOCKED',
           submittedAt: null,
@@ -643,13 +653,13 @@ export class CandidatesService {
 
     return {
       warningCount: updatedAttempt.warningCount,
-      maxProctorWarnings: updatedAttempt.maxProctorWarningsSnapshot,
+      maxProctorWarnings: maxWarnings,
       disqualified: isDisqualified,
       lockedAt: updatedAttempt.lockedAt,
       lockReason: updatedAttempt.lockReason,
       message: isDisqualified
-        ? `🔒 Exam LOCKED: Maximum ${updatedAttempt.maxProctorWarningsSnapshot} proctoring warnings reached. Contact your HR Administrator to unlock.`
-        : `Warning ${updatedAttempt.warningCount}/${updatedAttempt.maxProctorWarningsSnapshot}: Proctoring violation logged.`,
+        ? `🔒 Exam LOCKED: Maximum ${maxWarnings} proctoring warnings reached. Contact your HR Administrator to unlock.`
+        : `Warning ${updatedAttempt.warningCount}/${maxWarnings}: Proctoring violation logged.`,
     };
   }
 
