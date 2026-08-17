@@ -190,16 +190,24 @@ export default function CameraProctor({
     };
   }, [cameraActive, modelsLoaded]);
 
-  // ── Scheduled 15-minute screenshot ────────────────────────────────────
+  // ── Scheduled 15-minute screenshot (Initial baseline at 3s + every 15 mins) ──
   useEffect(() => {
     if (mode !== "exam" || !attemptId || !cameraActive) return;
 
+    // Take initial baseline verification screenshot 3 seconds after camera start
+    const initialCaptureTimer = setTimeout(() => {
+      console.log("📸 Capturing initial baseline proctoring screenshot...");
+      uploadScreenshotRef.current("SCHEDULED", "EXAM_START_BASELINE");
+    }, 3000);
+
+    // Recurring 15-minute interval screenshot capture
     scheduledTimerRef.current = setInterval(() => {
-      console.log("📸 Scheduled 15-min proctoring screenshot...");
-      uploadScreenshotRef.current("SCHEDULED");
+      console.log("📸 Scheduled 15-min proctoring screenshot capture...");
+      uploadScreenshotRef.current("SCHEDULED", "PERIODIC_15_MIN");
     }, SCHEDULED_INTERVAL_MS);
 
     return () => {
+      clearTimeout(initialCaptureTimer);
       if (scheduledTimerRef.current) clearInterval(scheduledTimerRef.current);
     };
   }, [mode, attemptId, cameraActive]);
