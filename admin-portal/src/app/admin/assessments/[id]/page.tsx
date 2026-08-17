@@ -24,6 +24,10 @@ export default function AssessmentDashboardPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [copiedLink, setCopiedLink] = useState(false);
 
+  // Pagination (30 candidates per page by default)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(30);
+
   // Single Add Candidate Modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [singleCandidate, setSingleCandidate] = useState({ name: "", email: "", phone: "", applicationId: "" });
@@ -468,7 +472,9 @@ export default function AssessmentDashboardPage() {
                 </td>
               </tr>
             ) : (
-              filteredCandidates.map((c: any) => {
+              filteredCandidates
+                .slice((currentPage - 1) * pageSize, Math.min(filteredCandidates.length, currentPage * pageSize))
+                .map((c: any) => {
                 const att = c.attempt;
                 const isPassed = att?.isPassed;
 
@@ -582,6 +588,47 @@ export default function AssessmentDashboardPage() {
             )}
           </tbody>
         </table>
+
+        {/* 30 PER PAGE PAGINATION CONTROLS */}
+        {filteredCandidates.length > 0 && (
+          <div style={{ padding: "14px 20px", background: "#F8FAFC", borderTop: "1px solid #CBD5E1", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", fontSize: "12px", fontWeight: 700, color: "#475569" }}>
+            <div>
+              Showing <strong style={{ color: "#0F172A" }}>{(currentPage - 1) * pageSize + 1}</strong> to <strong style={{ color: "#0F172A" }}>{Math.min(filteredCandidates.length, currentPage * pageSize)}</strong> of <strong style={{ color: "#0F172A" }}>{filteredCandidates.length}</strong> candidates
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid #CBD5E1", background: "white", color: "#334155", fontWeight: 800, cursor: currentPage === 1 ? "not-allowed" : "pointer", opacity: currentPage === 1 ? 0.5 : 1 }}
+              >
+                Previous
+              </button>
+
+              <span style={{ padding: "6px 12px", background: "white", border: "1px solid #CBD5E1", borderRadius: "8px", color: "#00AEEF", fontWeight: 900 }}>
+                Page {currentPage} of {Math.max(1, Math.ceil(filteredCandidates.length / pageSize))}
+              </span>
+
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(Math.ceil(filteredCandidates.length / pageSize), p + 1))}
+                disabled={currentPage >= Math.ceil(filteredCandidates.length / pageSize)}
+                style={{ padding: "6px 12px", borderRadius: "8px", border: "1px solid #CBD5E1", background: "white", color: "#334155", fontWeight: 800, cursor: currentPage >= Math.ceil(filteredCandidates.length / pageSize) ? "not-allowed" : "pointer", opacity: currentPage >= Math.ceil(filteredCandidates.length / pageSize) ? 0.5 : 1 }}
+              >
+                Next
+              </button>
+
+              <select
+                value={pageSize}
+                onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                style={{ marginLeft: "8px", padding: "6px 10px", borderRadius: "8px", border: "1px solid #CBD5E1", background: "white", fontWeight: 700, color: "#334155", fontSize: "12px" }}
+              >
+                <option value={30}>30 / page</option>
+                <option value={50}>50 / page</option>
+                <option value={100}>100 / page</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* SINGLE CANDIDATE ADD MODAL */}
