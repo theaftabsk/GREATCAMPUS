@@ -645,7 +645,7 @@ export default function CandidateTestEngine() {
       {warningModalMsg && (
         <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(15,23,42,0.80)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
           <div style={{ background: "white", maxWidth: "440px", width: "100%", borderRadius: "20px", overflow: "hidden", boxShadow: "0 32px 64px rgba(0,0,0,0.3)" }}>
-            
+
             {/* Red top bar */}
             <div style={{ background: "linear-gradient(135deg,#DC2626,#B91C1C)", padding: "24px", textAlign: "center" }}>
               <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
@@ -700,20 +700,6 @@ export default function CandidateTestEngine() {
           mode="exam"
           attemptId={attemptId}
           onWarningTrigger={(type, msg) => {
-            // Immediately show warning modal (no backend wait)
-            setWarningCount((prev) => {
-              const next = prev + 1;
-              if (next >= maxProctorWarnings) {
-                // Auto disqualify
-                setDisqualified(true);
-                setWarningModalMsg(null);
-                handleSubmitExam();
-              } else {
-                setWarningModalMsg(msg);
-              }
-              return next;
-            });
-            // Also log to backend (non-blocking)
             reportProctoringViolation(type, msg);
           }}
         />

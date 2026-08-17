@@ -19,7 +19,7 @@ export class CandidatesService {
     private prisma: PrismaService,
     private headstartClient: HeadstartClientService,
     private headstartWebhook: HeadstartWebhookService,
-  ) {}
+  ) { }
 
   // ─── GET CANDIDATES ────────────────────────────────────────────────────────
   async getCandidates(assessmentId?: string) {
@@ -91,24 +91,24 @@ export class CandidatesService {
         },
         attempt: latestAttempt
           ? {
-              id: latestAttempt.id,
-              status: latestAttempt.status,
-              startedAt: latestAttempt.startedAt,
-              submittedAt: latestAttempt.submittedAt,
-              score: latestAttempt.score,
-              totalPossibleScore: latestAttempt.totalPossibleScore,
-              percentage: latestAttempt.percentage,
-              isPassed: latestAttempt.isPassed,
-              warningCount: latestAttempt.warningCount,
-              maxProctorWarnings: latestAttempt.maxProctorWarningsSnapshot,
-              durationMins: EXAM_DURATION_MINS,
-              lockedAt: latestAttempt.lockedAt,
-              lockReason: latestAttempt.lockReason,
-              unlockedAt: latestAttempt.unlockedAt,
-              unlockedByAdminName: latestAttempt.unlockedByAdminName,
-              questionAudit,
-              proctoringLogs: latestAttempt.proctoringLogs,
-            }
+            id: latestAttempt.id,
+            status: latestAttempt.status,
+            startedAt: latestAttempt.startedAt,
+            submittedAt: latestAttempt.submittedAt,
+            score: latestAttempt.score,
+            totalPossibleScore: latestAttempt.totalPossibleScore,
+            percentage: latestAttempt.percentage,
+            isPassed: latestAttempt.isPassed,
+            warningCount: latestAttempt.warningCount,
+            maxProctorWarnings: latestAttempt.maxProctorWarningsSnapshot,
+            durationMins: EXAM_DURATION_MINS,
+            lockedAt: latestAttempt.lockedAt,
+            lockReason: latestAttempt.lockReason,
+            unlockedAt: latestAttempt.unlockedAt,
+            unlockedByAdminName: latestAttempt.unlockedByAdminName,
+            questionAudit,
+            proctoringLogs: latestAttempt.proctoringLogs,
+          }
           : null,
       };
     });
@@ -693,7 +693,7 @@ export class CandidatesService {
       });
 
       // Fire LOCKED status webhook to Headstart CRM (API 4) if enabled
-      await this.headstartWebhook.sendAssessmentStatus(attempt.id, 'LOCKED').catch(() => {});
+      await this.headstartWebhook.sendAssessmentStatus(attempt.id, 'LOCKED').catch(() => { });
     }
 
     return {
@@ -766,7 +766,7 @@ export class CandidatesService {
     });
 
     // Fire UNLOCKED webhook to Headstart CRM
-    await this.headstartWebhook.sendAssessmentStatus(latestAttempt.id, 'UNLOCKED').catch(() => {});
+    await this.headstartWebhook.sendAssessmentStatus(latestAttempt.id, 'UNLOCKED').catch(() => { });
 
     return {
       success: true,
@@ -984,8 +984,8 @@ export class CandidatesService {
     const endTime = latestAttempt.submittedAt
       ? new Date(latestAttempt.submittedAt).getTime()
       : latestAttempt.lockedAt
-      ? new Date(latestAttempt.lockedAt).getTime()
-      : Date.now();
+        ? new Date(latestAttempt.lockedAt).getTime()
+        : Date.now();
 
     const durationSeconds = Math.max(0, Math.floor((endTime - startTime) / 1000));
     const mins = Math.floor(durationSeconds / 60);
