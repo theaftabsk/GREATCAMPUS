@@ -28,7 +28,15 @@ export class CandidatesController {
     return this.candidatesService.verifyCandidateToken(body.token, body.email);
   }
 
-  @Get('export-comprehensive/:assessmentId?')
+  @Get('export-comprehensive')
+  async exportAllComprehensiveExcel(@Res() res: Response) {
+    const buffer = await this.candidatesService.exportComprehensiveExcel();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="Niva_Bupa_Assessment_Report_${Date.now()}.xlsx"`);
+    res.send(buffer);
+  }
+
+  @Get('export-comprehensive/:assessmentId')
   async exportComprehensiveExcel(
     @Param('assessmentId') assessmentId: string,
     @Res() res: Response
