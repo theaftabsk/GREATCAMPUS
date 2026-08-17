@@ -76,84 +76,50 @@ export default function CandidateRegistration() {
 
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.applicationId || !formData.name || !formData.email || !formData.phone) {
-      setError("Please fill in all required candidate details including Application ID.");
+    if (!formData.email || !formData.email.trim()) {
+      setError("Please enter your registered email address.");
+      return;
+    }
+    if (!formData.name || !formData.name.trim()) {
+      setError("Please enter your full name.");
       return;
     }
 
     setLoading(true);
+    setError("");
 
     try {
       const baseUrl = getApiBaseUrl();
 
-      let res = await fetch(`${baseUrl}/api/v1/candidates/verify-and-start`, {
+      const res = await fetch(`${baseUrl}/api/v1/candidates/verify-and-start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          applicationId: formData.applicationId,
+          applicationId: formData.applicationId || undefined,
           name: formData.name,
           email: formData.email,
-          phone: formData.phone,
+          phone: formData.phone || undefined,
           assessmentId: selectedAssessmentId,
         }),
       });
 
-      if (!res.ok) {
-        res = await fetch(`${baseUrl}/api/v1/candidates/register`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            applicationId: formData.applicationId,
-            referenceId: formData.applicationId,
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            assessmentId: selectedAssessmentId,
-          }),
-        });
-      }
-
       const data = await res.json();
-      if (data.success || data.candidate) {
-        const candidateObj = data.candidate || {
-          id: `cand-${Date.now()}`,
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          applicationId: formData.applicationId,
-          referenceId: formData.applicationId,
-          assessmentId: selectedAssessmentId,
-        };
-        localStorage.setItem("banca_candidate", JSON.stringify(candidateObj));
+
+      if (data.success && data.candidate) {
+        localStorage.setItem("banca_candidate", JSON.stringify(data.candidate));
         if (data.questions) {
           localStorage.setItem("banca_exam_session", JSON.stringify(data));
         }
         router.push("/exam/test");
       } else {
-        const fallbackCand = {
-          id: `cand-${Date.now()}`,
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          applicationId: formData.applicationId,
-          referenceId: formData.applicationId,
-          assessmentId: selectedAssessmentId,
-        };
-        localStorage.setItem("banca_candidate", JSON.stringify(fallbackCand));
-        router.push("/exam/test");
+        // STRICT REJECTION: Display authorized error message, DO NOT BYPASS!
+        setError(
+          data.message ||
+          `Access Denied: The email '${formData.email}' is not assigned to this assessment session. Please contact your HR Administrator to receive an invitation.`
+        );
       }
-    } catch {
-      const fallbackCand = {
-        id: `cand-${Date.now()}`,
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        applicationId: formData.applicationId,
-        referenceId: formData.applicationId,
-        assessmentId: selectedAssessmentId,
-      };
-      localStorage.setItem("banca_candidate", JSON.stringify(fallbackCand));
-      router.push("/exam/test");
+    } catch (err: any) {
+      setError(err.message || "Unable to connect to Assessment Server. Please try again.");
     } finally {
       setLoading(false);
     }

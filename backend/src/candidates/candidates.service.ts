@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { HeadstartClientService } from '../integration/headstart/headstart-client.service';
 import { HeadstartWebhookService } from '../integration/headstart/headstart-webhook.service';
@@ -166,9 +166,9 @@ export class CandidatesService {
     });
   }
 
-  // ─── VERIFY AND START EXAM (Headstart CRM Flow) ───────────────────────────
+  // ─── VERIFY AND START EXAM (Strict Email & Assignment Authorization) ───────
   async verifyAndStartExam(data: {
-    applicationId: string;
+    applicationId?: string;
     assessmentId?: string;
     identifier?: string;
     name?: string;
@@ -176,7 +176,14 @@ export class CandidatesService {
     phone?: string;
   }) {
     const rawId = data.assessmentId || data.identifier || 'aa-2812';
-    this.logger.log(`Verifying candidate for Application ID: ${data.applicationId}, Assessment: ${rawId}`);
+    const email = data.email?.trim().toLowerCase();
+    const appId = data.applicationId?.trim();
+
+    if (!email && !appId) {
+      throw new BadRequestException('Candidate email or Application ID is required.');
+    }
+
+    this.logger.log(`Verifying candidate email: '${email}', AppID: '${appId}', Assessment: '${rawId}'`);
 
     // Resolve Assessment from DB (by ID or Slug)
     let assessment = await this.prisma.assessment.findFirst({
@@ -187,78 +194,116 @@ export class CandidatesService {
       assessment = await this.prisma.assessment.findFirst({ where: { status: 'ACTIVE' } });
     }
 
-    const actualAssessmentId = assessment ? assessment.id : rawId;
-
-    // Step 1: Verify candidate with Headstart CRM (if enabled/configured)
-    const crmDetails = await this.headstartClient.verifyCandidate(data.applicationId);
-    if (!crmDetails.success) {
-      this.logger.warn(`CRM Verification fallback enabled for Application ID: ${data.applicationId}`);
+    if (!assessment) {
+      throw new NotFoundException('Assessment session not found.');
     }
 
-    // Step 2: Verify assignment in Headstart CRM
-    const crmAssignment = await this.headstartClient.verifyAssignment(data.applicationId, actualAssessmentId);
+    const actualAssessmentId = assessment.id;
 
-    // Step 3: Register / Find candidate locally
-    const name = data.name || crmDetails.name || 'Candidate';
-    const email = data.email || crmDetails.email || `${data.applicationId.toLowerCase()}@candidate.com`;
-    const phone = data.phone || crmDetails.phone || '0000000000';
+    // Check if assessment session is active/expired
+    const now = new Date();
+    if (assessment.activeFrom && now < new Date(assessment.activeFrom)) {
+      throw new BadRequestException(`This assessment has not started yet. Access opens at ${new Date(assessment.activeFrom).toLocaleString()}.`);
+    }
+    if (assessment.activeUntil && now > new Date(assessment.activeUntil)) {
+      throw new BadRequestException('This assessment session link has expired. Please contact your HR Administrator.');
+    }
+    if (assessment.status === 'INACTIVE') {
+      throw new BadRequestException('This assessment session is currently inactive.');
+    }
+
+    // STRICT CHECK: Find pre-assigned candidate in this assessment session
+    const candidateFilterOr: any[] = [];
+    if (email) {
+      candidateFilterOr.push({ email: { equals: email, mode: 'insensitive' } });
+    }
+    if (appId) {
+      candidateFilterOr.push({ applicationId: { equals: appId, mode: 'insensitive' } });
+      candidateFilterOr.push({ referenceId: { equals: appId, mode: 'insensitive' } });
+    }
 
     let candidate = await this.prisma.candidate.findFirst({
       where: {
-        OR: [
-          { applicationId: data.applicationId },
-          { referenceId: data.applicationId },
-        ],
+        assessmentId: actualAssessmentId,
+        OR: candidateFilterOr,
+      },
+      include: {
+        assessment: true,
+        attempts: {
+          orderBy: { startedAt: 'desc' },
+        },
       },
     });
 
+    // If not found directly in this assessment, check if registered in any active session
     if (!candidate) {
-      const refId = `${data.applicationId}-${actualAssessmentId.slice(0, 8)}`;
-      candidate = await this.prisma.candidate.create({
-        data: {
-          name,
-          email,
-          phone,
-          applicationId: data.applicationId,
-          crmCandidateId: crmDetails.crmCandidateId || null,
-          referenceId: refId,
-          assessmentId: actualAssessmentId,
-          status: 'REGISTERED',
+      candidate = await this.prisma.candidate.findFirst({
+        where: {
+          OR: candidateFilterOr,
         },
-      });
-    } else {
-      // Check if candidate is LOCKED or DISQUALIFIED
-      if (candidate.status === 'LOCKED' || candidate.status === 'DISQUALIFIED') {
-        const lockedAttempt = await this.prisma.examAttempt.findFirst({
-          where: { candidateId: candidate.id, OR: [{ status: 'LOCKED' }, { status: 'DISQUALIFIED' }] },
-        });
-        if (lockedAttempt) {
-          throw new BadRequestException(
-            `Your exam session is LOCKED due to proctoring warnings. Reason: ${lockedAttempt.lockReason || 'Proctoring violations'}. Please contact your HR Administrator to unlock your exam.`
-          );
-        }
-      }
-      // Update candidate snapshot with latest CRM data
-      await this.prisma.candidate.update({
-        where: { id: candidate.id },
-        data: {
-          name,
-          email,
-          phone,
-          crmCandidateId: crmDetails.crmCandidateId || candidate.crmCandidateId,
+        include: {
+          assessment: true,
+          attempts: {
+            orderBy: { startedAt: 'desc' },
+          },
         },
       });
     }
 
-    // Step 4: Start exam session
+    // STRICT REJECTION: If candidate email is NOT in the database, deny access!
+    if (!candidate) {
+      throw new ForbiddenException(
+        `Access Denied: The email '${data.email || data.applicationId}' is not registered or assigned to this assessment. Please use your registered email or contact your HR Administrator.`
+      );
+    }
+
+    // Check if candidate already has a COMPLETED attempt
+    const latestAttempt = candidate.attempts ? candidate.attempts[0] : null;
+    if (latestAttempt && latestAttempt.status === 'COMPLETED') {
+      const completedTime = latestAttempt.submittedAt || latestAttempt.startedAt || new Date();
+      throw new BadRequestException(
+        `You have already completed this assessment on ${new Date(completedTime).toLocaleString()}. Multiple attempts are not permitted.`
+      );
+    }
+
+    // Check if candidate is LOCKED or DISQUALIFIED
+    if (candidate.status === 'LOCKED' || candidate.status === 'DISQUALIFIED' || latestAttempt?.status === 'LOCKED' || latestAttempt?.status === 'DISQUALIFIED') {
+      throw new BadRequestException(
+        `Your exam session is currently LOCKED due to security flags (${latestAttempt?.warningCount || 3} warnings). Please contact your HR Administrator to unlock your exam.`
+      );
+    }
+
+    // Update name / phone snapshot if candidate provided fresh values
+    if (data.name || data.phone) {
+      await this.prisma.candidate.update({
+        where: { id: candidate.id },
+        data: {
+          ...(data.name && { name: data.name }),
+          ...(data.phone && { phone: data.phone }),
+        },
+      });
+    }
+
+    // Start exam session
     const sessionData = await this.startExamSession(candidate.id);
 
-    // Step 5: Fire API 4 Status Webhook (Status = Started)
+    // Fire API 4 Status Webhook (Status = Started)
     if (sessionData && sessionData.attemptId) {
       await this.headstartWebhook.sendAssessmentStatus(sessionData.attemptId, 'Started');
     }
 
-    return sessionData;
+    return {
+      ...sessionData,
+      candidate: {
+        id: candidate.id,
+        name: candidate.name,
+        email: candidate.email,
+        phone: candidate.phone,
+        applicationId: candidate.applicationId || candidate.referenceId,
+        referenceId: candidate.referenceId,
+        assessmentId: candidate.assessmentId,
+      },
+    };
   }
 
   // ─── START EXAM SESSION ────────────────────────────────────────────────────

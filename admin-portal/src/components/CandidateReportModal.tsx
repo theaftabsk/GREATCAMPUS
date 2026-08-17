@@ -662,39 +662,51 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId, onR
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {report.screenshots.map((s, idx) => (
-                      <div
-                        key={s.id || idx}
-                        onClick={() => setZoomImage(s.imageUrl)}
-                        className="group bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer relative"
-                      >
-                        <div className="aspect-video bg-slate-900 relative overflow-hidden flex items-center justify-center">
-                          <img
-                            src={s.imageUrl}
-                            alt={`Capture ${idx + 1}`}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
-                          />
-                          <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <Maximize2 className="w-6 h-6 text-white" />
+                    {report.screenshots.map((s, idx) => {
+                      const baseUrl = getApiBaseUrl();
+                      const fullImageUrl = s.imageUrl ? (s.imageUrl.startsWith("http") || s.imageUrl.startsWith("data:") ? s.imageUrl : `${baseUrl}${s.imageUrl.startsWith("/") ? "" : "/"}${s.imageUrl}`) : "";
+
+                      return (
+                        <div
+                          key={s.id || idx}
+                          onClick={() => setZoomImage(fullImageUrl)}
+                          className="group bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer relative"
+                        >
+                          <div className="aspect-video bg-slate-900 relative overflow-hidden flex items-center justify-center">
+                            {fullImageUrl ? (
+                              <img
+                                src={fullImageUrl}
+                                alt={`Capture ${idx + 1}`}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" fill="%230F172A"><rect width="300" height="200" fill="%231E293B"/><text x="50%" y="50%" fill="%2394A3B8" font-size="11" font-weight="bold" text-anchor="middle" dy=".3em">📸 Snapshot on Server</text></svg>';
+                                }}
+                              />
+                            ) : (
+                              <div className="text-slate-500 text-xs font-bold">No Image</div>
+                            )}
+                            <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <Maximize2 className="w-6 h-6 text-white" />
+                            </div>
+                          </div>
+                          <div className="p-2.5 space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${
+                                s.type === 'WARNING' ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'
+                              }`}>
+                                {s.type === 'WARNING' ? 'Violation Snap' : 'Scheduled 15m'}
+                              </span>
+                            </div>
+                            <p className="text-[10px] font-bold text-slate-800 truncate" title={s.eventType}>
+                              {s.eventType.replace(/_/g, ' ')}
+                            </p>
+                            <p className="text-[9px] text-slate-400">
+                              {new Date(s.capturedAt).toLocaleTimeString()}
+                            </p>
                           </div>
                         </div>
-                        <div className="p-2.5 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${
-                              s.type === 'WARNING' ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'
-                            }`}>
-                              {s.type === 'WARNING' ? 'Violation Snap' : 'Scheduled 15m'}
-                            </span>
-                          </div>
-                          <p className="text-[10px] font-bold text-slate-800 truncate" title={s.eventType}>
-                            {s.eventType.replace(/_/g, ' ')}
-                          </p>
-                          <p className="text-[9px] text-slate-400">
-                            {new Date(s.capturedAt).toLocaleTimeString()}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
