@@ -20,7 +20,9 @@ import {
   ShieldAlert,
   ChevronRight,
   Send,
-  HelpCircle
+  HelpCircle,
+  Camera,
+  Maximize2
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 
@@ -82,6 +84,13 @@ interface ReportData {
     lockReason?: string;
     events: Array<{ id: string; eventType: string; details?: string; timestamp: string }>;
   };
+  screenshots?: Array<{
+    id: string;
+    type: string;
+    eventType: string;
+    imageUrl: string;
+    capturedAt: string;
+  }>;
   remarks: Array<{ id: string; adminId: string; action: string; reason?: string; createdAt: string }>;
 }
 
@@ -89,13 +98,15 @@ interface CandidateReportModalProps {
   isOpen: boolean;
   onClose: () => void;
   candidateId: string | null;
+  onRefresh?: () => void;
 }
 
-export default function CandidateReportModal({ isOpen, onClose, candidateId }: CandidateReportModalProps) {
+export default function CandidateReportModal({ isOpen, onClose, candidateId, onRefresh }: CandidateReportModalProps) {
   const [loading, setLoading] = useState(true);
   const [report, setReport] = useState<ReportData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "responses" | "proctoring" | "remarks">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "responses" | "proctoring" | "screenshots" | "remarks">("overview");
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [newRemark, setNewRemark] = useState("");
   const [savingRemark, setSavingRemark] = useState(false);
 
@@ -332,6 +343,7 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId }: C
                 { id: "overview", label: "6-Section Diagnostics", icon: BarChart3 },
                 { id: "responses", label: `Question Responses (${report.responses.length})`, icon: FileText },
                 { id: "proctoring", label: `Proctoring Audit (${report.proctoring.events.length})`, icon: ShieldAlert },
+                { id: "screenshots", label: `Camera Screenshots (${report.screenshots?.length || 0})`, icon: Camera },
                 { id: "remarks", label: `HR Remarks (${report.remarks.length})`, icon: MessageSquare },
               ].map((tab) => {
                 const Icon = tab.icon;
@@ -590,10 +602,87 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId }: C
               </div>
             )}
 
+            {/* TAB 5: Camera Captures & Incident Gallery */}
+            {activeTab === "screenshots" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black uppercase text-slate-900 tracking-wider flex items-center gap-2">
+                    <Camera className="w-4 h-4 text-blue-600" />
+                    Live AI Proctoring Screenshots & Incident Gallery
+                  </h3>
+                  <span className="text-xs font-bold text-slate-500">
+                    Total Captures: {report.screenshots?.length || 0}
+                  </span>
+                </div>
+
+                {(!report.screenshots || report.screenshots.length === 0) ? (
+                  <div className="p-12 text-center bg-slate-50 border border-slate-200 rounded-2xl">
+                    <Camera className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                    <p className="text-xs font-bold text-slate-600">No proctoring screenshots recorded for this session.</p>
+                    <p className="text-[11px] text-slate-400 mt-1">Scheduled 15-min and violation snapshot images will appear here automatically.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {report.screenshots.map((s, idx) => (
+                      <div
+                        key={s.id || idx}
+                        onClick={() => setZoomImage(s.imageUrl)}
+                        className="group bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-all cursor-pointer relative"
+                      >
+                        <div className="aspect-video bg-slate-900 relative overflow-hidden flex items-center justify-center">
+                          <img
+                            src={s.imageUrl}
+                            alt={`Capture ${idx + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
+                          />
+                          <div className="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Maximize2 className="w-6 h-6 text-white" />
+                          </div>
+                        </div>
+                        <div className="p-2.5 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${
+                              s.type === 'WARNING' ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'
+                            }`}>
+                              {s.type === 'WARNING' ? 'Violation Snap' : 'Scheduled 15m'}
+                            </span>
+                          </div>
+                          <p className="text-[10px] font-bold text-slate-800 truncate" title={s.eventType}>
+                            {s.eventType.replace(/_/g, ' ')}
+                          </p>
+                          <p className="text-[9px] text-slate-400">
+                            {new Date(s.capturedAt).toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         )}
 
       </div>
+
+      {/* Lightbox Zoom Modal */}
+      {zoomImage && (
+        <div
+          onClick={() => setZoomImage(null)}
+          className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div className="relative max-w-4xl max-h-[90vh] bg-slate-900 rounded-2xl overflow-hidden shadow-2xl p-2 border border-white/20">
+            <img src={zoomImage} alt="Zoomed Capture" className="w-full h-full object-contain max-h-[80vh] rounded-xl" />
+            <button
+              onClick={() => setZoomImage(null)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-black/60 text-white hover:bg-black"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

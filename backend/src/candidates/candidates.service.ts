@@ -2,6 +2,8 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '../prisma/prisma.service';
 import { HeadstartClientService } from '../integration/headstart/headstart-client.service';
 import { HeadstartWebhookService } from '../integration/headstart/headstart-webhook.service';
+import * as ExcelJS from 'exceljs';
+import * as crypto from 'crypto';
 
 // ─── SYSTEM CONSTANTS ─────────────────────────────────────────────────────────
 // These are fixed for ALL assessments. Admins cannot override them.
@@ -42,6 +44,8 @@ export class CandidatesService {
       orderBy: { createdAt: 'desc' },
     });
 
+    const frontendBaseUrl = process.env.CANDIDATE_PORTAL_URL || process.env.FRONTEND_CANDIDATE_URL || 'https://niva.greatcampus.in';
+
     return candidates.map((cand) => {
       const latestAttempt = cand.attempts[0] || null;
       let questionAudit: any[] = [];
@@ -65,6 +69,8 @@ export class CandidatesService {
         });
       }
 
+      const uniqueExamLink = `${frontendBaseUrl}/${cand.assessment.slug}?token=${cand.secureToken || cand.id}`;
+
       return {
         id: cand.id,
         name: cand.name,
@@ -72,6 +78,10 @@ export class CandidatesService {
         phone: cand.phone,
         applicationId: cand.applicationId,
         referenceId: cand.referenceId,
+        secureToken: cand.secureToken,
+        emailStatus: cand.emailStatus || 'PENDING',
+        emailSentAt: cand.emailSentAt,
+        uniqueExamLink,
         status: cand.status,
         createdAt: cand.createdAt,
         assessment: {
@@ -885,6 +895,9 @@ export class CandidatesService {
             adminActions: {
               orderBy: { createdAt: 'desc' },
             },
+            screenshots: {
+              orderBy: { capturedAt: 'desc' },
+            },
           },
         },
       },
@@ -1003,6 +1016,15 @@ export class CandidatesService {
       timestamp: log.timestamp || log.createdAt,
     }));
 
+    // Screenshots Gallery
+    const screenshots = (latestAttempt.screenshots || []).map((s: any) => ({
+      id: s.id,
+      type: s.type,
+      eventType: s.eventType,
+      imageUrl: s.imageUrl,
+      capturedAt: s.capturedAt,
+    }));
+
     // Admin Remarks / Audit logs
     const adminActions = latestAttempt.adminActions || [];
     const remarks = adminActions.map((action: any) => ({
@@ -1054,6 +1076,7 @@ export class CandidatesService {
         lockReason: latestAttempt.lockReason,
         events: proctoringEvents,
       },
+      screenshots,
       remarks,
     };
   }
@@ -1081,5 +1104,620 @@ export class CandidatesService {
     });
 
     return { success: true, remark: actionLog };
+  }
+
+  // ─── DEDICATED ASSESSMENT DASHBOARD ────────────────────────────────────────
+  async getAssessmentDashboard(assessmentId: string) {
+    const assessment = await this.prisma.assessment.findUnique({
+      where: { id: assessmentId },
+      include: {
+        candidates: {
+          include: {
+            attempts: {
+              orderBy: { startedAt: 'desc' },
+              include: {
+                submissions: true,
+                proctoringLogs: true,
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+
+    if (!assessment) throw new NotFoundException('Assessment session not found.');
+
+    const totalCandidates = assessment.candidates.length;
+    let invitedCount = 0;
+    let startedCount = 0;
+    let inProgressCount = 0;
+    let completedCount = 0;
+    let lockedCount = 0;
+    let qualifiedCount = 0;
+    let notQualifiedCount = 0;
+
+    const frontendBaseUrl = process.env.CANDIDATE_PORTAL_URL || process.env.FRONTEND_CANDIDATE_URL || 'https://niva.greatcampus.in';
+
+    const candidateList = assessment.candidates.map((cand) => {
+      if (cand.emailStatus === 'SENT' || cand.emailStatus === 'DELIVERED') invitedCount++;
+      const latestAttempt = cand.attempts[0] || null;
+      let status = cand.status;
+
+      if (latestAttempt) {
+        startedCount++;
+        if (latestAttempt.status === 'COMPLETED') {
+          completedCount++;
+          if (latestAttempt.isPassed || latestAttempt.percentage >= (latestAttempt.passingPercentageSnapshot || assessment.passingPercentage || 50)) {
+            qualifiedCount++;
+          } else {
+            notQualifiedCount++;
+          }
+        } else if (latestAttempt.status === 'LOCKED') {
+          lockedCount++;
+          status = 'LOCKED';
+        } else if (latestAttempt.status === 'IN_PROGRESS') {
+          inProgressCount++;
+        }
+      }
+
+      return {
+        id: cand.id,
+        name: cand.name,
+        email: cand.email,
+        phone: cand.phone,
+        applicationId: cand.applicationId,
+        referenceId: cand.referenceId,
+        secureToken: cand.secureToken,
+        emailStatus: cand.emailStatus || 'PENDING',
+        emailSentAt: cand.emailSentAt,
+        status,
+        createdAt: cand.createdAt,
+        uniqueExamLink: `${frontendBaseUrl}/${assessment.slug}?token=${cand.secureToken || cand.id}`,
+        attempt: latestAttempt ? {
+          id: latestAttempt.id,
+          status: latestAttempt.status,
+          score: latestAttempt.score,
+          totalPossibleScore: latestAttempt.totalPossibleScore || 60,
+          percentage: latestAttempt.percentage,
+          isPassed: latestAttempt.isPassed,
+          warningCount: latestAttempt.warningCount,
+          startedAt: latestAttempt.startedAt,
+          submittedAt: latestAttempt.submittedAt,
+        } : null,
+      };
+    });
+
+    const notStartedCount = Math.max(0, totalCandidates - startedCount);
+
+    return {
+      success: true,
+      assessment: {
+        id: assessment.id,
+        name: assessment.name,
+        slug: assessment.slug,
+        description: assessment.description,
+        status: assessment.status,
+        durationMins: assessment.durationMins || EXAM_DURATION_MINS,
+        passingPercentage: assessment.passingPercentage,
+        maxProctorWarnings: assessment.maxProctorWarnings,
+        activeFrom: assessment.activeFrom,
+        activeUntil: assessment.activeUntil,
+        candidateLink: `${frontendBaseUrl}/${assessment.slug}`,
+      },
+      stats: {
+        totalCandidates,
+        invitedCount,
+        notStartedCount,
+        startedCount,
+        inProgressCount,
+        completedCount,
+        lockedCount,
+        qualifiedCount,
+        notQualifiedCount,
+      },
+      candidates: candidateList,
+    };
+  }
+
+  // ─── CANDIDATE BULK EXCEL UPLOAD & TOKEN GENERATION ────────────────────────
+  async uploadCandidatesExcel(data: {
+    assessmentId: string;
+    candidates: Array<{ name: string; email: string; phone?: string; applicationId?: string }>;
+  }) {
+    const { assessmentId, candidates } = data;
+    const assessment = await this.prisma.assessment.findUnique({ where: { id: assessmentId } });
+    if (!assessment) throw new NotFoundException('Assessment not found.');
+
+    const createdCandidates: any[] = [];
+    const duplicateList: any[] = [];
+    const errors: any[] = [];
+
+    for (const raw of candidates) {
+      const name = (raw.name || '').trim();
+      const email = (raw.email || '').trim().toLowerCase();
+      const phone = (raw.phone || '').toString().trim();
+      const applicationId = (raw.applicationId || '').trim();
+
+      if (!email || !name) {
+        errors.push({ email, name, error: 'Missing name or email' });
+        continue;
+      }
+
+      // Check duplicate in same assessment
+      const existing = await this.prisma.candidate.findFirst({
+        where: { assessmentId, email },
+      });
+
+      if (existing) {
+        duplicateList.push({ email, name, candidateId: existing.id });
+        continue;
+      }
+
+      const referenceId = applicationId ? `REF-${applicationId}` : `REF-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const secureToken = crypto.randomUUID ? crypto.randomUUID() : `tok_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+      const created = await this.prisma.candidate.create({
+        data: {
+          assessmentId,
+          name,
+          email,
+          phone: phone || '0000000000',
+          applicationId: applicationId || null,
+          crmCandidateId: applicationId ? `CRM-${applicationId}` : null,
+          referenceId,
+          secureToken,
+          status: 'REGISTERED',
+          emailStatus: 'PENDING',
+        },
+      });
+
+      const frontendBaseUrl = process.env.CANDIDATE_PORTAL_URL || process.env.FRONTEND_CANDIDATE_URL || 'https://niva.greatcampus.in';
+      createdCandidates.push({
+        id: created.id,
+        name: created.name,
+        email: created.email,
+        phone: created.phone,
+        applicationId: created.applicationId,
+        referenceId: created.referenceId,
+        secureToken: created.secureToken,
+        uniqueExamLink: `${frontendBaseUrl}/${assessment.slug}?token=${created.secureToken}`,
+      });
+    }
+
+    return {
+      success: true,
+      message: `Successfully processed ${candidates.length} candidates. Added: ${createdCandidates.length}, Duplicates skipped: ${duplicateList.length}.`,
+      createdCount: createdCandidates.length,
+      duplicateCount: duplicateList.length,
+      createdCandidates,
+      duplicateList,
+      errors,
+    };
+  }
+
+  // ─── VERIFY CANDIDATE SECURE TOKEN & REGISTERED EMAIL ─────────────────────
+  async verifyCandidateToken(token: string, inputEmail?: string) {
+    const candidate = await this.prisma.candidate.findFirst({
+      where: {
+        OR: [
+          { secureToken: token },
+          { id: token },
+          { referenceId: token },
+        ],
+      },
+      include: {
+        assessment: true,
+        attempts: {
+          orderBy: { startedAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    if (!candidate) {
+      throw new NotFoundException('Invalid assignment token. No candidate record found.');
+    }
+
+    const assessment = candidate.assessment;
+    const now = new Date();
+
+    if (assessment.activeFrom && now < new Date(assessment.activeFrom)) {
+      return {
+        success: false,
+        code: 'UPCOMING',
+        message: `This assessment session has not started yet. It will become active on ${new Date(assessment.activeFrom).toLocaleString()}.`,
+        assessmentName: assessment.name,
+      };
+    }
+
+    if (assessment.activeUntil && now > new Date(assessment.activeUntil)) {
+      return {
+        success: false,
+        code: 'EXPIRED',
+        message: `This assessment link has expired on ${new Date(assessment.activeUntil).toLocaleString()}. Please contact your HR Administrator.`,
+        assessmentName: assessment.name,
+      };
+    }
+
+    if (inputEmail) {
+      const cleanInput = inputEmail.trim().toLowerCase();
+      const registered = candidate.email.trim().toLowerCase();
+      if (cleanInput !== registered) {
+        return {
+          success: false,
+          code: 'EMAIL_MISMATCH',
+          message: `The entered email (${inputEmail}) does not match the assigned registered email. Please enter the exact email from your invitation.`,
+          registeredEmailHint: `${candidate.email.substring(0, 3)}***@${candidate.email.split('@')[1]}`,
+        };
+      }
+    }
+
+    const latestAttempt = candidate.attempts[0] || null;
+    const isCompleted = latestAttempt && latestAttempt.status === 'COMPLETED';
+
+    return {
+      success: true,
+      candidate: {
+        id: candidate.id,
+        name: candidate.name,
+        email: candidate.email,
+        phone: candidate.phone,
+        applicationId: candidate.applicationId || candidate.referenceId,
+        referenceId: candidate.referenceId,
+        secureToken: candidate.secureToken,
+      },
+      assessment: {
+        id: assessment.id,
+        name: assessment.name,
+        slug: assessment.slug,
+        description: assessment.description,
+        durationMins: assessment.durationMins || EXAM_DURATION_MINS,
+        totalQuestions: TOTAL_QUESTIONS,
+        passingPercentage: assessment.passingPercentage,
+        maxProctorWarnings: assessment.maxProctorWarnings,
+      },
+      attemptStatus: latestAttempt ? latestAttempt.status : 'NOT_STARTED',
+      isCompleted,
+    };
+  }
+
+  // ─── 5-SHEET COMPREHENSIVE EXCEL EXPORT ENGINE ────────────────────────────
+  async exportComprehensiveExcel(assessmentId?: string): Promise<ExcelJS.Buffer> {
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'GreatCampus Assessment System — Niva Bupa';
+    workbook.created = new Date();
+
+    const whereClause: any = {};
+    if (assessmentId) whereClause.assessmentId = assessmentId;
+
+    const candidates = await this.prisma.candidate.findMany({
+      where: whereClause,
+      include: {
+        assessment: true,
+        attempts: {
+          orderBy: { startedAt: 'desc' },
+          include: {
+            submissions: { include: { question: true } },
+            proctoringLogs: true,
+            adminActions: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const targetAssessment = assessmentId ? await this.prisma.assessment.findUnique({ where: { id: assessmentId } }) : null;
+
+    // Header styling helpers
+    const primaryHeaderFill: ExcelJS.Fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF003F72' },
+    };
+    const subHeaderFill: ExcelJS.Fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF00AEEF' },
+    };
+    const headerFont: Partial<ExcelJS.Font> = { name: 'Calibri', bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // SHEET 1: Assessment Summary & Statistics
+    // ──────────────────────────────────────────────────────────────────────────
+    const sheet1 = workbook.addWorksheet('Assessment Summary');
+    sheet1.columns = [{ width: 25 }, { width: 35 }, { width: 18 }, { width: 18 }];
+
+    sheet1.addRow(['NIVA BUPA HEALTH INSURANCE — ASSESSMENT SUMMARY REPORT']);
+    sheet1.mergeCells('A1:D1');
+    const titleCell1 = sheet1.getCell('A1');
+    titleCell1.font = { name: 'Calibri', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+    titleCell1.fill = primaryHeaderFill;
+    titleCell1.alignment = { vertical: 'middle', horizontal: 'center' };
+    sheet1.getRow(1).height = 35;
+
+    sheet1.addRow([]);
+    sheet1.addRow(['Assessment Title', targetAssessment ? targetAssessment.name : 'All Active Assessment Batches']);
+    sheet1.addRow(['Generated Date', new Date().toLocaleString()]);
+    sheet1.addRow(['Duration', `${targetAssessment?.durationMins || 45} Minutes (60 Questions)`]);
+    sheet1.addRow(['Passing Score Threshold', `${targetAssessment?.passingPercentage || 50}%`]);
+
+    const totalCands = candidates.length;
+    let completedCands = 0;
+    let inProgressCands = 0;
+    let notStartedCands = 0;
+    let qualifiedCands = 0;
+    let notQualifiedCands = 0;
+    let lockedCands = 0;
+
+    candidates.forEach((c) => {
+      const att = c.attempts[0];
+      if (!att) notStartedCands++;
+      else if (att.status === 'COMPLETED') {
+        completedCands++;
+        if (att.isPassed || att.percentage >= (att.passingPercentageSnapshot || 50)) qualifiedCands++;
+        else notQualifiedCands++;
+      } else if (att.status === 'LOCKED') {
+        lockedCands++;
+      } else if (att.status === 'IN_PROGRESS') {
+        inProgressCands++;
+      }
+    });
+
+    sheet1.addRow([]);
+    const statHeader = sheet1.addRow(['Metric Description', 'Candidate Count', 'Percentage Ratio']);
+    statHeader.font = headerFont;
+    statHeader.eachCell((cell) => { cell.fill = subHeaderFill; cell.alignment = { vertical: 'middle', horizontal: 'center' }; });
+
+    sheet1.addRow(['Total Assigned Candidates', totalCands, '100%']);
+    sheet1.addRow(['Completed Exams', completedCands, totalCands > 0 ? `${Math.round((completedCands / totalCands) * 100)}%` : '0%']);
+    sheet1.addRow(['Qualified Candidates', qualifiedCands, completedCands > 0 ? `${Math.round((qualifiedCands / completedCands) * 100)}%` : '0%']);
+    sheet1.addRow(['Not Qualified Candidates', notQualifiedCands, completedCands > 0 ? `${Math.round((notQualifiedCands / completedCands) * 100)}%` : '0%']);
+    sheet1.addRow(['In Progress / Active', inProgressCands, totalCands > 0 ? `${Math.round((inProgressCands / totalCands) * 100)}%` : '0%']);
+    sheet1.addRow(['Locked / Flagged Sessions', lockedCands, totalCands > 0 ? `${Math.round((lockedCands / totalCands) * 100)}%` : '0%']);
+    sheet1.addRow(['Not Started', notStartedCands, totalCands > 0 ? `${Math.round((notStartedCands / totalCands) * 100)}%` : '0%']);
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // SHEET 2: Candidate Results
+    // ──────────────────────────────────────────────────────────────────────────
+    const sheet2 = workbook.addWorksheet('Candidate Results');
+    sheet2.columns = [
+      { header: 'S.No', key: 'sno', width: 8 },
+      { header: 'Candidate Name', key: 'name', width: 24 },
+      { header: 'Email Address', key: 'email', width: 28 },
+      { header: 'Phone Number', key: 'phone', width: 16 },
+      { header: 'Application ID', key: 'appId', width: 18 },
+      { header: 'Assessment', key: 'assessment', width: 30 },
+      { header: 'Status', key: 'status', width: 16 },
+      { header: 'Score (Obtained/60)', key: 'score', width: 20 },
+      { header: 'Percentage', key: 'pct', width: 14 },
+      { header: 'Result', key: 'result', width: 16 },
+      { header: 'Start Time', key: 'startedAt', width: 20 },
+      { header: 'End Time', key: 'submittedAt', width: 20 },
+      { header: 'Time Taken', key: 'timeTaken', width: 16 },
+    ];
+
+    sheet2.getRow(1).font = headerFont;
+    sheet2.getRow(1).height = 28;
+    sheet2.getRow(1).eachCell((cell) => { cell.fill = primaryHeaderFill; cell.alignment = { vertical: 'middle', horizontal: 'center' }; });
+
+    candidates.forEach((c, idx) => {
+      const att = c.attempts[0];
+      let timeTaken = '—';
+      if (att && att.startedAt) {
+        const start = new Date(att.startedAt).getTime();
+        const end = att.submittedAt ? new Date(att.submittedAt).getTime() : Date.now();
+        const sec = Math.max(0, Math.floor((end - start) / 1000));
+        timeTaken = `${Math.floor(sec / 60)}m ${sec % 60}s`;
+      }
+
+      const row = sheet2.addRow({
+        sno: idx + 1,
+        name: c.name,
+        email: c.email,
+        phone: c.phone,
+        appId: c.applicationId || c.referenceId,
+        assessment: c.assessment?.name || 'Niva Bupa Assessment',
+        status: att ? att.status : c.status,
+        score: att ? `${att.score} / ${att.totalPossibleScore || 60}` : '—',
+        pct: att ? `${att.percentage}%` : '—',
+        result: att ? (att.status === 'LOCKED' ? 'LOCKED' : (att.isPassed ? 'QUALIFIED' : 'NOT QUALIFIED')) : 'NOT STARTED',
+        startedAt: att?.startedAt ? new Date(att.startedAt).toLocaleString() : '—',
+        submittedAt: att?.submittedAt ? new Date(att.submittedAt).toLocaleString() : '—',
+        timeTaken,
+      });
+
+      // Highlight result cell
+      const resultCell = row.getCell('result');
+      if (resultCell.value === 'QUALIFIED') {
+        resultCell.font = { color: { argb: 'FF166534' }, bold: true };
+      } else if (resultCell.value === 'NOT QUALIFIED' || resultCell.value === 'LOCKED') {
+        resultCell.font = { color: { argb: 'FF991B1B' }, bold: true };
+      }
+    });
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // SHEET 3: 6-Section Performance Matrix
+    // ──────────────────────────────────────────────────────────────────────────
+    const sheet3 = workbook.addWorksheet('Section Scores');
+    sheet3.columns = [
+      { header: 'S.No', key: 'sno', width: 8 },
+      { header: 'Candidate Name', key: 'name', width: 24 },
+      { header: 'App ID', key: 'appId', width: 16 },
+      { header: 'Q1-10: Communication (10)', key: 'sec1', width: 24 },
+      { header: 'Q11-20: Adv English (10)', key: 'sec2', width: 24 },
+      { header: 'Q21-30: Mental Ability (10)', key: 'sec3', width: 24 },
+      { header: 'Q31-40: Numerical (10)', key: 'sec4', width: 24 },
+      { header: 'Q41-50: Banking (10)', key: 'sec5', width: 24 },
+      { header: 'Q51-60: Sales & Situation (10)', key: 'sec6', width: 26 },
+      { header: 'Total Score (60)', key: 'total', width: 16 },
+      { header: 'Overall %', key: 'overall', width: 14 },
+    ];
+
+    sheet3.getRow(1).font = headerFont;
+    sheet3.getRow(1).height = 28;
+    sheet3.getRow(1).eachCell((cell) => { cell.fill = primaryHeaderFill; cell.alignment = { vertical: 'middle', horizontal: 'center' }; });
+
+    candidates.forEach((c, idx) => {
+      const att = c.attempts[0];
+      const secScores = [0, 0, 0, 0, 0, 0];
+
+      if (att && att.submissions) {
+        const sortedSub = att.submissions.sort((a, b) => {
+          const qA = parseInt(a.questionId.replace(/\D/g, '')) || 0;
+          const qB = parseInt(b.questionId.replace(/\D/g, '')) || 0;
+          return qA - qB;
+        });
+
+        sortedSub.forEach((sub, subIdx) => {
+          const secIdx = Math.min(5, Math.floor(subIdx / 10));
+          if (sub.isCorrect) secScores[secIdx]++;
+        });
+      }
+
+      sheet3.addRow({
+        sno: idx + 1,
+        name: c.name,
+        appId: c.applicationId || c.referenceId,
+        sec1: att ? `${secScores[0]}/10 (${secScores[0] * 10}%)` : '—',
+        sec2: att ? `${secScores[1]}/10 (${secScores[1] * 10}%)` : '—',
+        sec3: att ? `${secScores[2]}/10 (${secScores[2] * 10}%)` : '—',
+        sec4: att ? `${secScores[3]}/10 (${secScores[3] * 10}%)` : '—',
+        sec5: att ? `${secScores[4]}/10 (${secScores[4] * 10}%)` : '—',
+        sec6: att ? `${secScores[5]}/10 (${secScores[5] * 10}%)` : '—',
+        total: att ? `${att.score}/60` : '—',
+        overall: att ? `${att.percentage}%` : '—',
+      });
+    });
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // SHEET 4: Security & Proctoring Violations Log
+    // ──────────────────────────────────────────────────────────────────────────
+    const sheet4 = workbook.addWorksheet('Security & Proctoring');
+    sheet4.columns = [
+      { header: 'S.No', key: 'sno', width: 8 },
+      { header: 'Candidate Name', key: 'name', width: 24 },
+      { header: 'Email', key: 'email', width: 26 },
+      { header: 'Warnings Count', key: 'warnings', width: 16 },
+      { header: 'Tab Switches', key: 'tabSwitch', width: 14 },
+      { header: 'Fullscreen Exits', key: 'fsExit', width: 16 },
+      { header: 'Face Missing Events', key: 'faceMissing', width: 20 },
+      { header: 'Lock Status', key: 'locked', width: 16 },
+      { header: 'Last Lock Reason', key: 'lockReason', width: 32 },
+      { header: 'Admin Unlock Audit', key: 'unlockAudit', width: 30 },
+    ];
+
+    sheet4.getRow(1).font = headerFont;
+    sheet4.getRow(1).height = 28;
+    sheet4.getRow(1).eachCell((cell) => { cell.fill = primaryHeaderFill; cell.alignment = { vertical: 'middle', horizontal: 'center' }; });
+
+    candidates.forEach((c, idx) => {
+      const att = c.attempts[0];
+      let tabSwitches = 0;
+      let fsExits = 0;
+      let faceMissing = 0;
+
+      if (att && att.proctoringLogs) {
+        att.proctoringLogs.forEach((p) => {
+          if (p.eventType === 'TAB_SWITCH') tabSwitches++;
+          if (p.eventType === 'FULLSCREEN_EXIT') fsExits++;
+          if (p.eventType === 'FACE_NOT_DETECTED' || p.eventType === 'MULTIPLE_FACES') faceMissing++;
+        });
+      }
+
+      const unlockAudit = att?.unlockedByAdminName ? `Unlocked by ${att.unlockedByAdminName} at ${new Date(att.unlockedAt!).toLocaleTimeString()}` : '—';
+
+      sheet4.addRow({
+        sno: idx + 1,
+        name: c.name,
+        email: c.email,
+        warnings: att ? `${att.warningCount}/${att.maxProctorWarningsSnapshot || 3}` : '0/3',
+        tabSwitch: tabSwitches,
+        fsExit: fsExits,
+        faceMissing,
+        locked: att?.status === 'LOCKED' ? 'YES (LOCKED)' : 'NO',
+        lockReason: att?.lockReason || '—',
+        unlockAudit,
+      });
+    });
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // SHEET 5: Detailed Competency Analysis
+    // ──────────────────────────────────────────────────────────────────────────
+    const sheet5 = workbook.addWorksheet('Competency Analysis');
+    sheet5.columns = [
+      { header: 'S.No', key: 'sno', width: 8 },
+      { header: 'Candidate Name', key: 'name', width: 24 },
+      { header: 'App ID', key: 'appId', width: 16 },
+      { header: 'Cognitive Reasoning', key: 'cognitive', width: 22 },
+      { header: 'Banking & Financial Acumen', key: 'banking', width: 25 },
+      { header: 'Sales & Customer Orientation', key: 'sales', width: 25 },
+      { header: 'Identified Core Strengths', key: 'strengths', width: 34 },
+      { header: 'Areas of Development', key: 'development', width: 34 },
+      { header: 'Hiring Recommendation', key: 'recommendation', width: 24 },
+    ];
+
+    sheet5.getRow(1).font = headerFont;
+    sheet5.getRow(1).height = 28;
+    sheet5.getRow(1).eachCell((cell) => { cell.fill = primaryHeaderFill; cell.alignment = { vertical: 'middle', horizontal: 'center' }; });
+
+    candidates.forEach((c, idx) => {
+      const att = c.attempts[0];
+      let cognitivePct = 0;
+      let bankingPct = 0;
+      let salesPct = 0;
+      let strengths = 'Assessment pending';
+      let development = 'Assessment pending';
+      let recommendation = 'Pending';
+
+      if (att && att.submissions && att.submissions.length > 0) {
+        const secScores = [0, 0, 0, 0, 0, 0];
+        const sortedSub = att.submissions.sort((a, b) => {
+          const qA = parseInt(a.questionId.replace(/\D/g, '')) || 0;
+          const qB = parseInt(b.questionId.replace(/\D/g, '')) || 0;
+          return qA - qB;
+        });
+
+        sortedSub.forEach((sub, subIdx) => {
+          const secIdx = Math.min(5, Math.floor(subIdx / 10));
+          if (sub.isCorrect) secScores[secIdx]++;
+        });
+
+        cognitivePct = Math.round(((secScores[2] + secScores[3]) / 20) * 100);
+        bankingPct = Math.round((secScores[4] / 10) * 100);
+        salesPct = Math.round(((secScores[0] + secScores[5]) / 20) * 100);
+
+        const strengthList: string[] = [];
+        const devList: string[] = [];
+
+        if (salesPct >= 60) strengthList.push('High Customer & Sales Orientation');
+        else devList.push('Sales Pitch & Objection Handling');
+
+        if (bankingPct >= 60) strengthList.push('Solid Insurance & Banking Knowledge');
+        else devList.push('Financial Product Regulations');
+
+        if (cognitivePct >= 60) strengthList.push('Strong Analytical & Numerical Ability');
+        else devList.push('Data Interpretation Speed');
+
+        strengths = strengthList.join(', ') || 'General Aptitude';
+        development = devList.join(', ') || 'No critical weaknesses';
+
+        recommendation = att.isPassed ? 'Strongly Recommended' : 'Further Interview Evaluation Required';
+      }
+
+      sheet5.addRow({
+        sno: idx + 1,
+        name: c.name,
+        appId: c.applicationId || c.referenceId,
+        cognitive: att ? `${cognitivePct}%` : '—',
+        banking: att ? `${bankingPct}%` : '—',
+        sales: att ? `${salesPct}%` : '—',
+        strengths,
+        development,
+        recommendation: att ? recommendation : 'Pending',
+      });
+    });
+
+    return workbook.xlsx.writeBuffer();
   }
 }

@@ -81,14 +81,19 @@ model Candidate {
   applicationId  String?       // Headstart CRM Application ID
   crmCandidateId String?       // Headstart CRM Candidate ID
   referenceId    String        @unique
+  secureToken    String?       @unique @default(uuid()) // Unique secure exam link token
+  emailStatus    String        @default("PENDING") // PENDING, SENT, DELIVERED, FAILED
+  emailSentAt    DateTime?
   status         String        @default("REGISTERED") // REGISTERED, IN_PROGRESS, COMPLETED, DISQUALIFIED
   attempts       ExamAttempt[]
+  emailLogs      EmailLog[]
   createdAt      DateTime      @default(now())
 }
 
 model IntegrationConfig {
   id                       String   @id @default(uuid())
   tenantId                 String   @unique
+  crmEnabled               Boolean  @default(false) // Standalone mode toggle (CRM OFF by default)
   crmBaseUrl               String   @default("https://api.headstartcrm.com")
   crmApiKey                String?
   api1Endpoint             String   @default("/api/candidates/verify")
@@ -98,6 +103,36 @@ model IntegrationConfig {
   webhookReportUrl         String?
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
+}
+
+model SmtpConfig {
+  id          String   @id @default(uuid())
+  tenantId    String   @unique @default("default-tenant")
+  host        String   @default("smtp.gmail.com")
+  port        Int      @default(587)
+  username    String   @default("")
+  password    String   @default("")
+  encryption  String   @default("TLS") // "TLS", "SSL", "NONE"
+  fromName    String   @default("Niva Bupa Recruitment Team")
+  fromEmail   String   @default("recruitment@greatcampus.in")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model EmailLog {
+  id             String     @id @default(uuid())
+  candidateId    String?
+  candidate      Candidate? @relation(fields: [candidateId], references: [id], onDelete: SetNull)
+  recipientEmail String
+  candidateName  String?
+  assessmentName String?
+  assessmentId   String?
+  subject        String
+  status         String     @default("PENDING") // "PENDING", "SENT", "DELIVERED", "FAILED"
+  errorMessage   String?
+  retryCount     Int        @default(0)
+  sentAt         DateTime?  @default(now())
+  createdAt      DateTime   @default(now())
 }
 
 model ExamAttempt {

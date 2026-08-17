@@ -9,6 +9,7 @@ import {
   UserCheck,
   FileText,
   BookOpen,
+  Mail,
   Settings as SettingsIcon,
   LogOut,
   ChevronRight
@@ -59,14 +60,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       icon: LayoutDashboard,
     },
     {
+      href: "/admin/assessments",
+      label: "Exams & Assessments",
+      icon: FileText,
+    },
+    {
       href: "/admin/candidates",
       label: "Candidate Evaluation",
       icon: UserCheck,
     },
     {
-      href: "/admin/assessments",
-      label: "Exams & Assessments",
-      icon: FileText,
+      href: "/admin/emails",
+      label: "Email Audit & Invites",
+      icon: Mail,
     },
     {
       href: "/admin/questions",

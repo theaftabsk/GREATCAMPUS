@@ -1,9 +1,43 @@
-import { Controller, Get, Post, Delete, Body, Query, Param } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Query, Param, Res } from '@nestjs/common';
 import { CandidatesService } from './candidates.service';
+import type { Response } from 'express';
 
 @Controller('api/v1/candidates')
 export class CandidatesController {
   constructor(private readonly candidatesService: CandidatesService) {}
+
+  // --- DEDICATED ASSESSMENT DASHBOARD ---
+  @Get('assessment-dashboard/:id')
+  async getAssessmentDashboard(@Param('id') id: string) {
+    return this.candidatesService.getAssessmentDashboard(id);
+  }
+
+  @Post('upload-excel')
+  async uploadCandidatesExcel(
+    @Body()
+    body: {
+      assessmentId: string;
+      candidates: Array<{ name: string; email: string; phone?: string; applicationId?: string }>;
+    }
+  ) {
+    return this.candidatesService.uploadCandidatesExcel(body);
+  }
+
+  @Post('verify-token')
+  async verifyCandidateToken(@Body() body: { token: string; email?: string }) {
+    return this.candidatesService.verifyCandidateToken(body.token, body.email);
+  }
+
+  @Get('export-comprehensive/:assessmentId?')
+  async exportComprehensiveExcel(
+    @Param('assessmentId') assessmentId: string,
+    @Res() res: Response
+  ) {
+    const buffer = await this.candidatesService.exportComprehensiveExcel(assessmentId === 'all' ? undefined : assessmentId);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="Niva_Bupa_Assessment_Report_${Date.now()}.xlsx"`);
+    res.send(buffer);
+  }
 
   // --- ASSESSMENT SESSION ROUTES (MUST COME BEFORE :id DYNAMIC ROUTES) ---
   @Get('assessments/list')

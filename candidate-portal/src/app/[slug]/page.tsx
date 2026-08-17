@@ -1,11 +1,11 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { use, useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import CameraProctor from "@/components/CameraProctor";
 import "../exam/exam.css";
-import { User, Mail, Phone, Hash, ArrowRight, BookOpen, AlertTriangle, ShieldCheck, Clock } from "lucide-react";
+import { User, Mail, Phone, Hash, ArrowRight, BookOpen, AlertTriangle, ShieldCheck, Clock, CheckCircle2 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 
 interface AssessmentOption {
@@ -14,10 +14,10 @@ interface AssessmentOption {
   description: string;
 }
 
-export default function DynamicAssessmentPage({ params }: { params: Promise<{ slug: string }> }) {
-  const resolvedParams = use(params);
-  const slug = resolvedParams.slug;
+function AssessmentContent({ slug }: { slug: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
 
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string>("");
   const [formData, setFormData] = useState({
@@ -28,19 +28,68 @@ export default function DynamicAssessmentPage({ params }: { params: Promise<{ sl
     referenceId: "",
   });
   const [loading, setLoading] = useState(false);
+  const [verifyingToken, setVerifyingToken] = useState(false);
+  const [tokenVerified, setTokenVerified] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
   const [error, setError] = useState("");
   const [activeAssessment, setActiveAssessment] = useState<any>(null);
   const [isAssessmentExpired, setIsAssessmentExpired] = useState<boolean>(false);
   const [isAssessmentNotStarted, setIsAssessmentNotStarted] = useState<boolean>(false);
 
   useEffect(() => {
-    async function loadAssessmentFromSlug() {
+    async function loadAssessmentAndToken() {
       try {
         const baseUrl = getApiBaseUrl();
-        const targetIdentifier = slug;
 
-        if (targetIdentifier) {
-          const res = await fetch(`${baseUrl}/api/v1/candidates/assessments/details/${targetIdentifier}`);
+        // If secure assignment token is present in URL
+        if (token) {
+          setVerifyingToken(true);
+          try {
+            const tokenRes = await fetch(`${baseUrl}/api/v1/candidates/verify-token`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ token }),
+            });
+            const tokenData = await tokenRes.json();
+            if (tokenData.success && tokenData.candidate) {
+              setTokenVerified(true);
+              setFormData({
+                name: tokenData.candidate.name || "",
+                email: tokenData.candidate.email || "",
+                phone: tokenData.candidate.phone || "",
+                applicationId: tokenData.candidate.applicationId || tokenData.candidate.referenceId || "",
+                referenceId: tokenData.candidate.referenceId || "",
+              });
+              if (tokenData.assessment) {
+                setActiveAssessment(tokenData.assessment);
+                setSelectedAssessmentId(tokenData.assessment.id);
+              }
+              if (tokenData.isCompleted) {
+                setIsCompleted(true);
+              }
+              setVerifyingToken(false);
+              return;
+            } else if (tokenData.code === "EXPIRED") {
+              setIsAssessmentExpired(true);
+              setError(tokenData.message || "This assessment session link has expired.");
+              setVerifyingToken(false);
+              return;
+            } else if (tokenData.code === "UPCOMING") {
+              setIsAssessmentNotStarted(true);
+              setError(tokenData.message || "This assessment session has not started yet.");
+              setVerifyingToken(false);
+              return;
+            }
+          } catch {
+            /* continue to regular load */
+          } finally {
+            setVerifyingToken(false);
+          }
+        }
+
+        // Regular slug lookup
+        if (slug) {
+          const res = await fetch(`${baseUrl}/api/v1/candidates/assessments/details/${slug}`);
           const data = await res.json();
           if (data.success && data.assessment) {
             setActiveAssessment(data.assessment);
@@ -55,15 +104,14 @@ export default function DynamicAssessmentPage({ params }: { params: Promise<{ sl
                 : "a scheduled time";
               setError(`This assessment session hasn't started yet. It will be accessible from ${fromTime}.`);
             }
-            return;
           }
         }
       } catch (err) {
         console.error("Failed to load target assessment details:", err);
       }
     }
-    loadAssessmentFromSlug();
-  }, [slug]);
+    loadAssessmentAndToken();
+  }, [slug, token]);
 
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -258,7 +306,7 @@ export default function DynamicAssessmentPage({ params }: { params: Promise<{ sl
                   disabled={loading || isAssessmentExpired || isAssessmentNotStarted}
                   style={{ padding: "14px 32px", borderRadius: "12px", background: isAssessmentExpired || isAssessmentNotStarted ? "#94A3B8" : "linear-gradient(135deg, #003F72, #00AEEF)", color: "white", fontWeight: 800, fontSize: "15px", border: "none", cursor: isAssessmentExpired || isAssessmentNotStarted ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", gap: "10px", boxShadow: "0 6px 20px rgba(0,63,114,0.2)" }}
                 >
-                  {loading ? "Verifying with CRM..." : "Start Assessment"}
+                  {loading ? "Verifying..." : "Start Assessment"}
                   <ArrowRight size={18} />
                 </button>
               </div>
@@ -269,3 +317,13 @@ export default function DynamicAssessmentPage({ params }: { params: Promise<{ sl
     </div>
   );
 }
+
+export default function DynamicAssessmentPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = use(params);
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center font-bold text-slate-500">Loading Assessment Session...</div>}>
+      <AssessmentContent slug={resolvedParams.slug} />
+    </Suspense>
+  );
+}
+

@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
   BookOpen, Plus, Clock, Link2, Copy, CheckCircle2, Trash2,
   Edit2, RefreshCw, X, Calendar, AlertCircle, Zap, Users,
-  Eye, EyeOff
+  Eye, EyeOff, ExternalLink
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 
@@ -266,7 +267,12 @@ export default function AdminAssessmentsPage() {
                     
                     {/* Col 1: Session Name & Description */}
                     <td>
-                      <div className="excel-session-name">{session.name}</div>
+                      <Link href={`/admin/assessments/${session.id}`} style={{ textDecoration: "none" }}>
+                        <div className="excel-session-name" style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#003F72", cursor: "pointer" }}>
+                          {session.name}
+                          <ExternalLink size={12} color="#00AEEF" />
+                        </div>
+                      </Link>
                       {session.description && <div className="excel-session-desc">{session.description}</div>}
                     </td>
 
@@ -312,6 +318,9 @@ export default function AdminAssessmentsPage() {
                     {/* Col 6: Actions */}
                     <td>
                       <div className="excel-actions">
+                        <Link href={`/admin/assessments/${session.id}`} className="excel-act-btn excel-act-edit" title="Open Assessment Dashboard" style={{ textDecoration: "none", background: "#EFF6FF", color: "#00AEEF", borderColor: "#BFDBFE" }}>
+                          <ExternalLink size={13} />
+                        </Link>
                         <button className="excel-act-btn excel-act-edit" onClick={() => openEdit(session)} title="Edit Session">
                           <Edit2 size={13} />
                         </button>
