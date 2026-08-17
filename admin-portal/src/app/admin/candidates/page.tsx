@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 import {
   Search, RefreshCw, Lock, Unlock, Trash2, CheckCircle2,
   AlertTriangle, ShieldAlert, Download, Table, FileText, Award,
-  Filter, ChevronLeft, ChevronRight, BookOpen
+  Filter, ChevronLeft, ChevronRight, BookOpen, FileSpreadsheet
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 import CandidateReportModal from "@/components/CandidateReportModal";
+import ConfirmModal from "@/components/ConfirmModal";
+import ToastContainer, { ToastMessage } from "@/components/Toast";
 
 export default function CandidatesManagementPage() {
   const [candidates, setCandidates] = useState<any[]>([]);
@@ -25,6 +27,19 @@ export default function CandidatesManagementPage() {
   // Modal Report Card State
   const [selectedReportCandidateId, setSelectedReportCandidateId] = useState<string | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  // Toast State
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const addToast = (type: "success" | "error" | "warning" | "info", message: string, title?: string) => {
+    setToasts((prev) => [...prev, { id: Math.random().toString(36).substring(2, 9), type, message, title }]);
+  };
+  const dismissToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  // Delete Candidate Modal State
+  const [deleteCandidateTarget, setDeleteCandidateTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deletingCandidate, setDeletingCandidate] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -57,48 +72,52 @@ export default function CandidatesManagementPage() {
   }, [selectedAssessmentId]);
 
   const handleUnlock = async (candidateId: string, name: string) => {
-    const reason = prompt(
-      `Unlock candidate '${name}'?\n\nEnter unlock reason (optional):\n\nNote: Warning history will be preserved as audit record.`,
-      "Admin reviewed proctoring logs - approved to continue"
-    );
-    if (reason === null) return;
-
     setActionLoadingId(candidateId);
     try {
       const baseUrl = getApiBaseUrl();
       const res = await fetch(`${baseUrl}/api/v1/candidates/${candidateId}/unlock`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminName: "HR Administrator", reason: reason || "Admin unlocked candidate" }),
+        body: JSON.stringify({ adminName: "HR Administrator", reason: "Admin approved to resume session" }),
       });
       const data = await res.json();
       if (data.success) {
-        alert(`✅ Candidate '${name}' unlocked successfully!\n\nAll answers & timer preserved.`);
+        addToast("success", `Candidate '${name}' unlocked successfully. All answers and time preserved.`, "Candidate Unlocked");
         await loadData();
       } else {
-        alert(data.message || "Failed to unlock candidate.");
+        addToast("error", data.message || "Failed to unlock candidate.", "Unlock Error");
       }
     } catch {
-      alert("Error unlocking candidate.");
+      addToast("error", "Network error unlocking candidate.", "Error");
     } finally {
       setActionLoadingId(null);
     }
   };
 
-  const handleDelete = async (candidateId: string, name: string) => {
-    if (!confirm(`Delete candidate '${name}' and all attempt records?`)) return;
+  const confirmDeleteCandidate = async () => {
+    if (!deleteCandidateTarget) return;
+    setDeletingCandidate(true);
     try {
       const baseUrl = getApiBaseUrl();
-      await fetch(`${baseUrl}/api/v1/candidates/${candidateId}`, { method: "DELETE" });
+      await fetch(`${baseUrl}/api/v1/candidates/${deleteCandidateTarget.id}`, { method: "DELETE" });
+      addToast("success", `Candidate '${deleteCandidateTarget.name}' deleted successfully.`, "Candidate Deleted");
+      setDeleteCandidateTarget(null);
       await loadData();
     } catch {
-      /* silent */
+      addToast("error", "Failed to delete candidate.", "Error");
+    } finally {
+      setDeletingCandidate(false);
     }
   };
 
   const handleOpenReport = (candidateId: string) => {
     setSelectedReportCandidateId(candidateId);
     setIsReportModalOpen(true);
+  };
+
+  const handleDownloadSingleExcel = (candidateId: string) => {
+    const baseUrl = getApiBaseUrl();
+    window.open(`${baseUrl}/api/v1/candidates/${candidateId}/export-excel`, "_blank");
   };
 
   const downloadExcelReport = () => {
@@ -374,14 +393,25 @@ export default function CandidatesManagementPage() {
                         <div className="flex items-center justify-end space-x-2">
                           {/* View Report Card Button for Completed Candidates */}
                           {isCompleted && (
-                            <button
-                              onClick={() => handleOpenReport(c.id)}
-                              title="View Detailed Diagnostic Report Card"
-                              className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-extrabold text-[11px] rounded-lg border border-blue-200 transition flex items-center space-x-1 cursor-pointer"
-                            >
-                              <FileText className="w-3.5 h-3.5 text-blue-600" />
-                              <span>Report Card</span>
-                            </button>
+                            <>
+                              <button
+                                onClick={() => handleDownloadSingleExcel(c.id)}
+                                title="Download Individual Candidate Excel Report (4 Sheets)"
+                                className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-extrabold text-[11px] rounded-lg border border-emerald-200 transition flex items-center space-x-1 cursor-pointer"
+                              >
+                                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Excel</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleOpenReport(c.id)}
+                                title="View Detailed Diagnostic Report Card"
+                                className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-extrabold text-[11px] rounded-lg border border-blue-200 transition flex items-center space-x-1 cursor-pointer"
+                              >
+                                <FileText className="w-3.5 h-3.5 text-blue-600" />
+                                <span>Report Card</span>
+                              </button>
+                            </>
                           )}
 
                           {/* View Audit Report Button for Locked / Disqualified Candidates */}
@@ -402,13 +432,13 @@ export default function CandidatesManagementPage() {
                                 className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] rounded-lg transition shadow-2xs flex items-center space-x-1 cursor-pointer"
                               >
                                 <Unlock className="w-3 h-3" />
-                                <span>Unlock</span>
+                                <span>{actionLoadingId === c.id ? "Unlocking..." : "Unlock"}</span>
                               </button>
                             </>
                           )}
 
                           <button
-                            onClick={() => handleDelete(c.id, c.name)}
+                            onClick={() => setDeleteCandidateTarget({ id: c.id, name: c.name })}
                             title="Delete Candidate Record"
                             className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
                           >
@@ -467,6 +497,22 @@ export default function CandidatesManagementPage() {
         }}
         candidateId={selectedReportCandidateId}
       />
+
+      {/* Modern Confirm Delete Candidate Modal */}
+      <ConfirmModal
+        isOpen={!!deleteCandidateTarget}
+        title="Delete Candidate Record"
+        message={`Are you sure you want to permanently delete candidate '${deleteCandidateTarget?.name}' and all associated exam attempt and proctoring records?`}
+        confirmText="Delete Candidate"
+        cancelText="Cancel"
+        isDanger={true}
+        loading={deletingCandidate}
+        onConfirm={confirmDeleteCandidate}
+        onCancel={() => { if (!deletingCandidate) setDeleteCandidateTarget(null); }}
+      />
+
+      {/* Modern Floating Toast Notifications */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

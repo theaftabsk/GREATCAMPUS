@@ -74,40 +74,55 @@ export class EmailService {
   }
 
   async testConnection(targetEmail?: string) {
-    const config = await this.getSmtpConfig();
-    const transporter = await this.createTransporter();
+    try {
+      const config = await this.getSmtpConfig();
+      if (!config.username || !config.password) {
+        return {
+          success: false,
+          message: 'SMTP credentials missing. Please enter your SMTP Username and Password/App Password.',
+        };
+      }
 
-    // Verify SMTP connection
-    await transporter.verify();
+      const transporter = await this.createTransporter();
 
-    // Send a test mail if targetEmail provided
-    const recipient = targetEmail || config.username || config.fromEmail;
-    if (recipient) {
-      await transporter.sendMail({
-        from: `"${config.fromName}" <${config.fromEmail}>`,
-        to: recipient,
-        subject: '✅ SMTP Connection Test — Niva Bupa Assessment Portal',
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; borderRadius: 12px; background: #ffffff;">
-            <h2 style="color: #003F72; margin-top: 0;">Niva Bupa Assessment Tool</h2>
-            <p style="color: #334155; font-size: 14px; line-height: 1.6;">
-              This is a test email confirming that your authenticated SMTP mail server configuration is working correctly!
-            </p>
-            <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #475569;">
-              <strong>Host:</strong> ${config.host}<br/>
-              <strong>Port:</strong> ${config.port}<br/>
-              <strong>Sender:</strong> ${config.fromName} (${config.fromEmail})<br/>
-              <strong>Timestamp:</strong> ${new Date().toLocaleString()}
+      // Verify SMTP connection
+      await transporter.verify();
+
+      // Send a test mail if targetEmail provided
+      const recipient = targetEmail || config.username || config.fromEmail;
+      if (recipient) {
+        await transporter.sendMail({
+          from: `"${config.fromName}" <${config.fromEmail}>`,
+          to: recipient,
+          subject: '✅ SMTP Connection Test — Niva Bupa Assessment Portal',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+              <h2 style="color: #003F72; margin-top: 0;">Niva Bupa Assessment Tool</h2>
+              <p style="color: #334155; font-size: 14px; line-height: 1.6;">
+                This is a test email confirming that your authenticated SMTP mail server configuration is working correctly!
+              </p>
+              <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #475569;">
+                <strong>Host:</strong> ${config.host}<br/>
+                <strong>Port:</strong> ${config.port}<br/>
+                <strong>Sender:</strong> ${config.fromName} (${config.fromEmail})<br/>
+                <strong>Timestamp:</strong> ${new Date().toLocaleString()}
+              </div>
             </div>
-          </div>
-        `,
-      });
-    }
+          `,
+        });
+      }
 
-    return {
-      success: true,
-      message: `SMTP connection established successfully! Test email delivered to ${recipient}.`,
-    };
+      return {
+        success: true,
+        message: `SMTP connection established successfully! Test email delivered to ${recipient}.`,
+      };
+    } catch (err: any) {
+      this.logger.error(`SMTP Test error: ${err.message}`);
+      return {
+        success: false,
+        message: `SMTP Connection Failed: ${err.message}. Please check your SMTP host, port, user, and App Password.`,
+      };
+    }
   }
 
   buildInvitationEmailHtml(data: {
@@ -257,20 +272,28 @@ export class EmailService {
     } catch (err: any) {
       this.logger.error(`Failed to send email to ${candidate.email}: ${err.message}`);
 
-      await this.prisma.emailLog.update({
-        where: { id: emailLog.id },
-        data: {
-          status: 'FAILED',
-          errorMessage: err.message,
-        },
-      });
+      try {
+        await this.prisma.emailLog.update({
+          where: { id: emailLog.id },
+          data: {
+            status: 'FAILED',
+            errorMessage: err.message,
+          },
+        });
+      } catch (_) {}
 
-      await this.prisma.candidate.update({
-        where: { id: candidate.id },
-        data: { emailStatus: 'FAILED' },
-      });
+      try {
+        await this.prisma.candidate.update({
+          where: { id: candidate.id },
+          data: { emailStatus: 'FAILED' },
+        });
+      } catch (_) {}
 
-      throw err;
+      return {
+        success: false,
+        message: `Email dispatch failed: ${err.message}`,
+        error: err.message,
+      };
     }
   }
 

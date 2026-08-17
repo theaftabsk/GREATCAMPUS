@@ -193,6 +193,18 @@ export class CandidatesController {
     return this.candidatesService.getCandidateReport(id);
   }
 
+  @Get(':id/export-excel')
+  async exportSingleCandidateExcel(
+    @Param('id') id: string,
+    @Res() res: Response
+  ) {
+    const { buffer, candidateName, applicationId } = await this.candidatesService.exportSingleCandidateExcel(id);
+    const safeName = candidateName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="Scorecard_${safeName}_${applicationId}.xlsx"`);
+    res.send(buffer);
+  }
+
   @Post(':id/remarks')
   async saveCandidateRemarks(
     @Param('id') id: string,

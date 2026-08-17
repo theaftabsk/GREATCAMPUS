@@ -1720,4 +1720,261 @@ export class CandidatesService {
 
     return workbook.xlsx.writeBuffer();
   }
+
+  // ─── SINGLE CANDIDATE INDIVIDUAL EXCEL SCORECARD EXPORT ───────────────────
+  async exportSingleCandidateExcel(candidateId: string): Promise<{ buffer: ExcelJS.Buffer; candidateName: string; applicationId: string }> {
+    const candidate: any = await (this.prisma.candidate as any).findUnique({
+      where: { id: candidateId },
+      include: {
+        assessment: true,
+        attempts: {
+          orderBy: { startedAt: 'desc' },
+          include: {
+            submissions: { include: { question: true } },
+            proctoringLogs: { orderBy: { timestamp: 'asc' } },
+            adminActions: true,
+            screenshots: true,
+          },
+        },
+      },
+    });
+
+    if (!candidate) throw new NotFoundException(`Candidate '${candidateId}' not found.`);
+
+    const latestAttempt = candidate.attempts ? candidate.attempts[0] : null;
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Niva Bupa Health Insurance Assessment System';
+    workbook.created = new Date();
+
+    const primaryFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF003F72' } };
+    const cyanFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF00AEEF' } };
+    const successFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } };
+    const dangerFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF2F2' } };
+    const headerFont: Partial<ExcelJS.Font> = { name: 'Calibri', bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // SHEET 1: Executive Candidate Scorecard
+    // ──────────────────────────────────────────────────────────────────────────
+    const sheet1 = workbook.addWorksheet('Executive Scorecard');
+    sheet1.columns = [{ width: 28 }, { width: 42 }, { width: 20 }, { width: 22 }];
+
+    sheet1.addRow(['NIVA BUPA HEALTH INSURANCE — INDIVIDUAL CANDIDATE SCORECARD']);
+    sheet1.mergeCells('A1:D1');
+    const title1 = sheet1.getCell('A1');
+    title1.font = { name: 'Calibri', size: 15, bold: true, color: { argb: 'FFFFFFFF' } };
+    title1.fill = primaryFill;
+    title1.alignment = { vertical: 'middle', horizontal: 'center' };
+    sheet1.getRow(1).height = 36;
+
+    sheet1.addRow([]);
+    sheet1.addRow(['Candidate Full Name', candidate.name]);
+    sheet1.addRow(['Application / Reference ID', candidate.applicationId || candidate.referenceId]);
+    sheet1.addRow(['Registered Email', candidate.email]);
+    sheet1.addRow(['Contact Phone Number', candidate.phone || '—']);
+    sheet1.addRow(['Assessment Title', candidate.assessment?.name || 'ARM Banca & Agency Assessment']);
+    sheet1.addRow(['Report Generation Date', new Date().toLocaleString()]);
+    sheet1.addRow([]);
+
+    let scoreMarks = latestAttempt ? latestAttempt.score : 0;
+    let totalMarks = latestAttempt ? (latestAttempt.totalPossibleMarks || 60) : 60;
+    let scorePct = latestAttempt ? latestAttempt.percentage : 0;
+    let resultStatus = 'NOT STARTED';
+
+    if (latestAttempt) {
+      if (latestAttempt.status === 'LOCKED') resultStatus = 'LOCKED';
+      else if (latestAttempt.status === 'DISQUALIFIED') resultStatus = 'DISQUALIFIED';
+      else if (latestAttempt.isPassed || scorePct >= (latestAttempt.passingPercentageSnapshot || 50)) {
+        resultStatus = 'QUALIFIED (PASS)';
+      } else if (latestAttempt.status === 'COMPLETED') {
+        resultStatus = 'NOT QUALIFIED (FAIL)';
+      } else {
+        resultStatus = 'IN PROGRESS';
+      }
+    }
+
+    const durationSec = latestAttempt?.totalTimeSpentSec || 0;
+    const durationFormatted = `${Math.floor(durationSec / 60)} mins ${durationSec % 60} secs`;
+
+    const summaryHeader = sheet1.addRow(['Evaluation Metric', 'Assessment Result', 'Benchmark Status']);
+    summaryHeader.font = headerFont;
+    summaryHeader.eachCell((c) => { c.fill = cyanFill; c.alignment = { vertical: 'middle', horizontal: 'center' }; });
+
+    sheet1.addRow(['Final Assessment Outcome', resultStatus, resultStatus.includes('QUALIFIED') ? 'Eligible for Next Round' : 'Needs Further Review']);
+    sheet1.addRow(['Total Score Obtained', `${scoreMarks} / ${totalMarks} Marks`, `Target: ${Math.round(totalMarks * 0.5)} Marks`]);
+    sheet1.addRow(['Overall Percentage', `${scorePct}%`, 'Passing Threshold: 50%']);
+    sheet1.addRow(['Time Spent in Exam', durationFormatted, `Allowed: ${candidate.assessment?.durationMins || 45} Mins`]);
+    sheet1.addRow(['Proctoring Violations Count', `${latestAttempt?.warningCount || 0} Warnings`, latestAttempt?.warningCount > 0 ? 'Flagged Incidents' : 'Clean Session']);
+    sheet1.addRow(['Session Integrity Score', `${Math.max(0, 100 - (latestAttempt?.warningCount || 0) * 15)}%`, 'Proctor Confidence']);
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // SHEET 2: 6-Section Performance Breakdown
+    // ──────────────────────────────────────────────────────────────────────────
+    const sheet2 = workbook.addWorksheet('Section Breakdown');
+    sheet2.columns = [
+      { width: 12, header: 'Section #' },
+      { width: 38, header: 'Section Title' },
+      { width: 16, header: 'Questions' },
+      { width: 14, header: 'Total Marks' },
+      { width: 16, header: 'Marks Scored' },
+      { width: 16, header: 'Percentage' },
+      { width: 24, header: 'Competency Level' },
+    ];
+
+    sheet2.addRow(['6-SECTION DIAGNOSTIC PERFORMANCE BREAKDOWN']);
+    sheet2.mergeCells('A1:G1');
+    const title2 = sheet2.getCell('A1');
+    title2.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+    title2.fill = primaryFill;
+    title2.alignment = { vertical: 'middle', horizontal: 'center' };
+    sheet2.getRow(1).height = 32;
+
+    sheet2.addRow([]);
+    const secHeaderRow = sheet2.addRow(['Sec #', 'Competency Section Name', 'Questions', 'Max Marks', 'Scored', 'Percentage', 'Proficiency Rating']);
+    secHeaderRow.font = headerFont;
+    secHeaderRow.eachCell((c) => { c.fill = cyanFill; c.alignment = { vertical: 'middle', horizontal: 'center' }; });
+
+    const officialSecs = [
+      { order: 1, name: 'Communication & Customer Handling', range: 'Q1–Q10', max: 10, scored: 0 },
+      { order: 2, name: 'Advanced English & Comprehension', range: 'Q11–Q20', max: 10, scored: 0 },
+      { order: 3, name: 'Mental Ability & Reasoning', range: 'Q21–Q30', max: 10, scored: 0 },
+      { order: 4, name: 'Numerical & Mathematical Reasoning', range: 'Q31–Q40', max: 10, scored: 0 },
+      { order: 5, name: 'Banking & Financial Awareness', range: 'Q41–Q50', max: 10, scored: 0 },
+      { order: 6, name: 'Sales Orientation & Situational Judgement', range: 'Q51–Q60', max: 10, scored: 0 },
+    ];
+
+    const submissions = latestAttempt?.submissions || [];
+    const sortedSubs = [...submissions].sort((a: any, b: any) => {
+      const qA = parseInt(a.question?.id?.replace(/\D/g, '')) || 0;
+      const qB = parseInt(b.question?.id?.replace(/\D/g, '')) || 0;
+      if ((a.question?.sectionOrder || 0) !== (b.question?.sectionOrder || 0)) {
+        return (a.question?.sectionOrder || 0) - (b.question?.sectionOrder || 0);
+      }
+      return qA - qB;
+    });
+
+    sortedSubs.forEach((sub: any, idx: number) => {
+      const secIdx = Math.min(5, Math.floor(idx / 10));
+      if (sub.isCorrect) officialSecs[secIdx].scored++;
+    });
+
+    officialSecs.forEach((sec) => {
+      const pct = Math.round((sec.scored / sec.max) * 100);
+      let rating = 'Needs Development';
+      if (pct >= 80) rating = 'Mastery / Advanced';
+      else if (pct >= 60) rating = 'Competent / Proficient';
+      else if (pct >= 40) rating = 'Basic / Developing';
+
+      const row = sheet2.addRow([
+        `Section ${sec.order}`,
+        sec.name,
+        sec.range,
+        sec.max,
+        sec.scored,
+        `${pct}%`,
+        rating,
+      ]);
+      row.getCell(5).alignment = { horizontal: 'center' };
+      row.getCell(6).alignment = { horizontal: 'center' };
+      row.getCell(7).alignment = { horizontal: 'center' };
+    });
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // SHEET 3: Itemized Response Audit (All 60 Questions)
+    // ──────────────────────────────────────────────────────────────────────────
+    const sheet3 = workbook.addWorksheet('60 Questions Audit');
+    sheet3.columns = [
+      { width: 8, header: 'Q#' },
+      { width: 34, header: 'Section' },
+      { width: 55, header: 'Question Content' },
+      { width: 14, header: "Candidate's Choice" },
+      { width: 14, header: 'Correct Answer' },
+      { width: 14, header: 'Result' },
+      { width: 12, header: 'Marks' },
+    ];
+
+    sheet3.addRow(['ITEMIZED 60-QUESTION AUDIT & CANDIDATE RESPONSES']);
+    sheet3.mergeCells('A1:G1');
+    const title3 = sheet3.getCell('A1');
+    title3.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+    title3.fill = primaryFill;
+    title3.alignment = { vertical: 'middle', horizontal: 'center' };
+    sheet3.getRow(1).height = 32;
+
+    sheet3.addRow([]);
+    const qHeaderRow = sheet3.addRow(['Q#', 'Section Name', 'Question Text', "Candidate's Option", 'Correct Answer', 'Verification', 'Marks']);
+    qHeaderRow.font = headerFont;
+    qHeaderRow.eachCell((c) => { c.fill = cyanFill; c.alignment = { vertical: 'middle', horizontal: 'center' }; });
+
+    sortedSubs.forEach((sub: any, idx: number) => {
+      const qNum = idx + 1;
+      const secIdx = Math.min(5, Math.floor(idx / 10));
+      const secName = officialSecs[secIdx].name;
+      const isCorrect = !!sub.isCorrect;
+
+      const row = sheet3.addRow([
+        qNum,
+        secName,
+        sub.question?.question || 'Question Text',
+        sub.selectedOption || 'Not Attempted',
+        sub.question?.correctAnswer || '—',
+        isCorrect ? 'CORRECT' : 'INCORRECT',
+        isCorrect ? 1 : 0,
+      ]);
+
+      const verCell = row.getCell(6);
+      verCell.font = { bold: true, color: { argb: isCorrect ? 'FF059669' : 'FFDC2626' } };
+      verCell.alignment = { horizontal: 'center' };
+      row.getCell(4).alignment = { horizontal: 'center' };
+      row.getCell(5).alignment = { horizontal: 'center' };
+      row.getCell(7).alignment = { horizontal: 'center' };
+    });
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // SHEET 4: Proctoring & Security Audit
+    // ──────────────────────────────────────────────────────────────────────────
+    const sheet4 = workbook.addWorksheet('Proctoring Audit');
+    sheet4.columns = [
+      { width: 10, header: 'Event #' },
+      { width: 26, header: 'Timestamp' },
+      { width: 28, header: 'Violation Type' },
+      { width: 46, header: 'Event Details' },
+      { width: 18, header: 'Severity' },
+    ];
+
+    sheet4.addRow(['PROCTORING VIOLATION TIMELINE & AUDIT LOGS']);
+    sheet4.mergeCells('A1:E1');
+    const title4 = sheet4.getCell('A1');
+    title4.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+    title4.fill = primaryFill;
+    title4.alignment = { vertical: 'middle', horizontal: 'center' };
+    sheet4.getRow(1).height = 32;
+
+    sheet4.addRow([]);
+    const procHeaderRow = sheet4.addRow(['Event #', 'Event Timestamp', 'Security Violation Type', 'Event Details', 'Severity Level']);
+    procHeaderRow.font = headerFont;
+    procHeaderRow.eachCell((c) => { c.fill = cyanFill; c.alignment = { vertical: 'middle', horizontal: 'center' }; });
+
+    const procLogs = latestAttempt?.proctoringLogs || [];
+    if (procLogs.length === 0) {
+      sheet4.addRow([1, new Date().toLocaleString(), 'NO_VIOLATIONS', 'Candidate completed the assessment with zero proctoring infractions.', 'CLEAN']);
+    } else {
+      procLogs.forEach((p: any, pIdx: number) => {
+        sheet4.addRow([
+          pIdx + 1,
+          new Date(p.timestamp).toLocaleString(),
+          p.eventType || 'PROCTOR_WARNING',
+          p.details || 'Proctoring system alert triggered during session.',
+          'HIGH RISK',
+        ]);
+      });
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return {
+      buffer,
+      candidateName: candidate.name,
+      applicationId: candidate.applicationId || candidate.referenceId || candidate.id,
+    };
+  }
 }
+

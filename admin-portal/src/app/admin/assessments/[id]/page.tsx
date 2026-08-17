@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 import CandidateReportModal from "@/components/CandidateReportModal";
+import ConfirmModal from "@/components/ConfirmModal";
+import ToastContainer, { ToastMessage } from "@/components/Toast";
 
 export default function AssessmentDashboardPage() {
   const params = useParams();
@@ -48,6 +50,19 @@ export default function AssessmentDashboardPage() {
   // Selected Candidate for Report Modal
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  // Toast State
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const addToast = (type: "success" | "error" | "warning" | "info", message: string, title?: string) => {
+    setToasts((prev) => [...prev, { id: Math.random().toString(36).substring(2, 9), type, message, title }]);
+  };
+  const dismissToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  // Delete Target State
+  const [deleteCandidateTarget, setDeleteCandidateTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deletingCandidate, setDeletingCandidate] = useState(false);
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -209,52 +224,61 @@ export default function AssessmentDashboardPage() {
     }
   };
 
-  const handleResendSingleEmail = async (candidateId: string, email: string) => {
+  const handleSendInvite = async (candidateId: string, email: string) => {
     try {
       const baseUrl = getApiBaseUrl();
       const res = await fetch(`${baseUrl}/api/v1/emails/send-invite/${candidateId}`, { method: "POST" });
       const resData = await res.json();
       if (resData.success) {
-        alert(`✅ Invitation sent successfully to ${email}`);
+        addToast("success", `Invitation email sent successfully to ${email}`, "Invitation Dispatched");
         await loadDashboard();
       } else {
-        alert(resData.message || "Failed to send email.");
+        addToast("error", resData.message || "Failed to send email. Check SMTP settings.", "Email Failed");
       }
     } catch {
-      alert("Error sending email invitation.");
+      addToast("error", "Error sending email invitation.", "Error");
     }
   };
 
   const handleUnlockCandidate = async (candidateId: string, name: string) => {
-    const reason = prompt(`Unlock candidate '${name}'?\n\nReason:`, "Admin approved exam continuation");
-    if (!reason) return;
-
     try {
       const baseUrl = getApiBaseUrl();
       const res = await fetch(`${baseUrl}/api/v1/candidates/${candidateId}/unlock`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminName: "HR Administrator", reason }),
+        body: JSON.stringify({ adminName: "HR Administrator", reason: "Admin approved exam continuation" }),
       });
       const resData = await res.json();
       if (resData.success) {
-        alert(`✅ Candidate '${name}' unlocked successfully! All answers & timer preserved.`);
+        addToast("success", `Candidate '${name}' unlocked successfully! All answers & timer preserved.`, "Candidate Unlocked");
         await loadDashboard();
+      } else {
+        addToast("error", resData.message || "Failed to unlock candidate.", "Unlock Error");
       }
     } catch {
-      alert("Error unlocking candidate.");
+      addToast("error", "Error unlocking candidate.", "Error");
     }
   };
 
-  const handleDeleteCandidate = async (candidateId: string, name: string) => {
-    if (!confirm(`Delete candidate '${name}' and all attempt records?`)) return;
+  const confirmDeleteCandidate = async () => {
+    if (!deleteCandidateTarget) return;
+    setDeletingCandidate(true);
     try {
       const baseUrl = getApiBaseUrl();
-      await fetch(`${baseUrl}/api/v1/candidates/${candidateId}`, { method: "DELETE" });
+      await fetch(`${baseUrl}/api/v1/candidates/${deleteCandidateTarget.id}`, { method: "DELETE" });
+      addToast("success", `Candidate '${deleteCandidateTarget.name}' deleted.`, "Candidate Deleted");
+      setDeleteCandidateTarget(null);
       await loadDashboard();
     } catch {
-      /* silent */
+      addToast("error", "Failed to delete candidate.", "Error");
+    } finally {
+      setDeletingCandidate(false);
     }
+  };
+
+  const handleDownloadSingleExcel = (candidateId: string) => {
+    const baseUrl = getApiBaseUrl();
+    window.open(`${baseUrl}/api/v1/candidates/${candidateId}/export-excel`, "_blank");
   };
 
   const downloadExcelReport = () => {
@@ -548,6 +572,14 @@ export default function AssessmentDashboardPage() {
                     <td style={{ padding: "14px 16px", textAlign: "right" }}>
                       <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
                         <button
+                          onClick={() => handleDownloadSingleExcel(c.id)}
+                          title="Download Individual Candidate Excel Scorecard (4 Sheets)"
+                          style={{ padding: "6px 10px", borderRadius: "8px", background: "#ECFDF5", color: "#059669", border: "1px solid #A7F3D0", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                        >
+                          <FileSpreadsheet size={12} /> Excel
+                        </button>
+
+                        <button
                           onClick={() => { setSelectedCandidateId(c.id); setIsReportModalOpen(true); }}
                           title="View Full Report & Proctoring Screenshots"
                           style={{ padding: "6px 10px", borderRadius: "8px", background: "#EFF6FF", color: "#1D4ED8", border: "1px solid #BFDBFE", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px" }}
@@ -566,15 +598,15 @@ export default function AssessmentDashboardPage() {
                         )}
 
                         <button
-                          onClick={() => handleResendSingleEmail(c.id, c.email)}
-                          title="Resend Email Invitation"
+                          onClick={() => handleSendInvite(c.id, c.email)}
+                          title="Send / Resend Email Invitation"
                           style={{ padding: "6px 8px", borderRadius: "8px", background: "#F8FAFC", color: "#475569", border: "1px solid #CBD5E1", cursor: "pointer" }}
                         >
                           <Mail size={12} />
                         </button>
 
                         <button
-                          onClick={() => handleDeleteCandidate(c.id, c.name)}
+                          onClick={() => setDeleteCandidateTarget({ id: c.id, name: c.name })}
                           title="Delete Candidate"
                           style={{ padding: "6px 8px", borderRadius: "8px", background: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5", cursor: "pointer" }}
                         >
@@ -851,6 +883,22 @@ export default function AssessmentDashboardPage() {
         onClose={() => { setIsReportModalOpen(false); setSelectedCandidateId(null); }}
         onRefresh={loadDashboard}
       />
+
+      {/* Modern Confirm Delete Candidate Modal */}
+      <ConfirmModal
+        isOpen={!!deleteCandidateTarget}
+        title="Delete Candidate Record"
+        message={`Are you sure you want to permanently delete candidate '${deleteCandidateTarget?.name}'? This will remove all their exam attempt and proctoring data.`}
+        confirmText="Delete Candidate"
+        cancelText="Cancel"
+        isDanger={true}
+        loading={deletingCandidate}
+        onConfirm={confirmDeleteCandidate}
+        onCancel={() => { if (!deletingCandidate) setDeleteCandidateTarget(null); }}
+      />
+
+      {/* Modern Floating Toast Notifications */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
     </div>
   );

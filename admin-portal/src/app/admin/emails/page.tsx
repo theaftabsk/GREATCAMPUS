@@ -4,9 +4,11 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Mail, RefreshCw, Search, CheckCircle2, AlertTriangle,
-  RotateCcw, Settings, Send, Clock, ShieldCheck, Filter
+  RotateCcw, Settings, Send, Clock, ShieldCheck, Filter,
+  AlertCircle, ChevronRight, Info, ExternalLink
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
+import ToastContainer, { ToastMessage } from "@/components/Toast";
 
 export default function EmailAuditPage() {
   const [logs, setLogs] = useState<any[]>([]);
@@ -16,6 +18,16 @@ export default function EmailAuditPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
+  const [selectedErrorLog, setSelectedErrorLog] = useState<any | null>(null);
+
+  // Toast State
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const addToast = (type: "success" | "error" | "warning" | "info", message: string, title?: string) => {
+    setToasts((prev) => [...prev, { id: Math.random().toString(36).substring(2, 9), type, message, title }]);
+  };
+  const dismissToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
 
   const loadLogs = async () => {
     setLoading(true);
@@ -57,13 +69,13 @@ export default function EmailAuditPage() {
       const res = await fetch(`${baseUrl}/api/v1/emails/resend/${emailLogId}`, { method: "POST" });
       const data = await res.json();
       if (data.success) {
-        alert(`✅ Email invitation resent successfully to ${email}`);
+        addToast("success", `Email invitation resent successfully to ${email}`, "Email Resent");
         await loadLogs();
       } else {
-        alert(data.message || "Failed to resend email.");
+        addToast("error", data.message || "Failed to resend email. Please check your SMTP settings in Settings.", "Delivery Failed");
       }
     } catch {
-      alert("Error resending email invitation.");
+      addToast("error", "Error connecting to backend email service.", "Network Error");
     } finally {
       setResendingId(null);
     }
@@ -71,7 +83,7 @@ export default function EmailAuditPage() {
 
   const sentCount = logs.filter((l) => l.status === "SENT" || l.status === "DELIVERED").length;
   const failedCount = logs.filter((l) => l.status === "FAILED").length;
-  const pendingCount = logs.filter((l) => l.status === "PENDING").length;
+  const hasAuthError = logs.some((l) => l.errorMessage && (l.errorMessage.includes("Authentication") || l.errorMessage.includes("530")));
 
   return (
     <div style={{ padding: "28px 36px", background: "#F8FAFC", minHeight: "calc(100vh - 64px)" }}>
@@ -103,6 +115,54 @@ export default function EmailAuditPage() {
           </Link>
         </div>
       </div>
+
+      {/* SMTP Auth Warning Banner */}
+      {hasAuthError && (
+        <div style={{
+          background: "#FFFBEB",
+          border: "1px solid #FDE68A",
+          borderRadius: "14px",
+          padding: "16px 20px",
+          marginBottom: "24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "16px",
+          flexWrap: "wrap"
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#FEF3C7", color: "#D97706", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <AlertTriangle size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: "13px", fontWeight: 800, color: "#92400E" }}>
+                SMTP Credentials Required for Email Dispatch
+              </div>
+              <div style={{ fontSize: "12px", color: "#B45309", marginTop: "2px" }}>
+                Email dispatch requires valid SMTP credentials (e.g. Gmail App Password). Go to Settings to enter your credentials.
+              </div>
+            </div>
+          </div>
+
+          <Link
+            href="/admin/settings"
+            style={{
+              padding: "8px 16px",
+              borderRadius: "8px",
+              background: "#D97706",
+              color: "white",
+              fontSize: "12px",
+              fontWeight: 800,
+              textDecoration: "none",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px"
+            }}
+          >
+            Configure SMTP Now <ChevronRight size={14} />
+          </Link>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "14px", marginBottom: "24px" }}>
@@ -241,7 +301,11 @@ export default function EmailAuditPage() {
                           {log.status}
                         </span>
                         {log.errorMessage && (
-                          <div style={{ fontSize: "11px", color: "#B91C1C", marginTop: "4px", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={log.errorMessage}>
+                          <div
+                            onClick={() => setSelectedErrorLog(log)}
+                            style={{ fontSize: "11px", color: "#B91C1C", marginTop: "4px", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline" }}
+                            title="Click to view full error detail"
+                          >
                             ⚠️ {log.errorMessage}
                           </div>
                         )}
@@ -268,6 +332,43 @@ export default function EmailAuditPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Error Details Modal */}
+      {selectedErrorLog && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(15,23,42,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+          <div style={{ background: "white", borderRadius: "18px", maxWidth: "520px", width: "100%", padding: "24px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
+              <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#FEF2F2", color: "#DC2626", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <AlertCircle size={20} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: "16px", fontWeight: 800, color: "#0F172A", margin: 0 }}>Dispatch Error Diagnostics</h3>
+                <p style={{ fontSize: "12px", color: "#64748B", margin: 0 }}>Recipient: {selectedErrorLog.recipientEmail}</p>
+              </div>
+            </div>
+
+            <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: "10px", padding: "14px", fontSize: "12px", color: "#991B1B", fontFamily: "monospace", wordBreak: "break-word", lineHeight: 1.5, marginBottom: "16px" }}>
+              {selectedErrorLog.errorMessage || "Unknown error"}
+            </div>
+
+            <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: "10px", padding: "12px", fontSize: "12px", color: "#1E40AF", marginBottom: "18px" }}>
+              💡 <strong>How to fix:</strong> If you are using Gmail SMTP (`smtp.gmail.com`), generate an <strong>App Password</strong> in your Google Account security settings and enter it in <Link href="/admin/settings" style={{ color: "#003F72", fontWeight: 800, textDecoration: "underline" }}>Settings → SMTP Configuration</Link>.
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+              <button
+                onClick={() => setSelectedErrorLog(null)}
+                style={{ padding: "8px 18px", borderRadius: "8px", background: "#003F72", color: "white", border: "none", fontWeight: 800, fontSize: "12px", cursor: "pointer" }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Modern Toast Alerts */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
     </div>
   );

@@ -7,7 +7,8 @@ import Image from "next/image";
 import {
   ArrowLeft, Printer, Award, CheckCircle2, XCircle, Clock,
   AlertTriangle, ShieldCheck, FileText, MessageSquare, User,
-  Calendar, Sparkles, BarChart3, ShieldAlert, Send, Camera, Maximize2
+  Calendar, Sparkles, BarChart3, ShieldAlert, Send, Camera, Maximize2,
+  FileSpreadsheet
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 
@@ -129,12 +130,24 @@ export default function CandidateDetailPage() {
           <span className="text-slate-900 font-extrabold">{report.candidate.name}</span>
         </div>
 
-        <button
-          onClick={handlePrint}
-          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition flex items-center gap-2 shadow-sm cursor-pointer"
-        >
-          <Printer className="w-4 h-4" /> Print / Save PDF
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              const baseUrl = getApiBaseUrl();
+              window.open(`${baseUrl}/api/v1/candidates/${candidateId}/export-excel`, '_blank');
+            }}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl transition flex items-center gap-2 shadow-sm cursor-pointer"
+          >
+            <FileSpreadsheet className="w-4 h-4" /> Download Excel
+          </button>
+
+          <button
+            onClick={handlePrint}
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold rounded-xl transition flex items-center gap-2 shadow-sm cursor-pointer"
+          >
+            <Printer className="w-4 h-4" /> Print / Save PDF
+          </button>
+        </div>
       </div>
 
       {/* Main Candidate Scorecard Banner */}

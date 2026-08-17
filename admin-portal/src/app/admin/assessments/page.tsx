@@ -7,6 +7,8 @@ import {
   Edit2, RefreshCw, X, Calendar, AlertCircle, Zap, Users,
   Eye, EyeOff, ExternalLink
 } from "lucide-react";
+import ConfirmModal from "@/components/ConfirmModal";
+import ToastContainer, { ToastMessage } from "@/components/Toast";
 import { getApiBaseUrl } from "@/lib/config";
 
 interface AssessmentSession {
@@ -82,6 +84,19 @@ export default function AdminAssessmentsPage() {
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Toast state
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const addToast = (type: "success" | "error" | "warning" | "info", message: string, title?: string) => {
+    setToasts((prev) => [...prev, { id: Math.random().toString(36).substring(2, 9), type, message, title }]);
+  };
+  const dismissToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  // Delete Confirm Modal State
+  const [deleteTarget, setDeleteTarget] = useState<AssessmentSession | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal]     = useState(false);
@@ -117,6 +132,7 @@ export default function AdminAssessmentsPage() {
     const linkToCopy = getDisplayExamLink(session.uniqueCandidateLink);
     navigator.clipboard.writeText(linkToCopy).then(() => {
       setCopiedId(session.id);
+      addToast("info", "Candidate exam link copied to clipboard.", "Link Copied");
       setTimeout(() => setCopiedId(null), 2000);
     });
   };
@@ -170,24 +186,32 @@ export default function AdminAssessmentsPage() {
 
       setShowCreateModal(false);
       setShowEditModal(false);
+      addToast("success", isEdit ? "Assessment session updated successfully." : "New assessment session created successfully.", "Success");
       await loadSessions();
     } catch (err: any) {
       setFormError(err.message || "Failed to save session.");
     } finally { setSaving(false); }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this assessment session? This will also remove candidate records linked to it.")) return;
+  const confirmDeleteSession = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await fetch(`${getApiBaseUrl()}/api/v1/assessments/${id}`, { method: "DELETE" });
+      await fetch(`${getApiBaseUrl()}/api/v1/assessments/${deleteTarget.id}`, { method: "DELETE" });
+      addToast("success", `Assessment session '${deleteTarget.name}' deleted.`, "Session Deleted");
+      setDeleteTarget(null);
       await loadSessions();
-    } catch { /* silent */ }
+    } catch {
+      addToast("error", "Failed to delete assessment session.", "Error");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleToggleStatus = async (session: AssessmentSession) => {
     const computed = getComputedStatus(session);
     if (computed === "EXPIRED" && session.status !== "ACTIVE") {
-      alert("This assessment session has expired. To activate it, please click Edit and set a future 'Until' end date.");
+      addToast("warning", "This assessment session has expired. To activate it, click Edit and set a future 'Until' end date.", "Session Expired");
       openEdit(session);
       return;
     }
@@ -200,10 +224,14 @@ export default function AdminAssessmentsPage() {
       });
       const data = await res.json();
       if (!data.success) {
-        alert(data.message || "Failed to update status.");
+        addToast("error", data.message || "Failed to update status.", "Status Error");
+      } else {
+        addToast("success", `Session status updated to ${newStatus}.`, "Status Updated");
       }
       await loadSessions();
-    } catch { /* silent */ }
+    } catch {
+      addToast("error", "Connection error updating status.", "Network Error");
+    }
   };
 
   return (
@@ -333,7 +361,7 @@ export default function AdminAssessmentsPage() {
                             {session.status === "ACTIVE" ? <EyeOff size={13} /> : <Eye size={13} />}
                           </button>
                         )}
-                        <button className="excel-act-btn excel-act-delete" onClick={() => handleDelete(session.id)} title="Delete Session">
+                        <button className="excel-act-btn excel-act-delete" onClick={() => setDeleteTarget(session)} title="Delete Session">
                           <Trash2 size={13} />
                         </button>
                       </div>
@@ -365,17 +393,19 @@ export default function AdminAssessmentsPage() {
 
             <div className="assess-modal-body">
               {formError && (
-                <div className="assess-form-error"><AlertCircle size={15} /> {formError}</div>
+                <div className="assess-form-error">
+                  <AlertCircle size={15} /> {formError}
+                </div>
               )}
 
               <div className="assess-form-group">
-                <label>Session Name *</label>
+                <label>Session Title / Role *</label>
                 <input
                   type="text"
-                  placeholder="e.g. Banking Assessment — Batch A"
+                  placeholder="e.g. Agency Unit Manager & ARM Banca Assessment"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className="assess-form-input"
+                  className="assess-form-input font-bold"
                 />
               </div>
 
@@ -383,7 +413,7 @@ export default function AdminAssessmentsPage() {
                 <label>Description (optional)</label>
                 <input
                   type="text"
-                  placeholder="e.g. For freshers batch August 2026"
+                  placeholder="Brief note for candidates or internal record"
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   className="assess-form-input"
@@ -392,41 +422,59 @@ export default function AdminAssessmentsPage() {
 
               <div className="assess-form-row">
                 <div className="assess-form-group">
-                  <label><Calendar size={13} /> Active From</label>
+                  <label><Calendar size={13} /> Active From (optional)</label>
                   <input
                     type="datetime-local"
                     value={form.activeFrom}
                     onChange={(e) => setForm({ ...form, activeFrom: e.target.value })}
                     className="assess-form-input"
                   />
-                  <span className="assess-form-hint">Candidate access start time</span>
+                  <span className="assess-form-hint">Leave blank to start immediately</span>
                 </div>
+
                 <div className="assess-form-group">
-                  <label><Calendar size={13} /> Active Until</label>
+                  <label><Calendar size={13} /> Active Until (optional)</label>
                   <input
                     type="datetime-local"
                     value={form.activeUntil}
                     onChange={(e) => setForm({ ...form, activeUntil: e.target.value })}
                     className="assess-form-input"
                   />
-                  <span className="assess-form-hint">Session expiration time</span>
+                  <span className="assess-form-hint">Leave blank for no expiration</span>
                 </div>
               </div>
 
-              <div className="assess-form-row">
+              <div className="assess-form-row assess-form-row--3">
                 <div className="assess-form-group">
-                  <label>Passing Percentage (%)</label>
+                  <label><Clock size={13} /> Duration (Mins)</label>
                   <input
-                    type="number" min={1} max={100}
+                    type="number"
+                    min="5"
+                    max="180"
+                    value={form.durationMins}
+                    onChange={(e) => setForm({ ...form, durationMins: Number(e.target.value) })}
+                    className="assess-form-input font-bold"
+                  />
+                </div>
+
+                <div className="assess-form-group">
+                  <label>Passing %</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
                     value={form.passingPercentage}
                     onChange={(e) => setForm({ ...form, passingPercentage: Number(e.target.value) })}
                     className="assess-form-input"
                   />
                 </div>
+
                 <div className="assess-form-group">
-                  <label>Max Proctor Warnings</label>
+                  <label>Max Warnings</label>
                   <input
-                    type="number" min={1} max={10}
+                    type="number"
+                    min="1"
+                    max="10"
                     value={form.maxProctorWarnings}
                     onChange={(e) => setForm({ ...form, maxProctorWarnings: Number(e.target.value) })}
                     className="assess-form-input"
@@ -463,6 +511,22 @@ export default function AdminAssessmentsPage() {
           </div>
         </div>
       )}
+
+      {/* Modern Confirm Delete Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete Assessment Session"
+        message={`Are you sure you want to permanently delete '${deleteTarget?.name}'? This will also remove all candidate records and exam attempts associated with this session.`}
+        confirmText="Delete Session"
+        cancelText="Cancel"
+        isDanger={true}
+        loading={deleting}
+        onConfirm={confirmDeleteSession}
+        onCancel={() => { if (!deleting) setDeleteTarget(null); }}
+      />
+
+      {/* Floating Modern Toast Alerts */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
       <style>{`
         .assess-page { padding: 28px 36px; width: 100%; max-width: 100%; margin: 0; background-color: #f8fafc; min-height: calc(100vh - 64px); box-sizing: border-box; }

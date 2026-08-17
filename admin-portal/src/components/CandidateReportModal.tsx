@@ -22,7 +22,8 @@ import {
   Send,
   HelpCircle,
   Camera,
-  Maximize2
+  Maximize2,
+  FileSpreadsheet
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 
@@ -179,6 +180,11 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId, onR
     window.print();
   };
 
+  const handleDownloadExcel = () => {
+    const baseUrl = getApiBaseUrl();
+    window.open(`${baseUrl}/api/v1/candidates/${candidateId}/export-excel`, '_blank');
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -212,6 +218,16 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId, onR
           </div>
 
           <div className="flex items-center gap-2 print:hidden">
+            {/* Download Individual Candidate Excel Report Button */}
+            <button
+              onClick={handleDownloadExcel}
+              title="Download Individual Candidate Excel Scorecard (4 Sheets)"
+              className="px-3 py-1.5 rounded-xl bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-100 text-xs font-extrabold transition-all cursor-pointer border border-emerald-400/40 flex items-center gap-1.5 shadow-sm"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
+              <span className="hidden sm:inline">Excel Report</span>
+            </button>
+
             {/* Print / Save PDF Button */}
             <button
               onClick={handlePrint}
