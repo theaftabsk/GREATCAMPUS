@@ -173,6 +173,8 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId, onR
     }
   };
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   const handlePrint = () => {
     window.print();
   };
@@ -180,11 +182,11 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId, onR
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/70 backdrop-blur-md overflow-y-auto print:bg-white print:p-0 animate-in fade-in duration-200">
-      <div className="w-full max-w-6xl bg-slate-50 rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto relative flex flex-col max-h-[95vh] print:max-h-none print:shadow-none print:border-none print:rounded-none">
+    <div className={`fixed inset-0 z-50 flex items-center justify-center ${isFullscreen ? 'p-0' : 'p-2 sm:p-4 md:p-6'} bg-slate-950/80 backdrop-blur-md overflow-y-auto print:bg-white print:p-0 animate-in fade-in duration-200`}>
+      <div className={`w-full ${isFullscreen ? 'w-screen h-screen max-w-none max-h-none rounded-none' : 'max-w-[98vw] xl:max-w-[1550px] max-h-[96vh] rounded-3xl'} bg-slate-50 shadow-2xl border border-slate-200 overflow-hidden my-auto relative flex flex-col print:max-h-none print:shadow-none print:border-none print:rounded-none transition-all duration-300`}>
         
         {/* Top Header Bar */}
-        <div className="px-6 py-4 bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white flex items-center justify-between shadow-md print:bg-blue-900">
+        <div className="px-6 py-3.5 bg-gradient-to-r from-[#003F72] via-[#005B94] to-[#00AEEF] text-white flex items-center justify-between shadow-md print:bg-blue-900 shrink-0">
           <div className="flex items-center gap-3">
             <div className="bg-white/95 p-2 rounded-xl shadow-md flex items-center justify-center">
               <Image
@@ -199,20 +201,41 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId, onR
             <div>
               <h3 className="text-base font-black text-white tracking-tight flex items-center gap-2">
                 Candidate Diagnostic Scorecard
-                <span className="hidden sm:inline-block px-2 py-0.5 rounded-full bg-white/20 text-[10px] uppercase font-bold tracking-wider">
+                <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full bg-white/20 text-[10px] uppercase font-black tracking-wider">
                   Official Record
                 </span>
               </h3>
-              <p className="text-[11px] text-blue-100/90 font-medium">
-                Niva Bupa Candidate Assessment Engine
+              <p className="text-[11px] text-blue-100/90 font-semibold">
+                Niva Bupa Assessment & AI Proctoring System
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 print:hidden">
+            {/* Print / Save PDF Button */}
+            <button
+              onClick={handlePrint}
+              title="Print / Save PDF Report"
+              className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-extrabold transition-all cursor-pointer border border-white/25 flex items-center gap-1.5"
+            >
+              <Printer className="w-4 h-4" />
+              <span className="hidden md:inline">Print / PDF</span>
+            </button>
+
+            {/* Toggle Fullscreen / Maximize */}
+            <button
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              title={isFullscreen ? "Restore Window Size" : "Full Screen Widescreen View"}
+              className="p-2 rounded-xl bg-white/15 hover:bg-white/25 text-white transition-all cursor-pointer border border-white/25"
+            >
+              <Maximize2 className="w-4 h-4" />
+            </button>
+
+            {/* Close Modal */}
             <button
               onClick={onClose}
-              className="p-1.5 rounded-xl bg-white/10 hover:bg-rose-600 text-white transition-all cursor-pointer border border-white/20"
+              title="Close Report Modal"
+              className="p-2 rounded-xl bg-white/15 hover:bg-rose-600 text-white transition-all cursor-pointer border border-white/25"
             >
               <X className="w-5 h-5" />
             </button>
