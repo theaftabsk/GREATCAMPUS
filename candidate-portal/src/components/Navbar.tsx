@@ -41,7 +41,7 @@ export default function Navbar({ mode = "public", candidateName }: NavbarProps) 
           </div>
         </Link>
 
-        {/* Right Side Prominent Button */}
+        {/* Right Side Candidate Badge */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           {mode === "candidate" && candidateName && (
             <div className="nb-candidate-badge">
@@ -51,30 +51,6 @@ export default function Navbar({ mode = "public", candidateName }: NavbarProps) 
                 {candidateName}
               </span>
             </div>
-          )}
-
-          {mode === "public" && (
-            <Link
-              href="/exam"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "12px 26px",
-                borderRadius: "12px",
-                background: "linear-gradient(135deg, #0090C8 0%, #00AEEF 100%)",
-                color: "white",
-                fontWeight: 900,
-                fontSize: "15px",
-                textDecoration: "none",
-                boxShadow: "0 6px 20px rgba(0,174,239,0.4)",
-                whiteSpace: "nowrap",
-                letterSpacing: "0.01em",
-                transition: "transform 0.15s, box-shadow 0.15s"
-              }}
-            >
-              Begin Exam →
-            </Link>
           )}
         </div>
 
