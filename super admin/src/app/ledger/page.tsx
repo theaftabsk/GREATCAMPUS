@@ -62,22 +62,22 @@ export default function SuperAdminLedgerPage() {
   }, [selectedTenantId, filterType, page]);
 
   return (
-    <div className="min-h-screen bg-slate-950 flex">
+    <div className="min-h-screen bg-slate-50 flex">
       <Sidebar />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-        <header className="h-16 border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-xl px-6 flex items-center justify-between sticky top-0 z-20">
+        <header className="h-16 border-b border-slate-200 bg-white/80 backdrop-blur-xl px-6 flex items-center justify-between sticky top-0 z-20 shadow-2xs">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-400">Super Admin Console</span>
-            <span className="text-slate-600">/</span>
-            <span className="text-xs font-extrabold text-cyan-400">Credit Audit Ledger</span>
+            <span className="text-xs font-bold text-slate-500">Super Admin Console</span>
+            <span className="text-slate-300">/</span>
+            <span className="text-xs font-extrabold text-blue-600">Credit Audit Ledger</span>
           </div>
 
           <button
             onClick={fetchTenantsAndLedger}
-            className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition cursor-pointer border border-slate-700/60"
+            className="p-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 transition cursor-pointer border border-slate-200 shadow-2xs"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-blue-600" : ""}`} />
           </button>
         </header>
 
@@ -85,8 +85,8 @@ export default function SuperAdminLedgerPage() {
           {/* Title & Filters */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-black text-white tracking-tight">Credit Audit & Transaction Ledger</h1>
-              <p className="text-xs text-slate-400 font-medium mt-1">
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">Credit Audit & Transaction Ledger</h1>
+              <p className="text-xs text-slate-500 font-medium mt-1">
                 Immutable record of every allocation (+), exam consumption (-), and limit adjustment.
               </p>
             </div>
@@ -100,7 +100,7 @@ export default function SuperAdminLedgerPage() {
                   setSelectedTenantId(e.target.value);
                   setPage(1);
                 }}
-                className="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs font-bold text-cyan-300 focus:outline-none focus:border-cyan-400"
+                className="bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-blue-600 focus:outline-none focus:border-blue-500 shadow-2xs"
               >
                 {tenants.map((t) => (
                   <option key={t.tenant.id} value={t.tenant.id}>
@@ -116,7 +116,7 @@ export default function SuperAdminLedgerPage() {
                   setFilterType(e.target.value);
                   setPage(1);
                 }}
-                className="bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-300 focus:outline-none focus:border-cyan-400"
+                className="bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500 shadow-2xs"
               >
                 <option value="ALL">All Event Types</option>
                 <option value="DEDUCTION">Exam Starts (-1 Deductions)</option>
@@ -127,24 +127,24 @@ export default function SuperAdminLedgerPage() {
           </div>
 
           {/* Ledger Table Card */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-6 shadow-xl">
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-2xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800 text-[11px] font-black uppercase text-slate-400 tracking-wider">
-                    <th className="py-3.5 px-4">Date & Time</th>
-                    <th className="py-3.5 px-4 text-center">Type</th>
-                    <th className="py-3.5 px-4 text-center">Credit Change</th>
-                    <th className="py-3.5 px-4">Transaction Memo / Description</th>
-                    <th className="py-3.5 px-4 text-center">Balance After</th>
-                    <th className="py-3.5 px-4 text-right">Initiator</th>
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-black uppercase text-slate-500 tracking-wider">
+                    <th className="py-3 px-4">Date & Time</th>
+                    <th className="py-3 px-4 text-center">Type</th>
+                    <th className="py-3 px-4 text-center">Credit Change</th>
+                    <th className="py-3 px-4">Transaction Memo / Description</th>
+                    <th className="py-3 px-4 text-center">Balance After</th>
+                    <th className="py-3 px-4 text-right">Initiator</th>
                   </tr>
                 </thead>
 
-                <tbody className="divide-y divide-slate-800/60 font-medium text-slate-300">
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                   {histories.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-12 text-slate-500 font-bold">
+                      <td colSpan={6} className="text-center py-12 text-slate-400 font-bold text-xs">
                         No credit ledger history found for this selection.
                       </td>
                     </tr>
@@ -154,8 +154,8 @@ export default function SuperAdminLedgerPage() {
                       const isAllocation = h.type === "ALLOCATION" || h.amount > 0;
 
                       return (
-                        <tr key={h.id} className="hover:bg-slate-800/40 transition">
-                          <td className="py-3.5 px-4 text-slate-400 font-mono text-[11px]">
+                        <tr key={h.id} className="hover:bg-slate-50/80 transition">
+                          <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px]">
                             {new Date(h.createdAt).toLocaleString()}
                           </td>
 
@@ -163,35 +163,35 @@ export default function SuperAdminLedgerPage() {
                             <span
                               className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
                                 h.type === "ALLOCATION"
-                                  ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-300"
+                                  ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                                   : h.type === "DEDUCTION"
-                                  ? "bg-amber-500/15 border-amber-500/30 text-amber-300"
-                                  : "bg-indigo-500/15 border-indigo-500/30 text-indigo-300"
+                                  ? "bg-amber-50 border-amber-200 text-amber-800"
+                                  : "bg-indigo-50 border-indigo-200 text-indigo-700"
                               }`}
                             >
-                              {h.type}
+                              {h.type === "DEDUCTION" ? "Exam Start" : h.type}
                             </span>
                           </td>
 
-                          <td className="py-3.5 px-4 text-center font-mono text-sm font-black">
+                          <td className="py-3.5 px-4 text-center font-mono text-xs font-black">
                             <span
                               className={`inline-flex items-center gap-0.5 ${
-                                isDeduction ? "text-amber-400" : "text-emerald-400"
+                                isDeduction ? "text-amber-600" : "text-emerald-600"
                               }`}
                             >
                               {h.amount > 0 ? `+${h.amount}` : h.amount}
                             </span>
                           </td>
 
-                          <td className="py-3.5 px-4 text-slate-200 font-bold">
+                          <td className="py-3.5 px-4 text-slate-900 font-bold">
                             {h.description}
                           </td>
 
-                          <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-300">
+                          <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-800">
                             {h.balanceAfter.toLocaleString()} Left
                           </td>
 
-                          <td className="py-3.5 px-4 text-right text-slate-400 text-[11px] font-semibold">
+                          <td className="py-3.5 px-4 text-right text-slate-500 text-[11px] font-semibold">
                             {h.adminName || "System"}
                           </td>
                         </tr>
@@ -204,7 +204,7 @@ export default function SuperAdminLedgerPage() {
 
             {/* Pagination Controls */}
             {totalRecords > 0 && (
-              <div className="pt-5 mt-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-400 font-bold">
+              <div className="pt-4 mt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-600 font-bold">
                 <div>
                   Showing {histories.length} of {totalRecords} credit transactions
                 </div>
@@ -213,19 +213,19 @@ export default function SuperAdminLedgerPage() {
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-700 cursor-pointer"
+                    className="p-2 rounded-xl bg-white border border-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 cursor-pointer shadow-2xs"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
 
-                  <span className="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-cyan-400 font-mono font-black">
+                  <span className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-blue-600 font-mono font-black shadow-2xs">
                     Page {page} of {totalPages}
                   </span>
 
                   <button
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages}
-                    className="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-700 cursor-pointer"
+                    className="p-2 rounded-xl bg-white border border-slate-200 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 cursor-pointer shadow-2xs"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
