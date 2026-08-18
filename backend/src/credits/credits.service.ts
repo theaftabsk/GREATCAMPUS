@@ -196,10 +196,16 @@ export class CreditsService {
   /**
    * Returns paginated Credit History ledger for a tenant
    */
-  async getCreditHistory(tenantId: string, page = 1, limit = 50, type?: string) {
+  async getCreditHistory(tenantId: string, page = 1, limit = 50, type?: string, search?: string) {
     const skip = (page - 1) * limit;
     const where: any = { tenantId };
     if (type && type !== 'ALL') where.type = type;
+    if (search && search.trim() !== '') {
+      where.OR = [
+        { description: { contains: search, mode: 'insensitive' } },
+        { adminName: { contains: search, mode: 'insensitive' } },
+      ];
+    }
 
     const [total, histories] = await Promise.all([
       this.prisma.creditHistory.count({ where }),
@@ -211,12 +217,58 @@ export class CreditsService {
       }),
     ]);
 
+    // Enrich logs with candidate and exam attempt info if candidateId is present
+    const candidateIds = histories.map((h) => h.candidateId).filter(Boolean) as string[];
+    const candidates = candidateIds.length > 0
+      ? await this.prisma.candidate.findMany({
+          where: { id: { in: candidateIds } },
+          include: {
+            assessment: { select: { name: true, slug: true } },
+            attempts: {
+              orderBy: { startedAt: 'desc' },
+              take: 1,
+              select: {
+                id: true,
+                status: true,
+                score: true,
+                totalPossibleScore: true,
+                percentage: true,
+                isPassed: true,
+                warningCount: true,
+                startedAt: true,
+                submittedAt: true,
+              },
+            },
+          },
+        })
+      : [];
+
+    const candidateMap = new Map(candidates.map((c) => [c.id, c]));
+
+    const enrichedHistories = histories.map((h) => {
+      const cand = h.candidateId ? candidateMap.get(h.candidateId) : null;
+      return {
+        ...h,
+        candidateDetails: cand
+          ? {
+              id: cand.id,
+              name: cand.name,
+              email: cand.email,
+              phone: cand.phone,
+              applicationId: cand.applicationId,
+              assessmentName: cand.assessment?.name,
+              latestAttempt: cand.attempts?.[0] || null,
+            }
+          : null,
+      };
+    });
+
     return {
       total,
       page,
       limit,
       totalPages: Math.ceil(total / limit) || 1,
-      histories,
+      histories: enrichedHistories,
     };
   }
 
