@@ -190,21 +190,29 @@ function AssessmentContent({ slug }: { slug: string }) {
               </div>
             )}
 
+            {tokenVerified && (
+              <div style={{ background: "#F0FDF4", border: "1.5px solid #BBF7D0", borderRadius: "12px", padding: "12px 16px", color: "#166534", fontSize: "13px", fontWeight: 700, display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
+                <ShieldCheck size={18} color="#16A34A" />
+                <span>Authenticated Candidate Record: Details are verified and locked to prevent data discrepancy.</span>
+              </div>
+            )}
+
             <form onSubmit={handleStart} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
               <div>
                 <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#1A2B40", marginBottom: "6px", textTransform: "uppercase" }}>
-                  Headstart Application ID *
+                  Headstart Application ID * {tokenVerified && <span style={{ color: "#16A34A", fontSize: "11px", fontWeight: 800 }}>(🔒 Verified)</span>}
                 </label>
                 <div style={{ position: "relative" }}>
                   <Hash size={16} color="#00AEEF" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }} />
                   <input
                     type="text"
                     required
+                    readOnly={tokenVerified}
                     placeholder="e.g. APP-882019"
                     value={formData.applicationId}
-                    onChange={(e) => setFormData({ ...formData, applicationId: e.target.value })}
+                    onChange={(e) => !tokenVerified && setFormData({ ...formData, applicationId: e.target.value })}
                     disabled={isAssessmentExpired || isAssessmentNotStarted}
-                    style={{ width: "100%", padding: "12px 14px 12px 42px", borderRadius: "10px", border: "1.5px solid #CBD5E1", fontSize: "14px", fontWeight: 600, color: "#0F172A" }}
+                    style={{ width: "100%", padding: "12px 14px 12px 42px", borderRadius: "10px", border: "1.5px solid #CBD5E1", fontSize: "14px", fontWeight: 600, color: "#0F172A", background: tokenVerified ? "#F8FAFC" : "white", cursor: tokenVerified ? "default" : "text" }}
                   />
                 </div>
               </div>
@@ -212,54 +220,57 @@ function AssessmentContent({ slug }: { slug: string }) {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px" }}>
                 <div>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#1A2B40", marginBottom: "6px", textTransform: "uppercase" }}>
-                    Candidate Name *
+                    Candidate Name * {tokenVerified && <span style={{ color: "#16A34A", fontSize: "11px", fontWeight: 800 }}>(🔒 Verified)</span>}
                   </label>
                   <div style={{ position: "relative" }}>
                     <User size={16} color="#00AEEF" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }} />
                     <input
                       type="text"
                       required
+                      readOnly={tokenVerified}
                       placeholder="Full Name"
                       value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      onChange={(e) => !tokenVerified && setFormData({ ...formData, name: e.target.value })}
                       disabled={isAssessmentExpired || isAssessmentNotStarted}
-                      style={{ width: "100%", padding: "12px 14px 12px 42px", borderRadius: "10px", border: "1.5px solid #CBD5E1", fontSize: "14px", fontWeight: 600, color: "#0F172A" }}
+                      style={{ width: "100%", padding: "12px 14px 12px 42px", borderRadius: "10px", border: "1.5px solid #CBD5E1", fontSize: "14px", fontWeight: 600, color: "#0F172A", background: tokenVerified ? "#F8FAFC" : "white", cursor: tokenVerified ? "default" : "text" }}
                     />
                   </div>
                 </div>
 
                 <div>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#1A2B40", marginBottom: "6px", textTransform: "uppercase" }}>
-                    Email Address *
+                    Email Address * {tokenVerified && <span style={{ color: "#16A34A", fontSize: "11px", fontWeight: 800 }}>(🔒 Verified)</span>}
                   </label>
                   <div style={{ position: "relative" }}>
                     <Mail size={16} color="#00AEEF" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }} />
                     <input
                       type="email"
                       required
+                      readOnly={tokenVerified}
                       placeholder="candidate@example.com"
                       value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      onChange={(e) => !tokenVerified && setFormData({ ...formData, email: e.target.value })}
                       disabled={isAssessmentExpired || isAssessmentNotStarted}
-                      style={{ width: "100%", padding: "12px 14px 12px 42px", borderRadius: "10px", border: "1.5px solid #CBD5E1", fontSize: "14px", fontWeight: 600, color: "#0F172A" }}
+                      style={{ width: "100%", padding: "12px 14px 12px 42px", borderRadius: "10px", border: "1.5px solid #CBD5E1", fontSize: "14px", fontWeight: 600, color: "#0F172A", background: tokenVerified ? "#F8FAFC" : "white", cursor: tokenVerified ? "default" : "text" }}
                     />
                   </div>
                 </div>
 
                 <div>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#1A2B40", marginBottom: "6px", textTransform: "uppercase" }}>
-                    Phone Number *
+                    Phone Number * {tokenVerified && <span style={{ color: "#16A34A", fontSize: "11px", fontWeight: 800 }}>(🔒 Verified)</span>}
                   </label>
                   <div style={{ position: "relative" }}>
                     <Phone size={16} color="#00AEEF" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }} />
                     <input
                       type="tel"
                       required
+                      readOnly={tokenVerified}
                       placeholder="Mobile Number"
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      onChange={(e) => !tokenVerified && setFormData({ ...formData, phone: e.target.value })}
                       disabled={isAssessmentExpired || isAssessmentNotStarted}
-                      style={{ width: "100%", padding: "12px 14px 12px 42px", borderRadius: "10px", border: "1.5px solid #CBD5E1", fontSize: "14px", fontWeight: 600, color: "#0F172A" }}
+                      style={{ width: "100%", padding: "12px 14px 12px 42px", borderRadius: "10px", border: "1.5px solid #CBD5E1", fontSize: "14px", fontWeight: 600, color: "#0F172A", background: tokenVerified ? "#F8FAFC" : "white", cursor: tokenVerified ? "default" : "text" }}
                     />
                   </div>
                 </div>
