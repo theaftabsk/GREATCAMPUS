@@ -533,6 +533,10 @@ export default function AssessmentDashboardPage() {
                   .slice((currentPage - 1) * pageSize, Math.min(filteredCandidates.length, currentPage * pageSize))
                   .map((c: any) => {
                   const att = c.attempt;
+                  const isLocked = c.status === "LOCKED" || att?.status === "LOCKED";
+                  const isCompleted = c.status === "COMPLETED" || att?.status === "COMPLETED";
+                  const isInProgress = !isLocked && !isCompleted && (c.status === "IN_PROGRESS" || att?.status === "IN_PROGRESS");
+                  const effectiveStatus = isLocked ? "LOCKED" : isCompleted ? "COMPLETED" : isInProgress ? "IN_PROGRESS" : "REGISTERED";
                   const isPassed = att?.isPassed;
 
                   return (
@@ -552,10 +556,10 @@ export default function AssessmentDashboardPage() {
                           borderRadius: "6px",
                           fontSize: "11px",
                           fontWeight: 800,
-                          background: c.status === "COMPLETED" ? "#DCFCE7" : c.status === "LOCKED" ? "#FEE2E2" : c.status === "IN_PROGRESS" ? "#FEF3C7" : "#F1F5F9",
-                          color: c.status === "COMPLETED" ? "#166534" : c.status === "LOCKED" ? "#991B1B" : c.status === "IN_PROGRESS" ? "#92400E" : "#475569"
+                          background: effectiveStatus === "COMPLETED" ? "#DCFCE7" : effectiveStatus === "LOCKED" ? "#FEE2E2" : effectiveStatus === "IN_PROGRESS" ? "#FEF3C7" : "#F1F5F9",
+                          color: effectiveStatus === "COMPLETED" ? "#166534" : effectiveStatus === "LOCKED" ? "#991B1B" : effectiveStatus === "IN_PROGRESS" ? "#92400E" : "#475569"
                         }}>
-                          {c.status}
+                          {effectiveStatus === "LOCKED" ? "🔒 LOCKED" : effectiveStatus}
                         </span>
                       </td>
 
@@ -620,7 +624,7 @@ export default function AssessmentDashboardPage() {
                             <FileText size={12} /> Report
                           </button>
 
-                          {c.status === "LOCKED" && (
+                          {isLocked && (
                             <button
                               onClick={() => handleUnlockCandidate(c.id, c.name)}
                               title="Unlock Candidate"

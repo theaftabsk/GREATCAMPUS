@@ -232,11 +232,26 @@ export default function CandidateTestEngine() {
       reportProctoringViolation("COPY_PASTE", `Copy/Paste attempted: ${e.type}`);
     };
 
+    const onPageExit = () => {
+      if (!attemptId || disqualified || submitting) return;
+      const baseUrl = getApiBaseUrl();
+      const payload = JSON.stringify({
+        attemptId,
+        eventType: "TAB_CLOSE",
+        details: `Candidate closed exam window/tab at ${new Date().toLocaleTimeString()}`,
+      });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(`${baseUrl}/api/v1/candidates/log-proctoring`, new Blob([payload], { type: "application/json" }));
+      }
+    };
+
     document.addEventListener("visibilitychange", onVisibilityChange);
     document.addEventListener("fullscreenchange", onFullscreenChange);
     document.addEventListener("contextmenu", onContextMenu);
     document.addEventListener("copy", onCopyPaste);
     document.addEventListener("paste", onCopyPaste);
+    window.addEventListener("pagehide", onPageExit);
+    window.addEventListener("beforeunload", onPageExit);
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange);
@@ -244,8 +259,10 @@ export default function CandidateTestEngine() {
       document.removeEventListener("contextmenu", onContextMenu);
       document.removeEventListener("copy", onCopyPaste);
       document.removeEventListener("paste", onCopyPaste);
+      window.removeEventListener("pagehide", onPageExit);
+      window.removeEventListener("beforeunload", onPageExit);
     };
-  }, [loading, attemptId, disqualified]);
+  }, [loading, attemptId, disqualified, submitting]);
 
   const fmt = (s: number) =>
     `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;

@@ -685,10 +685,13 @@ export class CandidatesService {
 
     const maxWarnings = Math.max(3, attempt.maxProctorWarningsSnapshot || 3);
     const newWarningCount = isDuplicateBurst ? attempt.warningCount : attempt.warningCount + 1;
-    const isDisqualified = newWarningCount >= maxWarnings;
-    const lockReason = isDisqualified
-      ? `Locked after ${newWarningCount} proctoring violations. Last event: ${eventType}`
-      : undefined;
+    const isTabClose = eventType === 'TAB_CLOSE' || eventType === 'WINDOW_CLOSE';
+    const isDisqualified = (newWarningCount >= maxWarnings) || isTabClose;
+    const lockReason = isTabClose
+      ? `Exam LOCKED: Candidate closed the browser window/tab directly at ${new Date().toLocaleTimeString()}`
+      : isDisqualified
+        ? `Locked after ${newWarningCount} proctoring violations. Last event: ${eventType}`
+        : undefined;
 
     let sessionSeconds = 0;
     if (attempt.startedAt) {
@@ -1972,14 +1975,22 @@ export class CandidatesService {
     let resultStatus = 'NOT STARTED';
 
     if (latestAttempt) {
-      if (latestAttempt.status === 'LOCKED') resultStatus = 'LOCKED';
-      else if (latestAttempt.status === 'DISQUALIFIED') resultStatus = 'DISQUALIFIED';
-      else if (latestAttempt.isPassed || scorePct >= (latestAttempt.passingPercentageSnapshot || 50)) {
+      if (latestAttempt.status === 'LOCKED' || candidate.status === 'LOCKED') {
+        resultStatus = 'LOCKED';
+      } else if (latestAttempt.status === 'DISQUALIFIED') {
+        resultStatus = 'DISQUALIFIED';
+      } else if (latestAttempt.isPassed || scorePct >= (latestAttempt.passingPercentageSnapshot || 50)) {
         resultStatus = 'QUALIFIED (PASS)';
       } else if (latestAttempt.status === 'COMPLETED') {
         resultStatus = 'NOT QUALIFIED (FAIL)';
       } else {
-        resultStatus = 'IN PROGRESS';
+        const elapsedSec = latestAttempt.startedAt ? Math.floor((Date.now() - new Date(latestAttempt.startedAt).getTime()) / 1000) : 0;
+        const maxAllowedSec = (candidate.assessment?.durationMins || 45) * 60;
+        if (elapsedSec > maxAllowedSec) {
+          resultStatus = 'INCOMPLETE (TIME EXPIRED)';
+        } else {
+          resultStatus = 'IN PROGRESS';
+        }
       }
     }
 
