@@ -508,6 +508,11 @@ export class CandidatesService {
       return selNorm === corNorm;
     };
 
+    // Delete any draft submissions recorded during real-time save to ensure exact 1 submission per question
+    await this.prisma.submission.deleteMany({
+      where: { attemptId: attempt.id },
+    });
+
     for (const aq of attempt.attemptQuestions) {
       const q = aq.question;
       const ansObj = answers[q.id] || answers[aq.id] || answers[aq.questionId];
@@ -1997,15 +2002,30 @@ export class CandidatesService {
       { order: 6, name: 'Sales Orientation & Situational Judgement', range: 'Q51–Q60', max: 10, scored: 0 },
     ];
 
-    const submissions = latestAttempt?.submissions || [];
-    const sortedSubs = [...submissions].sort((a: any, b: any) => {
+    const rawSubmissions = latestAttempt?.submissions || [];
+    // Strict deduplication by questionId and question text so each of the 60 questions appears exactly once
+    const seenQuestionIds = new Set<string>();
+    const seenQuestionTexts = new Set<string>();
+    const uniqueSubs: any[] = [];
+
+    for (const sub of rawSubmissions) {
+      const qId = sub.questionId || sub.question?.id;
+      const qText = (sub.question?.question || '').trim().toLowerCase();
+      if (qId && seenQuestionIds.has(qId)) continue;
+      if (qText && seenQuestionTexts.has(qText)) continue;
+      if (qId) seenQuestionIds.add(qId);
+      if (qText) seenQuestionTexts.add(qText);
+      uniqueSubs.push(sub);
+    }
+
+    const sortedSubs = uniqueSubs.sort((a: any, b: any) => {
       const qA = parseInt(a.question?.id?.replace(/\D/g, '')) || 0;
       const qB = parseInt(b.question?.id?.replace(/\D/g, '')) || 0;
       if ((a.question?.sectionOrder || 0) !== (b.question?.sectionOrder || 0)) {
         return (a.question?.sectionOrder || 0) - (b.question?.sectionOrder || 0);
       }
       return qA - qB;
-    });
+    }).slice(0, 60);
 
     sortedSubs.forEach((sub: any, idx: number) => {
       const secIdx = Math.min(5, Math.floor(idx / 10));
