@@ -676,7 +676,10 @@ export class CandidatesService {
 
   // ─── PROCTORING ────────────────────────────────────────────────────────────
   async logProctoringEvent(attemptId: string, eventType: string, details?: string) {
-    const attempt = await this.prisma.examAttempt.findUnique({ where: { id: attemptId } });
+    const attempt = await this.prisma.examAttempt.findUnique({
+      where: { id: attemptId },
+      include: { candidate: { include: { assessment: true } } },
+    });
     if (!attempt) throw new NotFoundException('Exam attempt not found.');
 
     // Check if a warning was already logged in the last 3.5 seconds (avoids double counting simultaneous TAB_SWITCH + FULLSCREEN_EXIT)
@@ -692,7 +695,7 @@ export class CandidatesService {
       data: { attemptId: attempt.id, eventType, details },
     });
 
-    const maxWarnings = Math.max(3, attempt.maxProctorWarningsSnapshot || 3);
+    const maxWarnings = attempt.candidate?.assessment?.maxProctorWarnings || attempt.maxProctorWarningsSnapshot || 3;
     const newWarningCount = isDuplicateBurst ? attempt.warningCount : attempt.warningCount + 1;
     const isTabClose = eventType === 'TAB_CLOSE' || eventType === 'WINDOW_CLOSE';
     const isDisqualified = (newWarningCount >= maxWarnings) || isTabClose;
@@ -1084,7 +1087,20 @@ export class CandidatesService {
     };
 
     if (data.id) {
-      return this.prisma.assessment.update({ where: { id: data.id }, data: payload });
+      const updated = await this.prisma.assessment.update({ where: { id: data.id }, data: payload });
+      // Synchronize in-progress and locked attempts so candidate sessions immediately reflect new duration, passing percentage, and max warnings
+      await this.prisma.examAttempt.updateMany({
+        where: {
+          candidate: { assessmentId: data.id },
+          status: { in: ['IN_PROGRESS', 'LOCKED'] },
+        },
+        data: {
+          durationMinsSnapshot: payload.durationMins,
+          passingPercentageSnapshot: payload.passingPercentage,
+          maxProctorWarningsSnapshot: payload.maxProctorWarnings,
+        },
+      });
+      return updated;
     }
 
     return this.prisma.assessment.create({
@@ -1431,6 +1447,7 @@ export class CandidatesService {
           percentage: latestAttempt.percentage,
           isPassed: latestAttempt.isPassed,
           warningCount: latestAttempt.warningCount,
+          maxProctorWarnings: assessment.maxProctorWarnings || latestAttempt.maxProctorWarningsSnapshot || 3,
           startedAt: latestAttempt.startedAt,
           submittedAt: latestAttempt.submittedAt,
         } : null,

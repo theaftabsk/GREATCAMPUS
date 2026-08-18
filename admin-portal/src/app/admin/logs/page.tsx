@@ -319,14 +319,14 @@ export default function ExamActivityLogsPage() {
                         {attempt ? (
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-xs font-bold ${
-                              attempt.warningCount >= 3
+                              attempt.warningCount >= (attempt.maxProctorWarningsSnapshot || 3)
                                 ? "bg-rose-50 text-rose-700 border border-rose-200"
                                 : attempt.warningCount > 0
                                 ? "bg-amber-50 text-amber-700 border border-amber-200"
                                 : "bg-slate-50 text-slate-600"
                             }`}
                           >
-                            {attempt.warningCount} / 3
+                            {attempt.warningCount} / {attempt.maxProctorWarningsSnapshot || 3}
                           </span>
                         ) : (
                           <span className="text-slate-300 font-mono">—</span>

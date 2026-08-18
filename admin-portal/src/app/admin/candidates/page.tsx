@@ -331,7 +331,7 @@ export default function CandidatesManagementPage() {
                   const isLocked = c.status === "LOCKED" || c.attempt?.status === "LOCKED";
                   const isCompleted = c.status === "COMPLETED";
                   const warnings = c.attempt?.warningCount || 0;
-                  const maxWarnings = c.attempt?.maxProctorWarningsSnapshot || 3;
+                  const maxWarnings = c.assessment?.maxProctorWarnings || c.attempt?.maxProctorWarningsSnapshot || 3;
 
                   return (
                     <tr

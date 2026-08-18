@@ -591,9 +591,9 @@ export default function AssessmentDashboardPage() {
                       <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
                         {att ? (
                           <span style={{ fontWeight: 700, color: att.warningCount > 0 ? "#DC2626" : "#64748B", fontSize: "12px" }}>
-                            {att.warningCount} / 3
+                            {att.warningCount} / {att.maxProctorWarnings || assessment.maxProctorWarnings || 3}
                           </span>
-                        ) : "0 / 3"}
+                        ) : `0 / ${assessment.maxProctorWarnings || 3}`}
                       </td>
 
                       <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>

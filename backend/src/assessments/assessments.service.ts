@@ -126,10 +126,25 @@ export class AssessmentsService {
     };
 
     if (data.id) {
-      return this.prisma.assessment.update({
+      const updated = await this.prisma.assessment.update({
         where: { id: data.id },
         data: payload,
       });
+
+      // Synchronize in-progress and locked attempts so candidate sessions immediately reflect new duration, passing percentage, and max warnings
+      await this.prisma.examAttempt.updateMany({
+        where: {
+          candidate: { assessmentId: data.id },
+          status: { in: ['IN_PROGRESS', 'LOCKED'] },
+        },
+        data: {
+          durationMinsSnapshot: payload.durationMins,
+          passingPercentageSnapshot: payload.passingPercentage,
+          maxProctorWarningsSnapshot: payload.maxProctorWarnings,
+        },
+      });
+
+      return updated;
     }
 
     return this.prisma.assessment.create({
