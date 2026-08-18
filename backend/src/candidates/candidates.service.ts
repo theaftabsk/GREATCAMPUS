@@ -157,7 +157,7 @@ export class CandidatesService {
       });
     }
 
-    return this.prisma.candidate.create({
+    const newCandidate = await this.prisma.candidate.create({
       data: {
         name: data.name,
         email: data.email,
@@ -168,6 +168,13 @@ export class CandidatesService {
       },
       include: { assessment: true },
     });
+
+    // Auto-dispatch invitation email
+    this.emailService
+      .sendCandidateInvitation(newCandidate.id)
+      .catch((err) => this.logger.error(`[Register Auto Email Error] ${err.message}`));
+
+    return newCandidate;
   }
 
   // ─── VERIFY AND START EXAM (Strict Email & Assignment Authorization) ───────
@@ -1415,9 +1422,27 @@ export class CandidatesService {
       });
     }
 
+    // Auto-dispatch invitation emails asynchronously in background
+    if (createdCandidates.length > 0) {
+      const candidateIds = createdCandidates.map((c) => c.id);
+      this.logger.log(`[Auto Email Dispatch] Triggering auto email invitations for ${candidateIds.length} candidate(s)...`);
+      
+      this.emailService
+        .sendBulkInvitations({
+          assessmentId,
+          candidateIds,
+        })
+        .then((res) => {
+          this.logger.log(`[Auto Email Dispatch Complete] Sent: ${res.sent}, Failed: ${res.failed}`);
+        })
+        .catch((err) => {
+          this.logger.error(`[Auto Email Dispatch Error] ${err.message}`);
+        });
+    }
+
     return {
       success: true,
-      message: `Successfully processed ${candidates.length} candidates. Added: ${createdCandidates.length}, Duplicates skipped: ${duplicateList.length}.`,
+      message: `Successfully processed ${candidates.length} candidates. Added: ${createdCandidates.length}, Duplicates skipped: ${duplicateList.length}. Invitation emails are being dispatched automatically.`,
       createdCount: createdCandidates.length,
       duplicateCount: duplicateList.length,
       createdCandidates,
