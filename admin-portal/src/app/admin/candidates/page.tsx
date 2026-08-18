@@ -256,7 +256,7 @@ export default function CandidatesManagementPage() {
           <div className="flex items-center space-x-1.5 overflow-x-auto py-1">
             {[
               { id: "ALL", label: `All (${candidates.length})` },
-              { id: "LOCKED", label: `🔒 LOCKED (${lockedCount})` },
+              { id: "LOCKED", label: `Locked (${lockedCount})` },
               { id: "COMPLETED", label: `Completed (${completedCount})` },
               { id: "IN_PROGRESS", label: `In Progress (${inProgressCount})` },
               { id: "REGISTERED", label: `Registered` },
@@ -382,7 +382,7 @@ export default function CandidatesManagementPage() {
                       <td className="py-3.5 px-4 text-center">
                         {isLocked ? (
                           <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-red-700 bg-red-100 px-2 py-0.5 rounded-full border border-red-200">
-                            <Lock className="w-3 h-3" /> 🔒 LOCKED
+                            <Lock className="w-3 h-3" /> LOCKED
                           </span>
                         ) : c.status === "COMPLETED" ? (
                           <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">

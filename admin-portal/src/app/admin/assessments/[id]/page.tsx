@@ -380,8 +380,8 @@ export default function AssessmentDashboardPage() {
               <span style={{ padding: "4px 10px", borderRadius: "8px", background: assessment.status === "ACTIVE" ? "#DCFCE7" : "#F1F5F9", color: assessment.status === "ACTIVE" ? "#166534" : "#475569", fontSize: "11px", fontWeight: 800 }}>
                 {assessment.status}
               </span>
-              <span style={{ fontSize: "12px", color: "#64748B", fontWeight: 600 }}>
-                ⏱️ {assessment.durationMins} Mins • 60 Questions • Passing: {assessment.passingPercentage}%
+              <span style={{ fontSize: "12px", color: "#64748B", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                <Clock size={13} style={{ color: "#64748B" }} /> {assessment.durationMins} Mins • 60 Questions • Passing: {assessment.passingPercentage}%
               </span>
             </div>
             <h1 style={{ fontSize: "22px", fontWeight: 900, color: "#0F172A", margin: "0 0 6px" }}>{assessment.name}</h1>
@@ -557,9 +557,12 @@ export default function AssessmentDashboardPage() {
                           fontSize: "11px",
                           fontWeight: 800,
                           background: effectiveStatus === "COMPLETED" ? "#DCFCE7" : effectiveStatus === "LOCKED" ? "#FEE2E2" : effectiveStatus === "IN_PROGRESS" ? "#FEF3C7" : "#F1F5F9",
-                          color: effectiveStatus === "COMPLETED" ? "#166534" : effectiveStatus === "LOCKED" ? "#991B1B" : effectiveStatus === "IN_PROGRESS" ? "#92400E" : "#475569"
+                          color: effectiveStatus === "COMPLETED" ? "#166534" : effectiveStatus === "LOCKED" ? "#991B1B" : effectiveStatus === "IN_PROGRESS" ? "#92400E" : "#475569",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
                         }}>
-                          {effectiveStatus === "LOCKED" ? "🔒 LOCKED" : effectiveStatus}
+                          {effectiveStatus === "LOCKED" ? <><Lock size={11} /> LOCKED</> : effectiveStatus}
                         </span>
                       </td>
 
@@ -923,10 +926,18 @@ export default function AssessmentDashboardPage() {
               >
                 {emailProgress.status === "COMPLETED" ? (
                   <div>
-                    <div style={{ fontWeight: 800, marginBottom: "4px" }}>
-                      {emailProgress.sent > 0
-                        ? `✅ Dispatched: ${emailProgress.sent} Sent • ${emailProgress.failed} Failed (Total: ${emailProgress.total})`
-                        : `❌ Dispatch Failed: 0 Sent • ${emailProgress.failed} Failed (Total: ${emailProgress.total})`}
+                    <div style={{ fontWeight: 800, marginBottom: "4px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      {emailProgress.sent > 0 ? (
+                        <>
+                          <CheckCircle2 size={14} style={{ color: "#166534" }} />
+                          Dispatched: {emailProgress.sent} Sent • {emailProgress.failed} Failed (Total: {emailProgress.total})
+                        </>
+                      ) : (
+                        <>
+                          <XCircle size={14} style={{ color: "#991B1B" }} />
+                          Dispatch Failed: 0 Sent • {emailProgress.failed} Failed (Total: {emailProgress.total})
+                        </>
+                      )}
                     </div>
                     {emailProgress.message && (
                       <div style={{ fontSize: "11px", fontWeight: 600, opacity: 0.9 }}>
@@ -934,13 +945,17 @@ export default function AssessmentDashboardPage() {
                       </div>
                     )}
                     {emailProgress.failed > 0 && emailProgress.sent === 0 && (
-                      <div style={{ fontSize: "11px", marginTop: "6px", color: "#B91C1C", fontWeight: 700 }}>
-                        ⚠️ SMTP is not connected. Go to <a href="/admin/settings" style={{ textDecoration: "underline", color: "#0284C7" }}>System Settings</a> to configure your SMTP credentials.
+                      <div style={{ fontSize: "11px", marginTop: "6px", color: "#B91C1C", fontWeight: 700, display: "flex", alignItems: "center", gap: "5px" }}>
+                        <AlertTriangle size={13} style={{ color: "#DC2626" }} />
+                        SMTP is not connected. Go to <a href="/admin/settings" style={{ textDecoration: "underline", color: "#0284C7" }}>System Settings</a> to configure your SMTP credentials.
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div>⏳ {emailProgress.message}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <RefreshCw size={13} className="animate-spin" style={{ color: "#0369A1" }} />
+                    {emailProgress.message}
+                  </div>
                 )}
               </div>
             )}

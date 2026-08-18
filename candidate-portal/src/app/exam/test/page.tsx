@@ -7,7 +7,7 @@ import CameraProctor from "@/components/CameraProctor";
 import "../exam.css";
 import {
   Clock, ChevronLeft, ChevronRight, Bookmark, CheckCircle2,
-  AlertTriangle, Grid, X, FileText, ShieldAlert, BookOpen, AlertOctagon
+  AlertTriangle, Grid, X, FileText, ShieldAlert, BookOpen, AlertOctagon, RotateCcw
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 
@@ -365,7 +365,8 @@ export default function CandidateTestEngine() {
               disabled={checkingUnlock}
               style={{ padding: "12px 24px", background: "#2563EB", color: "white", fontWeight: 800, fontSize: "13px", borderRadius: "12px", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
             >
-              {checkingUnlock ? "Checking..." : "🔄 Check Status & Resume Exam"}
+              <RotateCcw size={14} className={checkingUnlock ? "animate-spin" : ""} />
+              {checkingUnlock ? "Checking Approval..." : "Check Status & Resume Exam"}
             </button>
             <button
               onClick={() => {

@@ -319,7 +319,7 @@ export default function AdminSettingsPage() {
               onClick={handleTestSmtp}
               style={{ padding: "8px 18px", borderRadius: "8px", background: "#003F72", color: "white", border: "none", fontWeight: 800, fontSize: "12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
             >
-              <Zap size={13} /> {testingSmtp ? "Testing Connection..." : "⚡ Test SMTP Connection"}
+              <Zap size={13} /> {testingSmtp ? "Testing Connection..." : "Test SMTP Connection"}
             </button>
           </div>
 

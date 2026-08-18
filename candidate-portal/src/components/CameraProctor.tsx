@@ -221,9 +221,6 @@ export default function CameraProctor({
     faceStatus === "FACE_OK" ? "rgba(22,101,52,0.92)" :
     faceStatus === "MULTIPLE_FACES" ? "rgba(146,64,14,0.92)" : "rgba(185,28,28,0.92)";
 
-  const bannerText =
-    faceStatus === "FACE_OK" ? "✅ Live Monitoring" :
-    faceStatus === "MULTIPLE_FACES" ? "⚠️ Multiple Faces" : "🚨 FACE ALERT";
 
   return (
     <>

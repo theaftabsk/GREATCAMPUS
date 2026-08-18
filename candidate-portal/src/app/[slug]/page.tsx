@@ -200,7 +200,7 @@ function AssessmentContent({ slug }: { slug: string }) {
             <form onSubmit={handleStart} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
               <div>
                 <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#1A2B40", marginBottom: "6px", textTransform: "uppercase" }}>
-                  Headstart Application ID * {tokenVerified && <span style={{ color: "#16A34A", fontSize: "11px", fontWeight: 800 }}>(🔒 Verified)</span>}
+                  Headstart Application ID * {tokenVerified && <span style={{ color: "#16A34A", fontSize: "11px", fontWeight: 800, display: "inline-flex", alignItems: "center", gap: "3px" }}><CheckCircle2 size={11} /> (Verified)</span>}
                 </label>
                 <div style={{ position: "relative" }}>
                   <Hash size={16} color="#00AEEF" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }} />
@@ -220,7 +220,7 @@ function AssessmentContent({ slug }: { slug: string }) {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px" }}>
                 <div>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#1A2B40", marginBottom: "6px", textTransform: "uppercase" }}>
-                    Candidate Name * {tokenVerified && <span style={{ color: "#16A34A", fontSize: "11px", fontWeight: 800 }}>(🔒 Verified)</span>}
+                    Candidate Name * {tokenVerified && <span style={{ color: "#16A34A", fontSize: "11px", fontWeight: 800, display: "inline-flex", alignItems: "center", gap: "3px" }}><CheckCircle2 size={11} /> (Verified)</span>}
                   </label>
                   <div style={{ position: "relative" }}>
                     <User size={16} color="#00AEEF" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }} />
@@ -239,7 +239,7 @@ function AssessmentContent({ slug }: { slug: string }) {
 
                 <div>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#1A2B40", marginBottom: "6px", textTransform: "uppercase" }}>
-                    Email Address * {tokenVerified && <span style={{ color: "#16A34A", fontSize: "11px", fontWeight: 800 }}>(🔒 Verified)</span>}
+                    Email Address * {tokenVerified && <span style={{ color: "#16A34A", fontSize: "11px", fontWeight: 800, display: "inline-flex", alignItems: "center", gap: "3px" }}><CheckCircle2 size={11} /> (Verified)</span>}
                   </label>
                   <div style={{ position: "relative" }}>
                     <Mail size={16} color="#00AEEF" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }} />
@@ -258,7 +258,7 @@ function AssessmentContent({ slug }: { slug: string }) {
 
                 <div>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: 800, color: "#1A2B40", marginBottom: "6px", textTransform: "uppercase" }}>
-                    Phone Number * {tokenVerified && <span style={{ color: "#16A34A", fontSize: "11px", fontWeight: 800 }}>(🔒 Verified)</span>}
+                    Phone Number * {tokenVerified && <span style={{ color: "#16A34A", fontSize: "11px", fontWeight: 800, display: "inline-flex", alignItems: "center", gap: "3px" }}><CheckCircle2 size={11} /> (Verified)</span>}
                   </label>
                   <div style={{ position: "relative" }}>
                     <Phone size={16} color="#00AEEF" style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)" }} />

@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   Mail, RefreshCw, Search, CheckCircle2, AlertTriangle,
   RotateCcw, Settings, Send, Clock, ShieldCheck, Filter,
-  AlertCircle, ChevronRight, Info, ExternalLink
+  AlertCircle, ChevronRight, Info, ExternalLink, HelpCircle
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 import ToastContainer, { ToastMessage } from "@/components/Toast";
@@ -303,10 +303,10 @@ export default function EmailAuditPage() {
                         {log.errorMessage && (
                           <div
                             onClick={() => setSelectedErrorLog(log)}
-                            style={{ fontSize: "11px", color: "#B91C1C", marginTop: "4px", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline" }}
+                            style={{ fontSize: "11px", color: "#B91C1C", marginTop: "4px", maxWidth: "220px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer", textDecoration: "underline", display: "inline-flex", alignItems: "center", gap: "4px" }}
                             title="Click to view full error detail"
                           >
-                            ⚠️ {log.errorMessage}
+                            <AlertTriangle size={11} style={{ color: "#DC2626" }} /> {log.errorMessage}
                           </div>
                         )}
                       </div>
@@ -351,8 +351,11 @@ export default function EmailAuditPage() {
               {selectedErrorLog.errorMessage || "Unknown error"}
             </div>
 
-            <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: "10px", padding: "12px", fontSize: "12px", color: "#1E40AF", marginBottom: "18px" }}>
-              💡 <strong>How to fix:</strong> If you are using Gmail SMTP (`smtp.gmail.com`), generate an <strong>App Password</strong> in your Google Account security settings and enter it in <Link href="/admin/settings" style={{ color: "#003F72", fontWeight: 800, textDecoration: "underline" }}>Settings → SMTP Configuration</Link>.
+            <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: "10px", padding: "12px", fontSize: "12px", color: "#1E40AF", marginBottom: "18px", display: "flex", alignItems: "flex-start", gap: "8px" }}>
+              <HelpCircle size={16} style={{ color: "#2563EB", flexShrink: 0, marginTop: "1px" }} />
+              <div>
+                <strong>How to fix:</strong> If you are using Gmail SMTP (`smtp.gmail.com`), generate an <strong>App Password</strong> in your Google Account security settings and enter it in <Link href="/admin/settings" style={{ color: "#003F72", fontWeight: 800, textDecoration: "underline" }}>Settings → SMTP Configuration</Link>.
+              </div>
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
