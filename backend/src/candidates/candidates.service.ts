@@ -815,7 +815,11 @@ export class CandidatesService {
       where: { id },
       include: {
         assessment: true,
-        attempts: true,
+        attempts: {
+          include: {
+            screenshots: true,
+          },
+        },
       },
     });
     if (!candidate) throw new NotFoundException('Candidate not found.');
@@ -823,6 +827,26 @@ export class CandidatesService {
     const attemptIds = candidate.attempts.map((a) => a.id);
 
     if (attemptIds.length > 0) {
+      // 0. Physically delete proctoring screenshot files from disk
+      for (const att of candidate.attempts) {
+        if (att.screenshots && att.screenshots.length > 0) {
+          for (const ss of att.screenshots) {
+            try {
+              if (ss.imageUrl) {
+                const cleanRel = ss.imageUrl.replace(/^\//, '');
+                const filePath = path.join(process.cwd(), cleanRel);
+                if (fs.existsSync(filePath)) {
+                  fs.unlinkSync(filePath);
+                  this.logger.log(`[Reset] Deleted proctoring screenshot file: ${filePath}`);
+                }
+              }
+            } catch (err: any) {
+              this.logger.warn(`[Reset] Could not delete screenshot file: ${err.message}`);
+            }
+          }
+        }
+      }
+
       // 1. Delete associated submissions
       await this.prisma.submission.deleteMany({
         where: { attemptId: { in: attemptIds } },
