@@ -227,20 +227,21 @@ export default function CameraProctor({
       {/* Hidden canvas for screenshot capture */}
       <canvas ref={canvasRef} style={{ display: "none" }} />
 
-      {/* PIP Camera Badge (bottom-right) */}
-      <div style={{
-        position: "fixed", bottom: "20px", right: "20px", zIndex: 9999,
-        width: "164px", borderRadius: "14px", overflow: "hidden",
-        background: "#0F172A", boxShadow: "0 10px 32px rgba(0,0,0,0.4)",
-        border: `2.5px solid ${borderColor}`,
-        transition: "border-color 0.25s",
-      }}>
+      {/* PIP Camera Badge (Responsive with class nb-camera-pip) */}
+      <div
+        className="nb-camera-pip"
+        style={{
+          border: `2.5px solid ${borderColor}`,
+          transition: "border-color 0.25s",
+        }}
+      >
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          style={{ width: "100%", height: "120px", objectFit: "cover", transform: "scaleX(-1)", display: "block" }}
+          className="nb-camera-video"
+          style={{ transform: "scaleX(-1)", display: "block" }}
         />
 
         {/* Model loading spinner overlay */}

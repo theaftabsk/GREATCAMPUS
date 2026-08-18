@@ -1632,3 +1632,211 @@ body {
   font-weight: 800;
 }
 
+/* ===================================================
+   RESPONSIVE CAMERA PROCTOR PIP WIDGET
+   =================================================== */
+.nb-camera-pip {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  width: 160px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #0F172A;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.4);
+}
+
+.nb-camera-video {
+  width: 100%;
+  height: 115px;
+  object-fit: cover;
+}
+
+/* ===================================================
+   MOBILE & TABLET RESPONSIVE MEDIA QUERIES (<= 768px)
+   =================================================== */
+@media (max-width: 768px) {
+  /* PIP Camera Widget on Mobile: Compact & Non-Intrusive */
+  .nb-camera-pip {
+    top: 68px;
+    right: 12px;
+    bottom: auto;
+    width: 105px;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  }
+
+  .nb-camera-video {
+    height: 72px;
+  }
+
+  /* Compact Navbar */
+  .nb-navbar {
+    height: 60px !important;
+  }
+
+  .nb-navbar-inner {
+    padding: 0 12px !important;
+  }
+
+  .hidden-mobile {
+    display: none !important;
+  }
+
+  .nb-candidate-badge {
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 8px;
+    max-width: 120px;
+  }
+
+  /* Test Subbar Mobile Layout */
+  .test-subbar {
+    padding: 8px 12px;
+  }
+
+  .test-subbar-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .test-subbar-right {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 6px;
+  }
+
+  .test-timer {
+    font-size: 13px;
+    padding: 6px 10px;
+  }
+
+  .test-palette-toggle {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  /* Main Card & Questions */
+  .test-body {
+    padding: 12px 10px 80px;
+  }
+
+  .test-card {
+    border-radius: 16px;
+  }
+
+  .test-card-header {
+    padding: 12px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .test-q-badge {
+    font-size: 11px;
+    padding: 3px 10px;
+  }
+
+  .test-flag-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  .test-q-body {
+    padding: 16px 14px;
+  }
+
+  .test-q-text {
+    font-size: 15px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+
+  .test-options-list {
+    gap: 10px !important;
+    margin-top: 14px !important;
+  }
+
+  .test-option-btn {
+    padding: 12px 14px !important;
+    font-size: 13px !important;
+    border-radius: 12px !important;
+    min-height: 50px;
+    gap: 10px !important;
+  }
+
+  .test-opt-key {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 12px !important;
+  }
+
+  .test-opt-val {
+    font-size: 13px !important;
+  }
+
+  /* Footer Navigation Buttons on Mobile */
+  .test-card-footer {
+    padding: 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+  }
+
+  .test-nav-btn {
+    padding: 10px 14px;
+    font-size: 12px;
+    border-radius: 10px;
+    flex: 1;
+    min-width: 100px;
+    justify-content: center;
+  }
+
+  .test-submit-btn {
+    padding: 10px 18px;
+    font-size: 13px;
+    border-radius: 10px;
+    flex: 1;
+    min-width: 130px;
+    justify-content: center;
+  }
+}
+
+/* ===================================================
+   EXTRA SMALL SCREENS (<= 480px)
+   =================================================== */
+@media (max-width: 480px) {
+  .nb-camera-pip {
+    top: 64px;
+    right: 8px;
+    width: 90px;
+  }
+
+  .nb-camera-video {
+    height: 60px;
+  }
+
+  .test-q-text {
+    font-size: 14.5px;
+  }
+
+  .test-card-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .test-card-footer > div {
+    text-align: center;
+    order: -1;
+    margin-bottom: 4px;
+  }
+
+  .test-nav-btn, .test-submit-btn {
+    width: 100%;
+  }
+}
+
+
