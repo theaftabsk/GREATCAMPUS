@@ -1028,6 +1028,10 @@ export class CandidatesService {
         attempts: {
           orderBy: { startedAt: 'desc' },
           include: {
+            attemptQuestions: {
+              orderBy: { questionOrder: 'asc' },
+              include: { question: true },
+            },
             submissions: {
               include: { question: true },
             },
@@ -1089,6 +1093,31 @@ export class CandidatesService {
       { sectionOrder: 6, name: 'Sales Orientation & Situational Judgement', questionRange: 'Q51–60', minQ: 51, maxQ: 60, total: 0, correct: 0, marks: 0 },
     ];
 
+    // Load full 60 questions list sequentially
+    let questionsList: any[] = [];
+    if (latestAttempt.attemptQuestions && latestAttempt.attemptQuestions.length > 0) {
+      questionsList = latestAttempt.attemptQuestions
+        .slice()
+        .sort((a: any, b: any) => (a.questionOrder || 0) - (b.questionOrder || 0))
+        .map((aq: any) => ({
+          questionOrder: aq.questionOrder,
+          questionId: aq.questionId || aq.question?.id,
+          question: aq.question,
+          marks: aq.marks || 1,
+        }));
+    } else {
+      const allQuestions = await this.prisma.question.findMany({
+        where: { status: 'ACTIVE' },
+        orderBy: [{ sectionOrder: 'asc' }, { createdAt: 'asc' }],
+      });
+      questionsList = allQuestions.slice(0, 60).map((q: any, i: number) => ({
+        questionOrder: i + 1,
+        questionId: q.id,
+        question: q,
+        marks: q.marks || 1,
+      }));
+    }
+
     let calculatedObtainedMarks = 0;
     let calculatedTotalPossible = 0;
 
@@ -1102,40 +1131,37 @@ export class CandidatesService {
       marks: number;
     }> = [];
 
-    // Sort submissions by question sectionOrder then question id/order
     const submissions = latestAttempt.submissions || [];
-    const sortedSubmissions = submissions.sort((a: any, b: any) => {
-      const qNumA = parseInt(a.question.id.replace(/\D/g, '')) || 0;
-      const qNumB = parseInt(b.question.id.replace(/\D/g, '')) || 0;
-      if ((a.question.sectionOrder || 0) !== (b.question.sectionOrder || 0)) {
-        return (a.question.sectionOrder || 0) - (b.question.sectionOrder || 0);
-      }
-      return qNumA - qNumB;
-    });
 
-    sortedSubmissions.forEach((sub: any, idx: number) => {
+    questionsList.slice(0, 60).forEach((item: any, idx: number) => {
       const qOrder = idx + 1;
-      const questionMarks = sub.question.marks || 1;
-      calculatedTotalPossible += questionMarks;
+      const questionMarks = item.marks || 1;
+      const q = item.question;
+      const sub = submissions.find((s: any) => s.questionId === item.questionId || s.question?.id === item.questionId);
 
-      // Find matching official section by question number range
-      const targetSec = officialSections.find(s => qOrder >= s.minQ && qOrder <= s.maxQ) || officialSections[Math.min(5, Math.floor(idx / 10))];
+      const isAttempted = !!(sub && sub.selectedOption);
+      const isCorrect = isAttempted && !!sub.isCorrect;
+      const candidateOption = isAttempted ? sub.selectedOption : 'Not Attempted';
+
+      const secIdx = Math.min(5, Math.floor(idx / 10));
+      const targetSec = officialSections[secIdx];
       targetSec.total += 1;
       targetSec.marks += questionMarks;
 
-      if (sub.isCorrect) {
+      if (isCorrect) {
         targetSec.correct += 1;
         calculatedObtainedMarks += questionMarks;
       }
+      calculatedTotalPossible += questionMarks;
 
       responses.push({
         questionOrder: qOrder,
         sectionName: targetSec.name,
-        questionText: sub.question.question,
-        candidateOption: sub.selectedOption,
-        correctOption: sub.question.correctAnswer,
-        isCorrect: sub.isCorrect,
-        marks: questionMarks,
+        questionText: q?.question || 'Question Text',
+        candidateOption: isAttempted ? candidateOption : 'Not Attempted',
+        correctOption: q?.correctAnswer || 'Option A',
+        isCorrect,
+        marks: isCorrect ? questionMarks : 0,
       });
     });
 
@@ -1882,6 +1908,7 @@ export class CandidatesService {
   }
 
   // ─── SINGLE CANDIDATE INDIVIDUAL EXCEL SCORECARD EXPORT ───────────────────
+  // ─── SINGLE CANDIDATE INDIVIDUAL EXCEL SCORECARD EXPORT ───────────────────
   async exportSingleCandidateExcel(candidateId: string): Promise<{ buffer: ExcelJS.Buffer; candidateName: string; applicationId: string }> {
     const candidate: any = await (this.prisma.candidate as any).findUnique({
       where: { id: candidateId },
@@ -1890,6 +1917,10 @@ export class CandidatesService {
         attempts: {
           orderBy: { startedAt: 'desc' },
           include: {
+            attemptQuestions: {
+              orderBy: { questionOrder: 'asc' },
+              include: { question: true },
+            },
             submissions: { include: { question: true } },
             proctoringLogs: { orderBy: { timestamp: 'asc' } },
             adminActions: true,
@@ -1936,7 +1967,7 @@ export class CandidatesService {
     sheet1.addRow([]);
 
     let scoreMarks = latestAttempt ? latestAttempt.score : 0;
-    let totalMarks = latestAttempt ? (latestAttempt.totalPossibleMarks || 60) : 60;
+    let totalMarks = latestAttempt ? (latestAttempt.totalPossibleScore || 60) : 60;
     let scorePct = latestAttempt ? latestAttempt.percentage : 0;
     let resultStatus = 'NOT STARTED';
 
@@ -2002,34 +2033,41 @@ export class CandidatesService {
       { order: 6, name: 'Sales Orientation & Situational Judgement', range: 'Q51–Q60', max: 10, scored: 0 },
     ];
 
-    const rawSubmissions = latestAttempt?.submissions || [];
-    // Strict deduplication by questionId and question text so each of the 60 questions appears exactly once
-    const seenQuestionIds = new Set<string>();
-    const seenQuestionTexts = new Set<string>();
-    const uniqueSubs: any[] = [];
-
-    for (const sub of rawSubmissions) {
-      const qId = sub.questionId || sub.question?.id;
-      const qText = (sub.question?.question || '').trim().toLowerCase();
-      if (qId && seenQuestionIds.has(qId)) continue;
-      if (qText && seenQuestionTexts.has(qText)) continue;
-      if (qId) seenQuestionIds.add(qId);
-      if (qText) seenQuestionTexts.add(qText);
-      uniqueSubs.push(sub);
+    // Load full 60 questions list sequentially
+    let questionsList: any[] = [];
+    if (latestAttempt?.attemptQuestions && latestAttempt.attemptQuestions.length > 0) {
+      questionsList = latestAttempt.attemptQuestions
+        .slice()
+        .sort((a: any, b: any) => (a.questionOrder || 0) - (b.questionOrder || 0))
+        .map((aq: any) => ({
+          questionOrder: aq.questionOrder,
+          questionId: aq.questionId || aq.question?.id,
+          question: aq.question,
+          marks: aq.marks || 1,
+        }));
+    } else {
+      const allQuestions = await this.prisma.question.findMany({
+        where: { status: 'ACTIVE' },
+        orderBy: [{ sectionOrder: 'asc' }, { createdAt: 'asc' }],
+      });
+      questionsList = allQuestions.slice(0, 60).map((q: any, i: number) => ({
+        questionOrder: i + 1,
+        questionId: q.id,
+        question: q,
+        marks: q.marks || 1,
+      }));
     }
 
-    const sortedSubs = uniqueSubs.sort((a: any, b: any) => {
-      const qA = parseInt(a.question?.id?.replace(/\D/g, '')) || 0;
-      const qB = parseInt(b.question?.id?.replace(/\D/g, '')) || 0;
-      if ((a.question?.sectionOrder || 0) !== (b.question?.sectionOrder || 0)) {
-        return (a.question?.sectionOrder || 0) - (b.question?.sectionOrder || 0);
-      }
-      return qA - qB;
-    }).slice(0, 60);
+    const rawSubmissions = latestAttempt?.submissions || [];
 
-    sortedSubs.forEach((sub: any, idx: number) => {
+    // Calculate section scores from exact 60 sequential questions
+    questionsList.slice(0, 60).forEach((item: any, idx: number) => {
+      const q = item.question;
+      const sub = rawSubmissions.find((s: any) => s.questionId === item.questionId || s.question?.id === item.questionId);
+      const isCorrect = !!(sub && sub.isCorrect);
+
       const secIdx = Math.min(5, Math.floor(idx / 10));
-      if (sub.isCorrect) officialSecs[secIdx].scored++;
+      if (isCorrect) officialSecs[secIdx].scored++;
     });
 
     officialSecs.forEach((sec) => {
@@ -2061,8 +2099,8 @@ export class CandidatesService {
       { width: 8, header: 'Q#' },
       { width: 34, header: 'Section' },
       { width: 55, header: 'Question Content' },
-      { width: 14, header: "Candidate's Choice" },
-      { width: 14, header: 'Correct Answer' },
+      { width: 18, header: "Candidate's Choice" },
+      { width: 18, header: 'Correct Answer' },
       { width: 14, header: 'Result' },
       { width: 12, header: 'Marks' },
     ];
@@ -2080,18 +2118,23 @@ export class CandidatesService {
     qHeaderRow.font = headerFont;
     qHeaderRow.eachCell((c) => { c.fill = cyanFill; c.alignment = { vertical: 'middle', horizontal: 'center' }; });
 
-    sortedSubs.forEach((sub: any, idx: number) => {
+    questionsList.slice(0, 60).forEach((item: any, idx: number) => {
       const qNum = idx + 1;
       const secIdx = Math.min(5, Math.floor(idx / 10));
       const secName = officialSecs[secIdx].name;
-      const isCorrect = !!sub.isCorrect;
+      const q = item.question;
+      const sub = rawSubmissions.find((s: any) => s.questionId === item.questionId || s.question?.id === item.questionId);
+
+      const isAttempted = !!(sub && sub.selectedOption);
+      const isCorrect = isAttempted && !!sub.isCorrect;
+      const candidateOption = isAttempted ? sub.selectedOption : 'Not Attempted';
 
       const row = sheet3.addRow([
         qNum,
         secName,
-        sub.question?.question || 'Question Text',
-        sub.selectedOption || 'Not Attempted',
-        sub.question?.correctAnswer || '—',
+        q?.question || 'Question Text',
+        candidateOption,
+        q?.correctAnswer || 'Option A',
         isCorrect ? 'CORRECT' : 'INCORRECT',
         isCorrect ? 1 : 0,
       ]);
