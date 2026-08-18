@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { CheckCircle2, ShieldAlert, AlertTriangle } from "lucide-react";
+import { CheckCircle2, ShieldAlert, AlertTriangle, Minimize2, Maximize2, Video } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 
 interface CameraProctorProps {
@@ -26,6 +26,7 @@ export default function CameraProctor({
 
   const [cameraActive, setCameraActive] = useState(false);
   const [faceStatus, setFaceStatus] = useState<"FACE_OK" | "NO_FACE" | "MULTIPLE_FACES" | "CAMERA_OFF">("CAMERA_OFF");
+  const [isMinimized, setIsMinimized] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
 
   // Stable callback refs — avoids React hook dependency size mismatch
@@ -229,51 +230,68 @@ export default function CameraProctor({
 
       {/* PIP Camera Badge (Responsive with class nb-camera-pip) */}
       <div
-        className="nb-camera-pip"
+        className={`nb-camera-pip ${isMinimized ? "minimized" : ""}`}
         style={{
           border: `2.5px solid ${borderColor}`,
-          transition: "border-color 0.25s",
+          transition: "all 0.25s ease",
         }}
       >
-        <video
-          ref={videoRef}
-          autoPlay
-          playsInline
-          muted
-          className="nb-camera-video"
-          style={{ transform: "scaleX(-1)", display: "block" }}
-        />
+        {!isMinimized && (
+          <>
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="nb-camera-video"
+              style={{ transform: "scaleX(-1)", display: "block" }}
+            />
 
-        {/* Model loading spinner overlay */}
-        {!modelsLoaded && (
-          <div style={{
-            position: "absolute", inset: 0, background: "rgba(15,23,42,0.85)",
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "6px"
-          }}>
-            <div style={{
-              width: "22px", height: "22px", border: "3px solid #334155",
-              borderTopColor: "#38BDF8", borderRadius: "50%",
-              animation: "spin 0.8s linear infinite"
-            }} />
-            <span style={{ color: "#94A3B8", fontSize: "9px", fontWeight: 700 }}>Loading AI...</span>
-          </div>
+            {/* Model loading spinner overlay */}
+            {!modelsLoaded && (
+              <div style={{
+                position: "absolute", inset: 0, background: "rgba(15,23,42,0.85)",
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "6px"
+              }}>
+                <div style={{
+                  width: "22px", height: "22px", border: "3px solid #334155",
+                  borderTopColor: "#38BDF8", borderRadius: "50%",
+                  animation: "spin 0.8s linear infinite"
+                }} />
+                <span style={{ color: "#94A3B8", fontSize: "9px", fontWeight: 700 }}>Loading AI...</span>
+              </div>
+            )}
+          </>
         )}
 
-        {/* Status Banner */}
+        {/* Status Banner & Minimize Toggle */}
         <div style={{
           background: bannerBg, color: "white",
-          padding: "4px 6px", fontSize: "10px", fontWeight: 800,
+          padding: "4px 8px", fontSize: "10px", fontWeight: 800,
           textAlign: "center", display: "flex", alignItems: "center",
-          justifyContent: "center", gap: "4px",
+          justifyContent: "space-between", gap: "4px",
           transition: "background 0.25s",
         }}>
-          {faceStatus === "FACE_OK" ? (
-            <><CheckCircle2 size={11} color="#4ADE80" /> Live Monitoring</>
-          ) : faceStatus === "MULTIPLE_FACES" ? (
-            <><AlertTriangle size={11} color="#FCD34D" /> Multiple Faces</>
-          ) : (
-            <><ShieldAlert size={11} color="#FCA5A5" /> Face Alert</>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: "4px", flex: 1, justifyContent: "center" }}>
+            {faceStatus === "FACE_OK" ? (
+              <><CheckCircle2 size={11} color="#4ADE80" /> Live</>
+            ) : faceStatus === "MULTIPLE_FACES" ? (
+              <><AlertTriangle size={11} color="#FCD34D" /> Multiple</>
+            ) : (
+              <><ShieldAlert size={11} color="#FCA5A5" /> Alert</>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsMinimized(!isMinimized);
+            }}
+            title={isMinimized ? "Expand Camera" : "Minimize Camera"}
+            style={{ background: "rgba(255,255,255,0.2)", border: "none", borderRadius: "4px", padding: "2px", color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            {isMinimized ? <Maximize2 size={10} /> : <Minimize2 size={10} />}
+          </button>
         </div>
       </div>
 

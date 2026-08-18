@@ -417,37 +417,38 @@ export default function CandidateTestEngine() {
         <div className="test-subbar-inner">
 
           {/* Assessment Title */}
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "#00AEEF", color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <BookOpen size={20} />
+          <div className="test-subbar-title-wrap">
+            <div className="test-subbar-icon">
+              <BookOpen size={18} />
             </div>
-            <div>
-              <div style={{ fontSize: "14px", fontWeight: 800, color: "#1E293B" }}>{assessmentName}</div>
-              <div style={{ fontSize: "12px", color: "#64748B" }}>45 Minutes Timed Assessment</div>
+            <div className="test-subbar-title-text">
+              <div className="test-subbar-title">{assessmentName}</div>
+              <div className="test-subbar-sub">45 Mins • 60 Questions</div>
             </div>
           </div>
 
           {/* Right Stats & Timer */}
           <div className="test-subbar-right">
             {/* Proctoring Warning Indicator */}
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", background: warningCount > 0 ? "#FEF2F2" : "#F1F5F9", padding: "6px 12px", borderRadius: "8px", border: `1px solid ${warningCount > 0 ? "#FCA5A5" : "#E2E8F0"}` }}>
-              <ShieldAlert size={16} color={warningCount > 0 ? "#DC2626" : "#64748B"} />
-              <span style={{ fontSize: "12px", fontWeight: 700, color: warningCount > 0 ? "#DC2626" : "#475569" }}>
+            <div className={`test-warning-pill ${warningCount > 0 ? "active-warning" : ""}`}>
+              <ShieldAlert size={14} color={warningCount > 0 ? "#DC2626" : "#64748B"} />
+              <span>
                 Warnings: {warningCount}/{maxProctorWarnings}
               </span>
             </div>
 
             {/* Timer */}
             <div className={`test-timer ${timeLeftSec <= 300 ? "danger" : ""}`}>
-              <Clock size={16} />
+              <Clock size={14} />
               <span>{fmt(timeLeftSec)}</span>
             </div>
 
             <button
               onClick={() => setPaletteOpen(!paletteOpen)}
               className="test-palette-toggle"
+              title="Open Question Palette"
             >
-              <Grid size={16} />
+              <Grid size={14} />
               <span>Palette</span>
             </button>
           </div>
@@ -562,8 +563,8 @@ export default function CandidateTestEngine() {
                   <span>Previous</span>
                 </button>
 
-                <div style={{ fontSize: "13px", fontWeight: 700, color: "#64748B" }}>
-                  Answered: <strong style={{ color: "#00AEEF" }}>{answeredCount}</strong> / {questions.length}
+                <div className="test-nav-progress">
+                  Answered: <strong>{answeredCount}</strong> / {questions.length}
                 </div>
 
                 {currentIdx < questions.length - 1 ? (

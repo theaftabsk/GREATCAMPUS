@@ -11,23 +11,17 @@ interface NavbarProps {
 
 export default function Navbar({ mode = "public", candidateName }: NavbarProps) {
   return (
-    <header className="nb-navbar" style={{ height: "72px", borderBottom: "1.5px solid #C8E8F8" }}>
-      <div className="nb-navbar-inner" style={{ height: "100%", maxWidth: "1200px", margin: "0 auto", padding: "0 16px" }}>
+    <header className="nb-navbar">
+      <div className="nb-navbar-inner">
 
         {/* Prominent Niva Bupa Logo */}
-        <Link href="/" className="nb-logo-wrap" style={{ display: "flex", alignItems: "center", gap: "12px", textDecoration: "none" }}>
+        <Link href="/" className="nb-logo-wrap">
           <Image
             src="/niva-bupa-logo.png"
             alt="Niva Bupa Health Insurance"
-            width={210}
-            height={191}
-            style={{
-              height: "clamp(48px, 6vw, 58px)",
-              width: "auto",
-              borderRadius: "10px",
-              boxShadow: "0 3px 12px rgba(0, 160, 230, 0.22)",
-              objectFit: "contain"
-            }}
+            width={180}
+            height={160}
+            className="nb-logo-img"
             priority
           />
           <div className="nb-logo-divider hidden-mobile" style={{ height: "30px", width: "1.5px", background: "#CBD5E1", margin: "0 4px" }} />
