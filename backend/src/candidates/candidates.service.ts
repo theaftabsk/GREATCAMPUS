@@ -547,6 +547,12 @@ export class CandidatesService {
     const isPassed = percentage >= attempt.passingPercentageSnapshot;
     const submittedAt = new Date();
 
+    let sessionSeconds = 0;
+    if (attempt.startedAt) {
+      sessionSeconds = Math.max(0, Math.floor((submittedAt.getTime() - new Date(attempt.startedAt).getTime()) / 1000));
+    }
+    const finalTotalTimeSpentSec = (attempt.totalTimeSpentSec || 0) + sessionSeconds;
+
     // ─── STEP 1: DB save FIRST (submittedAt + result must be persisted before webhooks) ───
     const updatedAttempt = await this.prisma.examAttempt.update({
       where: { id: attempt.id },
@@ -557,6 +563,7 @@ export class CandidatesService {
         totalPossibleScore,
         percentage,
         isPassed,
+        totalTimeSpentSec: finalTotalTimeSpentSec,
       },
     });
 
@@ -2065,7 +2072,15 @@ export class CandidatesService {
       }
     }
 
-    const durationSec = latestAttempt?.totalTimeSpentSec || 0;
+    let durationSec = latestAttempt?.totalTimeSpentSec || 0;
+    if (!durationSec && latestAttempt?.startedAt) {
+      const endTime = latestAttempt.submittedAt
+        ? new Date(latestAttempt.submittedAt).getTime()
+        : latestAttempt.lockedAt
+          ? new Date(latestAttempt.lockedAt).getTime()
+          : Date.now();
+      durationSec = Math.max(0, Math.floor((endTime - new Date(latestAttempt.startedAt).getTime()) / 1000));
+    }
     const durationFormatted = `${Math.floor(durationSec / 60)} mins ${durationSec % 60} secs`;
 
     const summaryHeader = sheet1.addRow(['Evaluation Metric', 'Assessment Result', 'Benchmark Status']);
