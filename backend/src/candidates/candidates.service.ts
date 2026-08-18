@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, ForbiddenException,
 import { PrismaService } from '../prisma/prisma.service';
 import { HeadstartClientService } from '../integration/headstart/headstart-client.service';
 import { HeadstartWebhookService } from '../integration/headstart/headstart-webhook.service';
+import { EmailService } from '../email/email.service';
 import * as ExcelJS from 'exceljs';
 import * as crypto from 'crypto';
 
@@ -19,6 +20,7 @@ export class CandidatesService {
     private prisma: PrismaService,
     private headstartClient: HeadstartClientService,
     private headstartWebhook: HeadstartWebhookService,
+    private emailService: EmailService,
   ) { }
 
   // ─── GET CANDIDATES ────────────────────────────────────────────────────────
@@ -778,16 +780,77 @@ export class CandidatesService {
     };
   }
 
-  // Simple reset (full reset — clears warnings too)
+  // Full Reset Candidate Attempt & Re-invite (Clean & Send)
   async resetCandidate(id: string) {
-    const candidate = await this.prisma.candidate.findUnique({ where: { id } });
+    const candidate = await this.prisma.candidate.findUnique({
+      where: { id },
+      include: {
+        assessment: true,
+        attempts: true,
+      },
+    });
     if (!candidate) throw new NotFoundException('Candidate not found.');
 
-    return this.prisma.candidate.update({
+    const attemptIds = candidate.attempts.map((a) => a.id);
+
+    if (attemptIds.length > 0) {
+      // 1. Delete associated submissions
+      await this.prisma.submission.deleteMany({
+        where: { attemptId: { in: attemptIds } },
+      });
+
+      // 2. Delete associated attempt questions
+      await this.prisma.attemptQuestion.deleteMany({
+        where: { attemptId: { in: attemptIds } },
+      });
+
+      // 3. Delete proctoring screenshots
+      await this.prisma.proctoringScreenshot.deleteMany({
+        where: { attemptId: { in: attemptIds } },
+      });
+
+      // 4. Delete proctoring logs
+      await this.prisma.proctoringLog.deleteMany({
+        where: { attemptId: { in: attemptIds } },
+      });
+
+      // 5. Delete exam attempts
+      await this.prisma.examAttempt.deleteMany({
+        where: { id: { in: attemptIds } },
+      });
+    }
+
+    // Generate fresh secure token
+    const newSecureToken = crypto.randomUUID();
+
+    // Reset candidate profile to REGISTERED
+    const updatedCandidate = await this.prisma.candidate.update({
       where: { id },
-      data: { status: 'REGISTERED' },
+      data: {
+        status: 'REGISTERED',
+        emailStatus: 'PENDING',
+        emailSentAt: null,
+        secureToken: newSecureToken,
+      },
       include: { assessment: true },
     });
+
+    // Automatically attempt to dispatch fresh invitation email if SMTP is configured
+    let emailResult = { success: false, message: 'SMTP not configured' };
+    try {
+      emailResult = await this.emailService.sendCandidateInvitation(candidate.id);
+    } catch (err: any) {
+      this.logger.warn(`Could not send re-invitation email: ${err.message}`);
+    }
+
+    return {
+      success: true,
+      message: emailResult.success
+        ? `Candidate exam session wiped and fresh invitation sent to ${candidate.email}`
+        : `Candidate exam session wiped and reset to Registered. Candidate can take the test now.`,
+      emailDispatched: emailResult.success,
+      candidate: updatedCandidate,
+    };
   }
 
   async deleteCandidate(id: string) {

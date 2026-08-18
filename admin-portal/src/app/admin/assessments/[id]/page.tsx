@@ -7,7 +7,7 @@ import {
   ArrowLeft, Users, Mail, CheckCircle2, Clock, ShieldAlert,
   AlertTriangle, Download, Plus, Upload, RefreshCw, Search,
   ExternalLink, Copy, Check, FileSpreadsheet, Send, Lock,
-  Award, XCircle, FileText
+  Award, XCircle, FileText, RotateCcw
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 import CandidateReportModal from "@/components/CandidateReportModal";
@@ -63,6 +63,10 @@ export default function AssessmentDashboardPage() {
   // Delete Target State
   const [deleteCandidateTarget, setDeleteCandidateTarget] = useState<{ id: string; name: string } | null>(null);
   const [deletingCandidate, setDeletingCandidate] = useState(false);
+
+  // Reset Candidate Attempt Target State
+  const [resetCandidateTarget, setResetCandidateTarget] = useState<{ id: string; name: string; email: string } | null>(null);
+  const [resettingCandidate, setResettingCandidate] = useState(false);
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -274,6 +278,33 @@ export default function AssessmentDashboardPage() {
       addToast("error", "Failed to delete candidate.", "Error");
     } finally {
       setDeletingCandidate(false);
+    }
+  };
+
+  const confirmResetCandidate = async () => {
+    if (!resetCandidateTarget) return;
+    setResettingCandidate(true);
+    try {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/v1/candidates/${resetCandidateTarget.id}/reset`, {
+        method: "POST",
+      });
+      const resData = await res.json();
+      if (resData.success) {
+        addToast(
+          "success",
+          resData.message || `Candidate '${resetCandidateTarget.name}' exam attempt wiped and re-invited.`,
+          "Exam Reset & Re-invited"
+        );
+        setResetCandidateTarget(null);
+        await loadDashboard();
+      } else {
+        addToast("error", resData.message || "Failed to reset candidate attempt.", "Reset Error");
+      }
+    } catch {
+      addToast("error", "Error resetting candidate attempt.", "Error");
+    } finally {
+      setResettingCandidate(false);
     }
   };
 
@@ -597,6 +628,15 @@ export default function AssessmentDashboardPage() {
                             <Lock size={12} /> Unlock
                           </button>
                         )}
+
+                        {/* Reset & Re-invite Button */}
+                        <button
+                          onClick={() => setResetCandidateTarget({ id: c.id, name: c.name, email: c.email })}
+                          title="Reset Candidate Attempt & Resend Invitation (Clean & Send)"
+                          style={{ padding: "6px 10px", borderRadius: "8px", background: "#FEF3C7", color: "#92400E", border: "1px solid #FDE68A", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                        >
+                          <RotateCcw size={12} /> Reset & Send
+                        </button>
 
                         <button
                           onClick={() => handleSendInvite(c.id, c.email)}
@@ -939,6 +979,19 @@ export default function AssessmentDashboardPage() {
         loading={deletingCandidate}
         onConfirm={confirmDeleteCandidate}
         onCancel={() => { if (!deletingCandidate) setDeleteCandidateTarget(null); }}
+      />
+
+      {/* Modern Confirm Reset Candidate Attempt & Re-invite Modal */}
+      <ConfirmModal
+        isOpen={!!resetCandidateTarget}
+        title="Reset Exam Attempt & Re-invite Candidate"
+        message={`Are you sure you want to completely reset ${resetCandidateTarget?.name}'s exam? All previous attempts, answers, score marks, and security warnings will be permanently wiped. The candidate will remain registered and receive a fresh invitation to take the 60-question exam from scratch.`}
+        confirmText="Confirm Reset & Re-invite"
+        cancelText="Cancel"
+        isDanger={true}
+        loading={resettingCandidate}
+        onConfirm={confirmResetCandidate}
+        onCancel={() => { if (!resettingCandidate) setResetCandidateTarget(null); }}
       />
 
       {/* Modern Floating Toast Notifications */}

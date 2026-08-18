@@ -23,7 +23,8 @@ import {
   HelpCircle,
   Camera,
   Maximize2,
-  FileSpreadsheet
+  FileSpreadsheet,
+  RotateCcw
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 
@@ -110,6 +111,7 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId, onR
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [newRemark, setNewRemark] = useState("");
   const [savingRemark, setSavingRemark] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !candidateId) return;
@@ -181,8 +183,37 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId, onR
   };
 
   const handleDownloadExcel = () => {
+    if (!candidateId) return;
     const baseUrl = getApiBaseUrl();
-    window.open(`${baseUrl}/api/v1/candidates/${candidateId}/export-excel`, '_blank');
+    window.open(`${baseUrl}/api/v1/candidates/${candidateId}/export-excel`, "_blank");
+  };
+
+  const handleResetAttempt = async () => {
+    if (!candidateId || !report) return;
+    const confirmed = window.confirm(
+      `Are you sure you want to completely wipe ${report.candidate.name}'s exam attempt and re-invite them? All previous answers and scores will be deleted so the candidate can retake the test from scratch.`
+    );
+    if (!confirmed) return;
+
+    setResetting(true);
+    try {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/v1/candidates/${candidateId}/reset`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(data.message || "Candidate exam session reset successfully.");
+        onRefresh?.();
+        onClose();
+      } else {
+        alert(data.message || "Failed to reset candidate attempt.");
+      }
+    } catch {
+      alert("Error resetting candidate attempt.");
+    } finally {
+      setResetting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -226,6 +257,17 @@ export default function CandidateReportModal({ isOpen, onClose, candidateId, onR
             >
               <FileSpreadsheet className="w-4 h-4 text-emerald-300" />
               <span className="hidden sm:inline">Excel Report</span>
+            </button>
+
+            {/* Reset & Allow Retake Button */}
+            <button
+              onClick={handleResetAttempt}
+              disabled={resetting}
+              title="Reset Candidate Attempt & Allow Retake (Clean & Send)"
+              className="px-3.5 py-2 rounded-xl bg-amber-500/25 hover:bg-amber-500/40 text-amber-100 text-xs font-extrabold transition-all cursor-pointer border border-amber-400/40 flex items-center gap-1.5 shadow-sm"
+            >
+              <RotateCcw className={`w-4 h-4 text-amber-300 ${resetting ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">{resetting ? "Resetting..." : "Reset & Retake"}</span>
             </button>
 
             {/* Toggle Fullscreen / Maximize */}

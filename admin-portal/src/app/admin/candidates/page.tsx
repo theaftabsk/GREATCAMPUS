@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import {
   Search, RefreshCw, Lock, Unlock, Trash2, CheckCircle2,
   AlertTriangle, ShieldAlert, Download, Table, FileText, Award,
-  Filter, ChevronLeft, ChevronRight, BookOpen, FileSpreadsheet
+  Filter, ChevronLeft, ChevronRight, BookOpen, FileSpreadsheet, RotateCcw
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 import CandidateReportModal from "@/components/CandidateReportModal";
@@ -40,6 +40,10 @@ export default function CandidatesManagementPage() {
   // Delete Candidate Modal State
   const [deleteCandidateTarget, setDeleteCandidateTarget] = useState<{ id: string; name: string } | null>(null);
   const [deletingCandidate, setDeletingCandidate] = useState(false);
+
+  // Reset Candidate Attempt Modal State
+  const [resetCandidateTarget, setResetCandidateTarget] = useState<{ id: string; name: string; email: string } | null>(null);
+  const [resettingCandidate, setResettingCandidate] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -107,6 +111,33 @@ export default function CandidatesManagementPage() {
       addToast("error", "Failed to delete candidate.", "Error");
     } finally {
       setDeletingCandidate(false);
+    }
+  };
+
+  const confirmResetCandidate = async () => {
+    if (!resetCandidateTarget) return;
+    setResettingCandidate(true);
+    try {
+      const baseUrl = getApiBaseUrl();
+      const res = await fetch(`${baseUrl}/api/v1/candidates/${resetCandidateTarget.id}/reset`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.success) {
+        addToast(
+          "success",
+          data.message || `Candidate '${resetCandidateTarget.name}' exam attempt wiped and re-invited.`,
+          "Exam Reset & Re-invited"
+        );
+        setResetCandidateTarget(null);
+        await loadData();
+      } else {
+        addToast("error", data.message || "Failed to reset candidate attempt.", "Reset Error");
+      }
+    } catch {
+      addToast("error", "Network error resetting candidate attempt.", "Error");
+    } finally {
+      setResettingCandidate(false);
     }
   };
 
@@ -437,6 +468,16 @@ export default function CandidatesManagementPage() {
                             </>
                           )}
 
+                          {/* Reset Candidate Attempt & Re-invite Button */}
+                          <button
+                            onClick={() => setResetCandidateTarget({ id: c.id, name: c.name, email: c.email })}
+                            title="Reset Candidate Attempt & Resend Invitation (Clean & Send)"
+                            className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-extrabold text-[11px] rounded-lg border border-amber-200 transition flex items-center space-x-1 cursor-pointer"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Reset & Send</span>
+                          </button>
+
                           <button
                             onClick={() => setDeleteCandidateTarget({ id: c.id, name: c.name })}
                             title="Delete Candidate Record"
@@ -509,6 +550,19 @@ export default function CandidatesManagementPage() {
         loading={deletingCandidate}
         onConfirm={confirmDeleteCandidate}
         onCancel={() => { if (!deletingCandidate) setDeleteCandidateTarget(null); }}
+      />
+
+      {/* Modern Confirm Reset Candidate Attempt & Re-invite Modal */}
+      <ConfirmModal
+        isOpen={!!resetCandidateTarget}
+        title="Reset Exam Attempt & Re-invite Candidate"
+        message={`Are you sure you want to completely reset ${resetCandidateTarget?.name}'s exam? All previous attempts, answers, score marks, and security warnings will be permanently wiped. The candidate will remain registered and receive a fresh invitation to take the 60-question exam from scratch.`}
+        confirmText="Confirm Reset & Re-invite"
+        cancelText="Cancel"
+        isDanger={true}
+        loading={resettingCandidate}
+        onConfirm={confirmResetCandidate}
+        onCancel={() => { if (!resettingCandidate) setResetCandidateTarget(null); }}
       />
 
       {/* Modern Floating Toast Notifications */}
