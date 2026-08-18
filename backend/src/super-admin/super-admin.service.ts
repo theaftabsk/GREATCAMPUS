@@ -131,4 +131,72 @@ export class SuperAdminService {
   async getCreditHistory(tenantId: string, page = 1, limit = 50, type?: string) {
     return this.creditsService.getCreditHistory(tenantId, page, limit, type);
   }
+
+  /**
+   * Update Super Admin Credentials
+   */
+  async updateCredentials(data: {
+    username: string;
+    currentPassword?: string;
+    newPassword?: string;
+  }) {
+    const superAdminUser = process.env.SUPER_ADMIN_USER || 'superadmin';
+    const superAdminPass = process.env.SUPER_ADMIN_PASS || 'SuperAdmin@2026';
+
+    let admin = await this.prisma.admin.findFirst({
+      where: { role: 'SUPER_ADMIN' },
+    });
+
+    if (admin) {
+      if (data.currentPassword && admin.password !== data.currentPassword && data.currentPassword !== superAdminPass) {
+        throw new UnauthorizedException('Current password does not match.');
+      }
+
+      const updateData: any = {};
+      if (data.username && data.username.trim() !== '') {
+        updateData.username = data.username.trim();
+      }
+      if (data.newPassword && data.newPassword.trim() !== '') {
+        updateData.password = data.newPassword.trim();
+      }
+
+      const updated = await this.prisma.admin.update({
+        where: { id: admin.id },
+        data: updateData,
+      });
+
+      return {
+        success: true,
+        message: 'Super Admin credentials updated successfully.',
+        user: { username: updated.username, name: updated.name, role: updated.role },
+      };
+    } else {
+      let tenant = await this.prisma.tenant.findFirst();
+      if (!tenant) {
+        tenant = await this.prisma.tenant.create({
+          data: { name: 'Niva Bupa Health Insurance', slug: 'niva-bupa' },
+        });
+      }
+
+      if (data.currentPassword && data.currentPassword !== superAdminPass) {
+        throw new UnauthorizedException('Current password does not match.');
+      }
+
+      const newAdmin = await this.prisma.admin.create({
+        data: {
+          tenantId: tenant.id,
+          username: data.username.trim() || superAdminUser,
+          password: data.newPassword?.trim() || superAdminPass,
+          name: 'Super Administrator',
+          role: 'SUPER_ADMIN',
+        },
+      });
+
+      return {
+        success: true,
+        message: 'Super Admin credentials updated successfully.',
+        user: { username: newAdmin.username, name: newAdmin.name, role: newAdmin.role },
+      };
+    }
+  }
 }

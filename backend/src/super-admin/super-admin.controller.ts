@@ -10,6 +10,13 @@ export class SuperAdminController {
     return this.superAdminService.login(body.username, body.pass);
   }
 
+  @Post('auth/update-credentials')
+  async updateCredentials(
+    @Body() body: { username: string; currentPassword?: string; newPassword?: string },
+  ) {
+    return this.superAdminService.updateCredentials(body);
+  }
+
   @Get('dashboard')
   async getDashboard() {
     return this.superAdminService.getGlobalDashboard();

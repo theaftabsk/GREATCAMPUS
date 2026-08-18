@@ -10,6 +10,7 @@ import {
   LogOut,
   Coins,
   ChevronRight,
+  KeyRound,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -39,6 +40,11 @@ export default function Sidebar() {
       label: "Credit Audit Ledger",
       href: "/ledger",
       icon: Receipt,
+    },
+    {
+      label: "Profile & Security",
+      href: "/profile",
+      icon: KeyRound,
     },
   ];
 
