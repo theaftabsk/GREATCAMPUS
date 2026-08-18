@@ -7,7 +7,7 @@ import {
   ArrowLeft, Users, Mail, CheckCircle2, Clock, ShieldAlert,
   AlertTriangle, Download, Plus, Upload, RefreshCw, Search,
   ExternalLink, Copy, Check, FileSpreadsheet, Send, Lock,
-  Award, XCircle, FileText, RotateCcw
+  Award, XCircle, FileText, RotateCcw, Trash2
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/config";
 import CandidateReportModal from "@/components/CandidateReportModal";
@@ -653,10 +653,10 @@ export default function AssessmentDashboardPage() {
 
                           <button
                             onClick={() => setDeleteCandidateTarget({ id: c.id, name: c.name })}
-                            title="Delete Candidate"
-                            style={{ padding: "6px 8px", borderRadius: "8px", background: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5", cursor: "pointer" }}
+                            title="Delete Candidate & Wipe All Test Data & Screenshots"
+                            style={{ padding: "6px 10px", borderRadius: "8px", background: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", whiteSpace: "nowrap" }}
                           >
-                            <XCircle size={12} />
+                            <Trash2 size={12} /> Delete
                           </button>
                         </div>
                       </td>
@@ -977,9 +977,9 @@ export default function AssessmentDashboardPage() {
       {/* Modern Confirm Delete Candidate Modal */}
       <ConfirmModal
         isOpen={!!deleteCandidateTarget}
-        title="Delete Candidate Record"
-        message={`Are you sure you want to permanently delete candidate '${deleteCandidateTarget?.name}'? This will remove all their exam attempt and proctoring data.`}
-        confirmText="Delete Candidate"
+        title="Delete Candidate Record & Wipe All Data"
+        message={`Are you sure you want to permanently delete candidate '${deleteCandidateTarget?.name}'? This will permanently wipe all their exam attempts, submitted answers, proctoring security logs, and webcam screenshots from the server disk.`}
+        confirmText="Delete Candidate & Wipe All"
         cancelText="Cancel"
         isDanger={true}
         loading={deletingCandidate}

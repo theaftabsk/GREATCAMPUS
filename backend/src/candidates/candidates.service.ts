@@ -6,6 +6,8 @@ import { EmailService } from '../email/email.service';
 import { CreditsService } from '../credits/credits.service';
 import * as ExcelJS from 'exceljs';
 import * as crypto from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // ─── SYSTEM CONSTANTS ─────────────────────────────────────────────────────────
 // These are fixed for ALL assessments. Admins cannot override them.
@@ -881,7 +883,52 @@ export class CandidatesService {
   }
 
   async deleteCandidate(id: string) {
-    return this.prisma.candidate.delete({ where: { id } });
+    const candidate = await this.prisma.candidate.findUnique({
+      where: { id },
+      include: {
+        attempts: {
+          include: {
+            screenshots: true,
+          },
+        },
+      },
+    });
+
+    if (!candidate) {
+      throw new NotFoundException(`Candidate '${id}' not found.`);
+    }
+
+    // 1. Physically delete all proctoring screenshot image files from disk
+    if (candidate.attempts && candidate.attempts.length > 0) {
+      for (const att of candidate.attempts) {
+        if (att.screenshots && att.screenshots.length > 0) {
+          for (const ss of att.screenshots) {
+            try {
+              if (ss.imageUrl) {
+                const cleanRel = ss.imageUrl.replace(/^\//, '');
+                const filePath = path.join(process.cwd(), cleanRel);
+                if (fs.existsSync(filePath)) {
+                  fs.unlinkSync(filePath);
+                  this.logger.log(`Deleted proctoring screenshot file: ${filePath}`);
+                }
+              }
+            } catch (err: any) {
+              this.logger.warn(`Could not delete screenshot file for candidate ${id}: ${err.message}`);
+            }
+          }
+        }
+      }
+    }
+
+    // 2. Cascade delete from database (Candidate, ExamAttempts, AttemptQuestions, Submissions, ProctoringLogs, Screenshots, EmailLogs)
+    const deleted = await this.prisma.candidate.delete({ where: { id } });
+    this.logger.log(`Candidate '${candidate.name}' (${candidate.id}) and all test data & screenshots permanently deleted.`);
+
+    return {
+      success: true,
+      message: `Candidate '${candidate.name}' and all associated test data, questions, logs, and proctoring screenshots have been completely deleted.`,
+      deleted,
+    };
   }
 
   // ─── ASSESSMENT SESSION MANAGEMENT ────────────────────────────────────────
