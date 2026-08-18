@@ -229,7 +229,10 @@ export class EmailService {
 
     const frontendBaseUrl = process.env.CANDIDATE_PORTAL_URL || process.env.FRONTEND_CANDIDATE_URL || 'https://niva.greatcampus.in';
     const examUrl = `${frontendBaseUrl}/${candidate.assessment.slug}?token=${candidate.secureToken || candidate.id}`;
-    const subject = `Assessment Invitation: ${candidate.assessment.name} — Niva Bupa`;
+    
+    // Unique Subject & Ref ID to prevent Gmail / Outlook from threading multiple candidate emails into one
+    const refCode = candidate.applicationId || candidate.referenceId || candidate.id.slice(-6).toUpperCase();
+    const subject = `Assessment Invitation: ${candidate.assessment.name} — ${candidate.name} [Ref: ${refCode}]`;
 
     const htmlContent = this.buildInvitationEmailHtml({
       candidateName: candidate.name,
@@ -257,6 +260,11 @@ export class EmailService {
         to: candidate.email,
         subject,
         html: htmlContent,
+        messageId: `<niva-bupa-invite-${candidate.id}-${Date.now()}@greatcampus.in>`,
+        headers: {
+          'X-Entity-Ref-ID': `${candidate.id}-${Date.now()}`,
+          'X-Auto-Response-Suppress': 'All',
+        },
       });
 
       emailLog = await this.prisma.emailLog.update({
