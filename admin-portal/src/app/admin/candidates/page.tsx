@@ -310,18 +310,18 @@ export default function CandidatesManagementPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse border-spacing-0 font-sans text-xs">
+          <div className="overflow-x-auto w-full">
+            <table className="w-full min-w-[1150px] text-left border-collapse border-spacing-0 font-sans text-xs">
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-black uppercase text-slate-500 tracking-wider">
-                  <th className="py-3.5 px-4 text-center w-12">#</th>
-                  <th className="py-3.5 px-4">Candidate Details</th>
-                  <th className="py-3.5 px-4">CRM Application ID</th>
-                  <th className="py-3.5 px-4">Exam Session</th>
-                  <th className="py-3.5 px-4 text-center">Security Warnings</th>
-                  <th className="py-3.5 px-4 text-center">Status</th>
-                  <th className="py-3.5 px-4 text-center">Score Marks</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
+                  <th className="py-3.5 px-4 text-center w-12 whitespace-nowrap">#</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Candidate Details</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">CRM Application ID</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">Exam Session</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap">Security Warnings</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap">Status</th>
+                  <th className="py-3.5 px-4 text-center whitespace-nowrap">Score Marks</th>
+                  <th className="py-3.5 px-4 text-right whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
 

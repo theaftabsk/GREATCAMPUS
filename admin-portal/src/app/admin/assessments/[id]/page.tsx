@@ -505,162 +505,164 @@ export default function AssessmentDashboardPage() {
 
       {/* Candidates Table */}
       <div style={{ background: "white", borderRadius: "16px", border: "1px solid #CBD5E1", overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.03)" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
-          <thead>
-            <tr style={{ background: "#F1F5F9", borderBottom: "2px solid #CBD5E1" }}>
-              <th style={{ padding: "12px 16px", fontWeight: 800, color: "#334155", fontSize: "11px", textTransform: "uppercase" }}>Candidate</th>
-              <th style={{ padding: "12px 16px", fontWeight: 800, color: "#334155", fontSize: "11px", textTransform: "uppercase" }}>App / Ref ID</th>
-              <th style={{ padding: "12px 16px", fontWeight: 800, color: "#334155", fontSize: "11px", textTransform: "uppercase" }}>Status</th>
-              <th style={{ padding: "12px 16px", fontWeight: 800, color: "#334155", fontSize: "11px", textTransform: "uppercase" }}>Score (60)</th>
-              <th style={{ padding: "12px 16px", fontWeight: 800, color: "#334155", fontSize: "11px", textTransform: "uppercase" }}>Result</th>
-              <th style={{ padding: "12px 16px", fontWeight: 800, color: "#334155", fontSize: "11px", textTransform: "uppercase" }}>Warnings</th>
-              <th style={{ padding: "12px 16px", fontWeight: 800, color: "#334155", fontSize: "11px", textTransform: "uppercase" }}>Email Invite</th>
-              <th style={{ padding: "12px 16px", fontWeight: 800, color: "#334155", fontSize: "11px", textTransform: "uppercase", textAlign: "right" }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredCandidates.length === 0 ? (
-              <tr>
-                <td colSpan={8} style={{ padding: "48px 20px", textAlign: "center", color: "#64748B" }}>
-                  <Users size={36} color="#CBD5E1" style={{ margin: "0 auto 10px" }} />
-                  <p style={{ fontWeight: 700, margin: 0 }}>No candidates found</p>
-                  <p style={{ fontSize: "12px", color: "#94A3B8", marginTop: "4px" }}>Click "Upload Excel Candidates" or "Add Candidate" above to assign candidates.</p>
-                </td>
+        <div style={{ width: "100%", overflowX: "auto" }}>
+          <table style={{ width: "100%", minWidth: "1150px", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
+            <thead>
+              <tr style={{ background: "#F1F5F9", borderBottom: "2px solid #CBD5E1" }}>
+                <th style={{ padding: "12px 16px", fontWeight: 800, color: "#334155", fontSize: "11px", textTransform: "uppercase", whiteSpace: "nowrap" }}>Candidate</th>
+                <th style={{ padding: "12px 16px", fontWeight: 800, color: "#334155", fontSize: "11px", textTransform: "uppercase", whiteSpace: "nowrap" }}>App / Ref ID</th>
+                <th style={{ padding: "12px 16px", fontWeight: 800, color: "#334155", fontSize: "11px", textTransform: "uppercase", whiteSpace: "nowrap" }}>Status</th>
+                <th style={{ padding: "12px 16px", fontWeight: 800, color: "#334155", fontSize: "11px", textTransform: "uppercase", whiteSpace: "nowrap" }}>Score (60)</th>
+                <th style={{ padding: "12px 16px", fontWeight: 800, color: "#334155", fontSize: "11px", textTransform: "uppercase", whiteSpace: "nowrap" }}>Result</th>
+                <th style={{ padding: "12px 16px", fontWeight: 800, color: "#334155", fontSize: "11px", textTransform: "uppercase", whiteSpace: "nowrap" }}>Warnings</th>
+                <th style={{ padding: "12px 16px", fontWeight: 800, color: "#334155", fontSize: "11px", textTransform: "uppercase", whiteSpace: "nowrap" }}>Email Invite</th>
+                <th style={{ padding: "12px 16px", fontWeight: 800, color: "#334155", fontSize: "11px", textTransform: "uppercase", textAlign: "right", whiteSpace: "nowrap" }}>Actions</th>
               </tr>
-            ) : (
-              filteredCandidates
-                .slice((currentPage - 1) * pageSize, Math.min(filteredCandidates.length, currentPage * pageSize))
-                .map((c: any) => {
-                const att = c.attempt;
-                const isPassed = att?.isPassed;
+            </thead>
+            <tbody>
+              {filteredCandidates.length === 0 ? (
+                <tr>
+                  <td colSpan={8} style={{ padding: "48px 20px", textAlign: "center", color: "#64748B" }}>
+                    <Users size={36} color="#CBD5E1" style={{ margin: "0 auto 10px" }} />
+                    <div style={{ fontWeight: 800, color: "#0F172A", fontSize: "15px" }}>No Candidates Found</div>
+                    <p style={{ fontSize: "12px", color: "#94A3B8", marginTop: "4px" }}>Click "Upload Excel Candidates" or "Add Candidate" above to assign candidates.</p>
+                  </td>
+                </tr>
+              ) : (
+                filteredCandidates
+                  .slice((currentPage - 1) * pageSize, Math.min(filteredCandidates.length, currentPage * pageSize))
+                  .map((c: any) => {
+                  const att = c.attempt;
+                  const isPassed = att?.isPassed;
 
-                return (
-                  <tr key={c.id} style={{ borderBottom: "1px solid #E2E8F0" }}>
-                    <td style={{ padding: "14px 16px" }}>
-                      <div style={{ fontWeight: 800, color: "#0F172A" }}>{c.name}</div>
-                      <div style={{ fontSize: "11px", color: "#64748B", marginTop: "2px" }}>{c.email} • {c.phone}</div>
-                    </td>
+                  return (
+                    <tr key={c.id} style={{ borderBottom: "1px solid #E2E8F0" }}>
+                      <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
+                        <div style={{ fontWeight: 800, color: "#0F172A" }}>{c.name}</div>
+                        <div style={{ fontSize: "11px", color: "#64748B", marginTop: "2px" }}>{c.email} • {c.phone}</div>
+                      </td>
 
-                    <td style={{ padding: "14px 16px", fontFamily: "monospace", fontSize: "12px", fontWeight: 700, color: "#334155" }}>
-                      {c.applicationId || c.referenceId}
-                    </td>
+                      <td style={{ padding: "14px 16px", fontFamily: "monospace", fontSize: "12px", fontWeight: 700, color: "#334155", whiteSpace: "nowrap" }}>
+                        {c.applicationId || c.referenceId}
+                      </td>
 
-                    <td style={{ padding: "14px 16px" }}>
-                      <span style={{
-                        padding: "4px 8px",
-                        borderRadius: "6px",
-                        fontSize: "11px",
-                        fontWeight: 800,
-                        background: c.status === "COMPLETED" ? "#DCFCE7" : c.status === "LOCKED" ? "#FEE2E2" : c.status === "IN_PROGRESS" ? "#FEF3C7" : "#F1F5F9",
-                        color: c.status === "COMPLETED" ? "#166534" : c.status === "LOCKED" ? "#991B1B" : c.status === "IN_PROGRESS" ? "#92400E" : "#475569"
-                      }}>
-                        {c.status}
-                      </span>
-                    </td>
-
-                    <td style={{ padding: "14px 16px", fontWeight: 800, color: att ? "#0F172A" : "#94A3B8" }}>
-                      {att ? `${att.score} / ${att.totalPossibleScore || 60}` : "—"}
-                      {att && <span style={{ fontSize: "11px", color: "#64748B", marginLeft: "4px" }}>({att.percentage}%)</span>}
-                    </td>
-
-                    <td style={{ padding: "14px 16px" }}>
-                      {att ? (
+                      <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
                         <span style={{
                           padding: "4px 8px",
                           borderRadius: "6px",
                           fontSize: "11px",
                           fontWeight: 800,
-                          background: isPassed ? "#ECFDF5" : "#FEF2F2",
-                          color: isPassed ? "#059669" : "#DC2626"
+                          background: c.status === "COMPLETED" ? "#DCFCE7" : c.status === "LOCKED" ? "#FEE2E2" : c.status === "IN_PROGRESS" ? "#FEF3C7" : "#F1F5F9",
+                          color: c.status === "COMPLETED" ? "#166534" : c.status === "LOCKED" ? "#991B1B" : c.status === "IN_PROGRESS" ? "#92400E" : "#475569"
                         }}>
-                          {isPassed ? "QUALIFIED" : "NOT QUALIFIED"}
+                          {c.status}
                         </span>
-                      ) : (
-                        <span style={{ color: "#94A3B8", fontSize: "12px" }}>—</span>
-                      )}
-                    </td>
+                      </td>
 
-                    <td style={{ padding: "14px 16px" }}>
-                      {att ? (
-                        <span style={{ fontWeight: 700, color: att.warningCount > 0 ? "#DC2626" : "#64748B", fontSize: "12px" }}>
-                          {att.warningCount} / 3
-                        </span>
-                      ) : "0 / 3"}
-                    </td>
+                      <td style={{ padding: "14px 16px", fontWeight: 800, color: att ? "#0F172A" : "#94A3B8", whiteSpace: "nowrap" }}>
+                        {att ? `${att.score} / ${att.totalPossibleScore || 60}` : "—"}
+                        {att && <span style={{ fontSize: "11px", color: "#64748B", marginLeft: "4px" }}>({att.percentage}%)</span>}
+                      </td>
 
-                    <td style={{ padding: "14px 16px" }}>
-                      <span style={{
-                        padding: "3px 8px",
-                        borderRadius: "6px",
-                        fontSize: "10px",
-                        fontWeight: 800,
-                        background: c.emailStatus === "SENT" ? "#E0F2FE" : c.emailStatus === "FAILED" ? "#FEE2E2" : "#F1F5F9",
-                        color: c.emailStatus === "SENT" ? "#0369A1" : c.emailStatus === "FAILED" ? "#B91C1C" : "#64748B"
-                      }}>
-                        {c.emailStatus || "PENDING"}
-                      </span>
-                    </td>
-
-                    <td style={{ padding: "14px 16px", textAlign: "right" }}>
-                      <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-                        <button
-                          onClick={() => handleDownloadSingleExcel(c.id)}
-                          title="Download Individual Candidate Excel Scorecard (4 Sheets)"
-                          style={{ padding: "6px 10px", borderRadius: "8px", background: "#ECFDF5", color: "#059669", border: "1px solid #A7F3D0", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px" }}
-                        >
-                          <FileSpreadsheet size={12} /> Excel
-                        </button>
-
-                        <button
-                          onClick={() => { setSelectedCandidateId(c.id); setIsReportModalOpen(true); }}
-                          title="View Full Report & Proctoring Screenshots"
-                          style={{ padding: "6px 10px", borderRadius: "8px", background: "#EFF6FF", color: "#1D4ED8", border: "1px solid #BFDBFE", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px" }}
-                        >
-                          <FileText size={12} /> Report
-                        </button>
-
-                        {c.status === "LOCKED" && (
-                          <button
-                            onClick={() => handleUnlockCandidate(c.id, c.name)}
-                            title="Unlock Candidate"
-                            style={{ padding: "6px 10px", borderRadius: "8px", background: "#ECFDF5", color: "#059669", border: "1px solid #A7F3D0", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px" }}
-                          >
-                            <Lock size={12} /> Unlock
-                          </button>
+                      <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
+                        {att ? (
+                          <span style={{
+                            padding: "4px 8px",
+                            borderRadius: "6px",
+                            fontSize: "11px",
+                            fontWeight: 800,
+                            background: isPassed ? "#ECFDF5" : "#FEF2F2",
+                            color: isPassed ? "#059669" : "#DC2626"
+                          }}>
+                            {isPassed ? "QUALIFIED" : "NOT QUALIFIED"}
+                          </span>
+                        ) : (
+                          <span style={{ color: "#94A3B8", fontSize: "12px" }}>—</span>
                         )}
+                      </td>
 
-                        {/* Reset & Re-invite Button */}
-                        <button
-                          onClick={() => setResetCandidateTarget({ id: c.id, name: c.name, email: c.email })}
-                          title="Reset Candidate Attempt & Resend Invitation (Clean & Send)"
-                          style={{ padding: "6px 10px", borderRadius: "8px", background: "#FEF3C7", color: "#92400E", border: "1px solid #FDE68A", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px" }}
-                        >
-                          <RotateCcw size={12} /> Reset & Send
-                        </button>
+                      <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
+                        {att ? (
+                          <span style={{ fontWeight: 700, color: att.warningCount > 0 ? "#DC2626" : "#64748B", fontSize: "12px" }}>
+                            {att.warningCount} / 3
+                          </span>
+                        ) : "0 / 3"}
+                      </td>
 
-                        <button
-                          onClick={() => handleSendInvite(c.id, c.email)}
-                          title="Send / Resend Email Invitation"
-                          style={{ padding: "6px 8px", borderRadius: "8px", background: "#F8FAFC", color: "#475569", border: "1px solid #CBD5E1", cursor: "pointer" }}
-                        >
-                          <Mail size={12} />
-                        </button>
+                      <td style={{ padding: "14px 16px", whiteSpace: "nowrap" }}>
+                        <span style={{
+                          padding: "3px 8px",
+                          borderRadius: "6px",
+                          fontSize: "10px",
+                          fontWeight: 800,
+                          background: c.emailStatus === "SENT" ? "#E0F2FE" : c.emailStatus === "FAILED" ? "#FEE2E2" : "#F1F5F9",
+                          color: c.emailStatus === "SENT" ? "#0369A1" : c.emailStatus === "FAILED" ? "#B91C1C" : "#64748B"
+                        }}>
+                          {c.emailStatus || "PENDING"}
+                        </span>
+                      </td>
 
-                        <button
-                          onClick={() => setDeleteCandidateTarget({ id: c.id, name: c.name })}
-                          title="Delete Candidate"
-                          style={{ padding: "6px 8px", borderRadius: "8px", background: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5", cursor: "pointer" }}
-                        >
-                          <XCircle size={12} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                      <td style={{ padding: "14px 16px", textAlign: "right", whiteSpace: "nowrap" }}>
+                        <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", alignItems: "center" }}>
+                          <button
+                            onClick={() => handleDownloadSingleExcel(c.id)}
+                            title="Download Individual Candidate Excel Scorecard (4 Sheets)"
+                            style={{ padding: "6px 10px", borderRadius: "8px", background: "#ECFDF5", color: "#059669", border: "1px solid #A7F3D0", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", whiteSpace: "nowrap" }}
+                          >
+                            <FileSpreadsheet size={12} /> Excel
+                          </button>
+
+                          <button
+                            onClick={() => { setSelectedCandidateId(c.id); setIsReportModalOpen(true); }}
+                            title="View Full Report & Proctoring Screenshots"
+                            style={{ padding: "6px 10px", borderRadius: "8px", background: "#EFF6FF", color: "#1D4ED8", border: "1px solid #BFDBFE", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", whiteSpace: "nowrap" }}
+                          >
+                            <FileText size={12} /> Report
+                          </button>
+
+                          {c.status === "LOCKED" && (
+                            <button
+                              onClick={() => handleUnlockCandidate(c.id, c.name)}
+                              title="Unlock Candidate"
+                              style={{ padding: "6px 10px", borderRadius: "8px", background: "#ECFDF5", color: "#059669", border: "1px solid #A7F3D0", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", whiteSpace: "nowrap" }}
+                            >
+                              <Lock size={12} /> Unlock
+                            </button>
+                          )}
+
+                          {/* Reset & Re-invite Button */}
+                          <button
+                            onClick={() => setResetCandidateTarget({ id: c.id, name: c.name, email: c.email })}
+                            title="Reset Candidate Attempt & Resend Invitation (Clean & Send)"
+                            style={{ padding: "6px 10px", borderRadius: "8px", background: "#FEF3C7", color: "#92400E", border: "1px solid #FDE68A", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "4px", whiteSpace: "nowrap" }}
+                          >
+                            <RotateCcw size={12} /> Reset & Send
+                          </button>
+
+                          <button
+                            onClick={() => handleSendInvite(c.id, c.email)}
+                            title="Send / Resend Email Invitation"
+                            style={{ padding: "6px 8px", borderRadius: "8px", background: "#F8FAFC", color: "#475569", border: "1px solid #CBD5E1", cursor: "pointer" }}
+                          >
+                            <Mail size={12} />
+                          </button>
+
+                          <button
+                            onClick={() => setDeleteCandidateTarget({ id: c.id, name: c.name })}
+                            title="Delete Candidate"
+                            style={{ padding: "6px 8px", borderRadius: "8px", background: "#FEF2F2", color: "#DC2626", border: "1px solid #FCA5A5", cursor: "pointer" }}
+                          >
+                            <XCircle size={12} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* 30 PER PAGE PAGINATION CONTROLS */}
         {filteredCandidates.length > 0 && (
