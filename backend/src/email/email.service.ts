@@ -351,7 +351,7 @@ export class EmailService {
     let failed = 0;
     const errors: Array<{ email: string; error: string }> = [];
 
-    // Process in batches of 5
+    // Process in polite batches of 5 with throttle delay to protect SMTP connection
     const batchSize = 5;
     for (let i = 0; i < candidates.length; i += batchSize) {
       const batch = candidates.slice(i, i + batchSize);
@@ -366,6 +366,10 @@ export class EmailService {
           }
         }),
       );
+      // 200ms throttle between batches to prevent SMTP server connection drops
+      if (i + batchSize < candidates.length) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
     }
 
     return {
