@@ -277,12 +277,12 @@ export default function AdminAssessmentsPage() {
           <table className="assess-excel-table">
             <thead>
               <tr>
-                <th style={{ width: "22%" }}>Session Name</th>
-                <th style={{ width: "10%" }}>Status</th>
-                <th style={{ width: "18%" }}>Configuration</th>
-                <th style={{ width: "22%" }}>Access Schedule Window</th>
-                <th style={{ width: "20%" }}>Unique Candidate Link</th>
-                <th style={{ width: "8%", textAlign: "right" }}>Actions</th>
+                <th style={{ minWidth: "220px" }}>Session Name</th>
+                <th style={{ width: "100px", minWidth: "100px" }}>Status</th>
+                <th style={{ minWidth: "140px" }}>Configuration</th>
+                <th style={{ minWidth: "180px" }}>Access Schedule Window</th>
+                <th style={{ minWidth: "260px" }}>Unique Candidate Link</th>
+                <th style={{ width: "140px", minWidth: "140px", textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -553,16 +553,16 @@ export default function AdminAssessmentsPage() {
         .assess-empty { text-align: center; padding: 80px 20px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; color: #64748b; width: 100%; box-sizing: border-box; }
         .assess-empty-icon { margin: 0 auto 12px; color: #94a3b8; }
 
-        .assess-excel-wrapper { width: 100%; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
-        .assess-excel-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
-        .assess-excel-table th { background: #f1f5f9; color: #334155; font-size: 0.76rem; font-weight: 800; text-transform: uppercase; padding: 14px 16px; border-bottom: 2px solid #cbd5e1; letter-spacing: 0.5px; }
+        .assess-excel-wrapper { width: 100%; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 14px; overflow-x: auto; -webkit-overflow-scrolling: touch; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+        .assess-excel-table { width: 100%; min-width: 1050px; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+        .assess-excel-table th { background: #f1f5f9; color: #334155; font-size: 0.76rem; font-weight: 800; text-transform: uppercase; padding: 14px 16px; border-bottom: 2px solid #cbd5e1; letter-spacing: 0.5px; white-space: nowrap; }
         .assess-excel-table td { padding: 14px 16px; vertical-align: middle; border-bottom: 1px solid #e2e8f0; }
         .assess-excel-row { transition: background 0.15s; }
         .assess-excel-row:hover { background: #f8fafc; }
         .assess-excel-row--expired { opacity: 0.85; }
 
         .excel-session-name { font-weight: 800; color: #0f172a; font-size: 0.95rem; }
-        .excel-session-desc { font-size: 0.76rem; color: #64748b; font-weight: 500; margin-top: 3px; }
+        .excel-session-desc { font-size: 0.76rem; color: #64748b; font-weight: 500; margin-top: 3px; max-width: 320px; line-height: 1.4; }
 
         .excel-specs { display: flex; flex-wrap: wrap; gap: 6px; }
         .excel-spec-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; font-weight: 700; background: #f1f5f9; color: #334155; padding: 4px 9px; border-radius: 6px; border: 1px solid #cbd5e1; white-space: nowrap; }
@@ -571,13 +571,13 @@ export default function AdminAssessmentsPage() {
         .excel-window-lbl { color: #64748b; font-weight: 500; font-size: 0.75rem; }
 
         .excel-link-cell { display: flex; align-items: center; gap: 8px; }
-        .excel-link-box { display: flex; align-items: center; gap: 6px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 10px; font-family: monospace; font-size: 0.75rem; color: #1e293b; font-weight: 600; overflow: hidden; flex: 1; min-width: 0; }
+        .excel-link-box { display: flex; align-items: center; gap: 6px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 10px; font-family: monospace; font-size: 0.75rem; color: #1e293b; font-weight: 600; overflow: hidden; flex: 1; min-width: 0; max-width: 300px; }
         .excel-link-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .excel-copy-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; font-weight: 700; padding: 6px 12px; border-radius: 8px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+        .excel-copy-btn { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; font-weight: 700; padding: 6px 12px; border-radius: 8px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
         .excel-copy-btn:hover { background: #dbeafe; }
         .excel-copy-btn--copied { border-color: #86efac; background: #f0fdf4; color: #166534; }
 
-        .excel-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+        .excel-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 130px; }
         .excel-act-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; transition: all 0.2s; }
         .excel-act-edit       { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
         .excel-act-edit:hover { background: #dbeafe; }
