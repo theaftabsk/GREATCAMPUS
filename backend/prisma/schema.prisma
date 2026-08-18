@@ -8,13 +8,17 @@ datasource db {
 }
 
 model Tenant {
-  id          String       @id @default(uuid())
-  name        String       @default("GREATCAMPUS")
-  slug        String       @unique @default("greatcampus")
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  assessments Assessment[]
-  admins      Admin[]
+  id              String          @id @default(uuid())
+  name            String          @default("Niva Bupa Health Insurance")
+  slug            String          @unique @default("niva-bupa")
+  creditLimit     Int             @default(500)   // Total Allocated Exam Credit Limit
+  usedCredit      Int             @default(0)     // Total Exam Credits Consumed
+  status          String          @default("ACTIVE") // ACTIVE, SUSPENDED
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  assessments     Assessment[]
+  admins          Admin[]
+  creditHistories CreditHistory[]
 }
 
 model Admin {
@@ -151,6 +155,7 @@ model ExamAttempt {
   isPassed                   Boolean              @default(false)
   warningCount               Int                  @default(0)
   totalTimeSpentSec          Int                  @default(0)
+  creditConsumed             Boolean              @default(true) // Whether this attempt deducted 1 credit
   // Lock fields
   lockedAt                   DateTime?
   lockReason                 String?
@@ -215,4 +220,19 @@ model ProctoringScreenshot {
   eventType   String?     // "FACE_NOT_DETECTED" | "MULTIPLE_FACES" | "CAMERA_OFF" | "FACE_NOT_VISIBLE" | "TAB_SWITCH"
   imageUrl    String      // Relative URL / path to saved image
   capturedAt  DateTime    @default(now())
+}
+
+// Audit ledger for every credit allocation, deduction, and adjustment
+model CreditHistory {
+  id           String   @id @default(uuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  type         String   // "ALLOCATION", "DEDUCTION", "ADJUSTMENT", "REFUND"
+  amount       Int      // e.g. +500, -1, +100, -50
+  balanceAfter Int      // Remaining balance at that timestamp
+  candidateId  String?
+  attemptId    String?
+  description  String   // e.g. "Initial Allocation", "Exam Start: Aftab Sk (Assessment: aa-2812)", "Super Admin Top-up"
+  adminName    String?  // Super admin name who allocated/adjusted
+  createdAt    DateTime @default(now())
 }

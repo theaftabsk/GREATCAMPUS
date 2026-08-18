@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { HeadstartClientService } from '../integration/headstart/headstart-client.service';
 import { HeadstartWebhookService } from '../integration/headstart/headstart-webhook.service';
 import { EmailService } from '../email/email.service';
+import { CreditsService } from '../credits/credits.service';
 import * as ExcelJS from 'exceljs';
 import * as crypto from 'crypto';
 
@@ -21,6 +22,7 @@ export class CandidatesService {
     private headstartClient: HeadstartClientService,
     private headstartWebhook: HeadstartWebhookService,
     private emailService: EmailService,
+    private creditsService: CreditsService,
   ) { }
 
   // ─── GET CANDIDATES ────────────────────────────────────────────────────────
@@ -378,11 +380,21 @@ export class CandidatesService {
       };
     }
 
+    // Check & Consume 1 Exam Credit (Duplicate Protected — Only consumed once per attempt)
+    await this.creditsService.checkAndConsumeCredit({
+      tenantId: candidate.assessment.tenantId,
+      candidateId: candidate.id,
+      candidateName: candidate.name,
+      assessmentId: candidate.assessment.id,
+      assessmentName: candidate.assessment.name,
+    });
+
     // Create a new attempt with configurable session minute snapshot
     const attempt = await this.prisma.examAttempt.create({
       data: {
         candidateId: candidate.id,
         status: 'IN_PROGRESS',
+        creditConsumed: true,
         durationMinsSnapshot: candidate.assessment.durationMins || EXAM_DURATION_MINS,
         passingPercentageSnapshot: candidate.assessment.passingPercentage || 50.0,
         maxProctorWarningsSnapshot: candidate.assessment.maxProctorWarnings || 3,

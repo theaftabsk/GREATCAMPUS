@@ -10,6 +10,8 @@ import { ProctoringModule } from './proctoring/proctoring.module';
 import { AssessmentsModule } from './assessments/assessments.module';
 import { HeadstartIntegrationModule } from './integration/headstart/headstart-integration.module';
 import { EmailModule } from './email/email.module';
+import { CreditsModule } from './credits/credits.module';
+import { SuperAdminModule } from './super-admin/super-admin.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -28,6 +30,8 @@ import { AppService } from './app.service';
     AssessmentsModule,
     HeadstartIntegrationModule,
     EmailModule,
+    CreditsModule,
+    SuperAdminModule,
   ],
   controllers: [AppController],
   providers: [
