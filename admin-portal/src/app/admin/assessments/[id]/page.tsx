@@ -256,12 +256,28 @@ export default function AssessmentDashboardPage() {
         }),
       });
       const resData = await res.json();
-      setUploadResult(resData);
-      if (resData.success) {
+      if (!res.ok || !resData.success) {
+        setUploadResult({
+          success: false,
+          message: resData.message || "Failed to process candidate upload. Please check candidate details.",
+        });
+        addToast("error", resData.message || "Failed to assign candidates.", "Upload Error");
+      } else {
+        setUploadResult(resData);
+        addToast("success", resData.message, "Candidates Assigned");
         await loadDashboard();
+        setTimeout(() => {
+          setShowExcelModal(false);
+          setParsedRows([]);
+          setExcelText("");
+        }, 1800);
       }
-    } catch {
-      alert("Error uploading candidate batch.");
+    } catch (err: any) {
+      setUploadResult({
+        success: false,
+        message: err.message || "Connection error uploading candidate batch. Please try again.",
+      });
+      addToast("error", "Network error uploading candidates.", "Connection Error");
     } finally {
       setUploadingExcel(false);
     }

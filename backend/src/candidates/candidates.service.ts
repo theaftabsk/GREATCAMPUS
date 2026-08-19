@@ -134,7 +134,7 @@ export class CandidatesService {
       throw new NotFoundException(`Assigned Assessment not found.`);
     }
 
-    const refId = data.referenceId || `REF-${Date.now().toString().slice(-6)}`;
+    const refId = data.referenceId || `REF-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
     const existing = await this.prisma.candidate.findFirst({
       where: {
@@ -1499,6 +1499,8 @@ export class CandidatesService {
     const duplicateList: any[] = [];
     const errors: any[] = [];
 
+    const frontendBaseUrl = process.env.CANDIDATE_PORTAL_URL || process.env.FRONTEND_CANDIDATE_URL || 'https://niva.greatcampus.in';
+
     for (const raw of candidates) {
       const name = (raw.name || '').trim();
       const email = (raw.email || '').trim().toLowerCase();
@@ -1506,49 +1508,77 @@ export class CandidatesService {
       const applicationId = (raw.applicationId || '').trim();
 
       if (!email || !name) {
-        errors.push({ email, name, error: 'Missing name or email' });
+        errors.push({ email, name, error: 'Missing candidate name or email.' });
         continue;
       }
 
-      // Check duplicate in same assessment
-      const existing = await this.prisma.candidate.findFirst({
-        where: { assessmentId, email },
-      });
-
-      if (existing) {
-        duplicateList.push({ email, name, candidateId: existing.id });
-        continue;
-      }
-
-      const referenceId = applicationId ? `REF-${applicationId}` : `REF-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const uniqueSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
+      const referenceId = applicationId
+        ? `REF-${applicationId.toUpperCase()}-${uniqueSuffix}`
+        : `REF-${Date.now().toString().slice(-6)}-${uniqueSuffix}`;
       const secureToken = crypto.randomUUID ? crypto.randomUUID() : `tok_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-      const created = await this.prisma.candidate.create({
-        data: {
-          assessmentId,
-          name,
-          email,
-          phone: phone || '0000000000',
-          applicationId: applicationId || null,
-          crmCandidateId: applicationId ? `CRM-${applicationId}` : null,
-          referenceId,
-          secureToken,
-          status: 'REGISTERED',
-          emailStatus: 'PENDING',
-        },
-      });
+      try {
+        // Check if candidate with this email is already assigned to this assessment
+        const existing = await this.prisma.candidate.findFirst({
+          where: { assessmentId, email },
+        });
 
-      const frontendBaseUrl = process.env.CANDIDATE_PORTAL_URL || process.env.FRONTEND_CANDIDATE_URL || 'https://niva.greatcampus.in';
-      createdCandidates.push({
-        id: created.id,
-        name: created.name,
-        email: created.email,
-        phone: created.phone,
-        applicationId: created.applicationId,
-        referenceId: created.referenceId,
-        secureToken: created.secureToken,
-        uniqueExamLink: `${frontendBaseUrl}/${assessment.slug}?token=${created.secureToken}`,
-      });
+        if (existing) {
+          // Update candidate details if needed
+          const updated = await this.prisma.candidate.update({
+            where: { id: existing.id },
+            data: {
+              name,
+              ...(phone && { phone }),
+              ...(applicationId && { applicationId }),
+              ...(!existing.secureToken && { secureToken }),
+            },
+          });
+
+          duplicateList.push({ email, name, candidateId: existing.id });
+          createdCandidates.push({
+            id: updated.id,
+            name: updated.name,
+            email: updated.email,
+            phone: updated.phone,
+            applicationId: updated.applicationId,
+            referenceId: updated.referenceId,
+            secureToken: updated.secureToken,
+            uniqueExamLink: `${frontendBaseUrl}/${assessment.slug}?token=${updated.secureToken || updated.id}`,
+          });
+          continue;
+        }
+
+        const created = await this.prisma.candidate.create({
+          data: {
+            assessmentId,
+            name,
+            email,
+            phone: phone || '0000000000',
+            applicationId: applicationId || null,
+            crmCandidateId: applicationId ? `CRM-${applicationId}` : null,
+            referenceId,
+            secureToken,
+            status: 'REGISTERED',
+            emailStatus: 'PENDING',
+          },
+        });
+
+        createdCandidates.push({
+          id: created.id,
+          name: created.name,
+          email: created.email,
+          phone: created.phone,
+          applicationId: created.applicationId,
+          referenceId: created.referenceId,
+          secureToken: created.secureToken,
+          uniqueExamLink: `${frontendBaseUrl}/${assessment.slug}?token=${created.secureToken}`,
+        });
+      } catch (err: any) {
+        this.logger.error(`[Upload Candidate Error] ${email}: ${err.message}`);
+        errors.push({ email, name, error: `Failed to save candidate: ${err.message}` });
+      }
     }
 
     // Auto-dispatch invitation emails asynchronously in background
@@ -1569,9 +1599,13 @@ export class CandidatesService {
         });
     }
 
+    const message = createdCandidates.length > 0
+      ? `Successfully assigned ${createdCandidates.length} candidate(s) to '${assessment.name}'. Invitation emails are being dispatched automatically.`
+      : `No new candidates assigned. Please check the uploaded details.`;
+
     return {
-      success: true,
-      message: `Successfully processed ${candidates.length} candidates. Added: ${createdCandidates.length}, Duplicates skipped: ${duplicateList.length}. Invitation emails are being dispatched automatically.`,
+      success: createdCandidates.length > 0,
+      message,
       createdCount: createdCandidates.length,
       duplicateCount: duplicateList.length,
       createdCandidates,
