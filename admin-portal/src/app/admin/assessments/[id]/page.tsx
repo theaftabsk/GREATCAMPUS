@@ -13,6 +13,7 @@ import { getApiBaseUrl } from "@/lib/config";
 import CandidateReportModal from "@/components/CandidateReportModal";
 import ConfirmModal from "@/components/ConfirmModal";
 import ToastContainer, { ToastMessage } from "@/components/Toast";
+import * as XLSX from "xlsx";
 
 export default function AssessmentDashboardPage() {
   const params = useParams();
@@ -133,40 +134,105 @@ export default function AssessmentDashboardPage() {
     }
   };
 
-  // Parse CSV/TSV input pasted into textarea or file upload
+  // Parse CSV/TSV input pasted into textarea
   const handleParseText = (text: string) => {
     setExcelText(text);
     const lines = text.trim().split("\n");
     const rows: Array<{ name: string; email: string; phone: string; applicationId: string; valid: boolean }> = [];
 
     lines.forEach((line, idx) => {
-      if (idx === 0 && (line.toLowerCase().includes("email") || line.toLowerCase().includes("name"))) {
+      if (idx === 0 && (line.toLowerCase().includes("email") || line.toLowerCase().includes("name") || line.toLowerCase().includes("candidate"))) {
         return; // skip header
       }
       const parts = line.split(/[,\t;|]/).map((p) => p.trim().replace(/^["']|["']$/g, ""));
-      if (parts.length >= 2) {
+      if (parts.length >= 2 || (parts[0] && parts[1])) {
         const name = parts[0] || "";
         const email = parts[1] || "";
         const phone = parts[2] || "";
         const applicationId = parts[3] || "";
         const valid = name.length > 0 && email.includes("@") && email.includes(".");
-        rows.push({ name, email, phone, applicationId, valid });
+        if (name || email) {
+          rows.push({ name, email, phone, applicationId, valid });
+        }
       }
     });
 
     setParsedRows(rows);
   };
 
+  // Upload and parse either Excel (.xlsx, .xls) or CSV/TSV
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      const text = evt.target?.result as string;
-      if (text) handleParseText(text);
-    };
-    reader.readAsText(file);
+    const fileName = file.name.toLowerCase();
+    const isExcel = fileName.endsWith(".xlsx") || fileName.endsWith(".xls");
+
+    if (isExcel) {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: "array" });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const rawRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+
+          const rows: Array<{ name: string; email: string; phone: string; applicationId: string; valid: boolean }> = [];
+          const textLines: string[] = [];
+
+          rawRows.forEach((parts, idx) => {
+            if (!parts || parts.length === 0) return;
+            const strParts = parts.map((p) => String(p === null || p === undefined ? "" : p).trim());
+            const firstCell = strParts[0]?.toLowerCase() || "";
+            const secondCell = strParts[1]?.toLowerCase() || "";
+
+            // Skip header row if detected
+            if (idx === 0 && (firstCell.includes("name") || secondCell.includes("email") || firstCell.includes("candidate"))) {
+              return;
+            }
+
+            const name = strParts[0] || "";
+            const email = strParts[1] || "";
+            const phone = strParts[2] || "";
+            const applicationId = strParts[3] || "";
+
+            if (name || email) {
+              const valid = name.length > 0 && email.includes("@") && email.includes(".");
+              rows.push({ name, email, phone, applicationId, valid });
+              textLines.push(`${name},${email},${phone},${applicationId}`);
+            }
+          });
+
+          setExcelText(textLines.join("\n"));
+          setParsedRows(rows);
+        } catch {
+          alert("Failed to parse Excel file. Please ensure it is a valid .xlsx or .xls file.");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const text = evt.target?.result as string;
+        if (text) handleParseText(text);
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  // Download a sample formatted Excel template
+  const handleDownloadSampleTemplate = () => {
+    const wsData = [
+      ["Name", "Email", "Phone", "ApplicationID"],
+      ["Aftab Sk", "aftabsk0005@gmail.com", "9732351545", "APP-1001"],
+      ["Rahul Roy", "rahul.roy@example.com", "9876543210", "APP-1002"],
+      ["Priya Sharma", "priya.sharma@example.com", "9876543211", "APP-1003"],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Candidates");
+    XLSX.writeFile(wb, "Niva_Bupa_Candidate_Upload_Template.xlsx");
   };
 
   const handleConfirmExcelUpload = async () => {
@@ -800,12 +866,21 @@ export default function AssessmentDashboardPage() {
             </div>
 
             {/* File Upload / Paste Toggle */}
-            <div style={{ border: "2px dashed #CBD5E1", borderRadius: "12px", padding: "20px", textAlign: "center", background: "#F8FAFC", marginBottom: "16px" }}>
-              <input type="file" accept=".csv,.txt,.tsv" onChange={handleFileUpload} style={{ display: "none" }} id="excel-file-input" />
-              <label htmlFor="excel-file-input" style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "8px", padding: "8px 16px", background: "#003F72", color: "white", borderRadius: "8px", fontWeight: 700, fontSize: "12px" }}>
-                <Upload size={14} /> Browse CSV File
-              </label>
-              <span style={{ fontSize: "12px", color: "#64748B", margin: "0 10px" }}>or paste table below</span>
+            <div style={{ border: "2px dashed #CBD5E1", borderRadius: "14px", padding: "20px", textAlign: "center", background: "#F8FAFC", marginBottom: "16px" }}>
+              <input type="file" accept=".xlsx,.xls,.csv,.tsv,.txt" onChange={handleFileUpload} style={{ display: "none" }} id="excel-file-input" />
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", flexWrap: "wrap" }}>
+                <label htmlFor="excel-file-input" style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "8px", padding: "9px 18px", background: "#003F72", color: "white", borderRadius: "8px", fontWeight: 700, fontSize: "12px", boxShadow: "0 2px 6px rgba(0,63,114,0.2)" }}>
+                  <Upload size={14} /> Browse Excel / CSV File
+                </label>
+                <button
+                  type="button"
+                  onClick={handleDownloadSampleTemplate}
+                  style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "9px 16px", background: "#EFF6FF", color: "#00AEEF", border: "1px solid #BFDBFE", borderRadius: "8px", fontWeight: 700, fontSize: "12px", cursor: "pointer" }}
+                >
+                  <Download size={13} /> Download Sample Template (.xlsx)
+                </button>
+              </div>
+              <p style={{ fontSize: "11px", color: "#64748B", margin: "10px 0 0" }}>Supports Excel (.xlsx, .xls) and CSV/TSV format (Columns: Name, Email, Phone, Application ID)</p>
             </div>
 
             <textarea
