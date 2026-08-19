@@ -57,11 +57,11 @@ export class EmailService {
 
   private async createTransporter() {
     const config = await this.getSmtpConfig();
-    const isSecure = config.encryption === 'SSL' || config.port === 465;
+    const isSecure = config.encryption === 'SSL' || Number(config.port) === 465;
 
     return nodemailer.createTransport({
       host: config.host,
-      port: config.port,
+      port: Number(config.port),
       secure: isSecure,
       auth: config.username && config.password ? {
         user: config.username,
@@ -70,7 +70,11 @@ export class EmailService {
       tls: {
         rejectUnauthorized: false,
       },
-    });
+      pool: false,
+      connectionTimeout: 15000,
+      greetingTimeout: 10000,
+      socketTimeout: 20000,
+    } as any);
   }
 
   async testConnection(targetEmail?: string) {
@@ -79,36 +83,43 @@ export class EmailService {
       if (!config.username || !config.password) {
         return {
           success: false,
-          message: 'SMTP credentials missing. Please enter your SMTP Username and Password/App Password.',
+          message: 'SMTP credentials missing. Please enter your SMTP Username and Password/App Password in Settings.',
         };
       }
 
       const transporter = await this.createTransporter();
 
-      // Verify SMTP connection
+      // Verify SMTP connection handshake
       await transporter.verify();
 
       // Send a test mail if targetEmail provided
       const recipient = targetEmail || config.username || config.fromEmail;
       if (recipient) {
+        const domain = config.fromEmail.includes('@') ? config.fromEmail.split('@')[1] : 'greatcampus.in';
         await transporter.sendMail({
           from: `"${config.fromName}" <${config.fromEmail}>`,
           to: recipient,
-          subject: '✅ SMTP Connection Test — Niva Bupa Assessment Portal',
+          subject: 'SMTP Connection Test — Niva Bupa Assessment Portal',
+          text: `Niva Bupa Assessment Portal\n\nThis test email confirms that your authenticated SMTP mail server configuration (${config.host}:${config.port}) is working correctly!\n\nSender: ${config.fromName} (${config.fromEmail})\nTimestamp: ${new Date().toLocaleString()}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 540px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
-              <h2 style="color: #003F72; margin-top: 0;">Niva Bupa Assessment Tool</h2>
+              <h2 style="color: #003F72; margin-top: 0;">Niva Bupa Assessment System</h2>
               <p style="color: #334155; font-size: 14px; line-height: 1.6;">
-                This is a test email confirming that your authenticated SMTP mail server configuration is working correctly!
+                This test email confirms that your authenticated SMTP mail server configuration is active and working correctly!
               </p>
               <div style="background: #f8fafc; border: 1px solid #cbd5e1; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #475569;">
                 <strong>Host:</strong> ${config.host}<br/>
                 <strong>Port:</strong> ${config.port}<br/>
-                <strong>Sender:</strong> ${config.fromName} (${config.fromEmail})<br/>
+                <strong>Sender:</strong> ${config.fromName} (&lt;${config.fromEmail}&gt;)<br/>
                 <strong>Timestamp:</strong> ${new Date().toLocaleString()}
               </div>
             </div>
           `,
+          messageId: `<niva-test-${Date.now()}@${domain}>`,
+          headers: {
+            'X-Mailer': 'Niva Bupa Examination Notification Service',
+            'Auto-Submitted': 'auto-generated',
+          },
         });
       }
 
@@ -125,87 +136,179 @@ export class EmailService {
     }
   }
 
+  // ─── HIGH-DELIVERABILITY PLAIN TEXT TEMPLATE (ANTI-SPAM CRUCIAL) ────────────
+  buildInvitationEmailText(data: {
+    candidateName: string;
+    assessmentName: string;
+    durationMins: number;
+    examUrl: string;
+    applicationId?: string;
+    activeUntil?: string;
+  }) {
+    const { candidateName, assessmentName, durationMins, examUrl, applicationId, activeUntil } = data;
+
+    return `Dear ${candidateName},
+
+You have been officially invited to undertake the ${assessmentName} for Niva Bupa Health Insurance.
+
+ASSESSMENT DETAILS:
+• Assessment: ${assessmentName}
+• Candidate Name: ${candidateName}
+${applicationId ? `• Application ID: ${applicationId}\n` : ''}• Duration: ${durationMins} Minutes
+• Question Count: 60 Questions (6 Core Sections)
+${activeUntil ? `• Access Window Closes: ${new Date(activeUntil).toLocaleString()}\n` : ''}
+DIRECT ACCESS LINK:
+To launch your proctored assessment session, please open the following secure link:
+${examUrl}
+
+EXAMINATION GUIDELINES:
+1. Complete the exam in a quiet, well-lit room.
+2. Maintain your webcam enabled throughout the session.
+3. Do not switch browser tabs or exit fullscreen mode.
+4. All answers are saved automatically in real-time.
+
+For any technical assistance during the assessment, please contact your recruitment coordinator.
+
+Sincerely,
+Recruitment & Talent Acquisition Team
+Niva Bupa Health Insurance Company Limited
+Website: https://www.nivabupa.com`;
+  }
+
+  // ─── HIGH-DELIVERABILITY BEAUTIFUL HTML TEMPLATE ───────────────────────────
   buildInvitationEmailHtml(data: {
     candidateName: string;
     assessmentName: string;
     durationMins: number;
     examUrl: string;
+    applicationId?: string;
     activeUntil?: string;
   }) {
-    const { candidateName, assessmentName, durationMins, examUrl, activeUntil } = data;
+    const { candidateName, assessmentName, durationMins, examUrl, applicationId, activeUntil } = data;
 
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <style>
-          body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 20px; }
-          .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,63,114,0.08); border: 1px solid #e2e8f0; }
-          .header { background: linear-gradient(135deg, #003F72 0%, #00AEEF 100%); padding: 32px 28px; text-align: center; color: white; }
-          .header h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.3px; }
-          .header p { margin: 6px 0 0; font-size: 13px; opacity: 0.9; }
-          .body { padding: 32px 28px; color: #1e293b; line-height: 1.6; }
-          .greeting { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
-          .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin: 20px 0; }
-          .card-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
-          .card-row:last-child { margin-bottom: 0; }
-          .btn-container { text-align: center; margin: 32px 0 20px; }
-          .btn { display: inline-block; background: linear-gradient(135deg, #0090C8 0%, #00AEEF 100%); color: #ffffff !important; text-decoration: none; font-weight: 800; font-size: 15px; padding: 14px 36px; border-radius: 12px; box-shadow: 0 4px 14px rgba(0,174,239,0.35); }
-          .instructions { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 14px 18px; font-size: 12px; color: #1e40af; margin-top: 24px; }
-          .instructions ul { margin: 6px 0 0; padding-left: 18px; }
-          .footer { background: #f8fafc; padding: 20px; text-align: center; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>Niva Bupa Health Insurance</h1>
-            <p>ARM Banca Recruitment & Capability Assessment Portal</p>
-          </div>
-          <div class="body">
-            <div class="greeting">Dear ${candidateName},</div>
-            <p style="font-size: 14px; color: #334155;">
-              You have been scheduled to undertake the official <strong>${assessmentName}</strong>. This assessment evaluates core competencies for the Agency Unit Manager & ARM Banca role.
-            </p>
-
-            <div class="card">
-              <div style="font-size: 13px; font-weight: 700; color: #003F72; margin-bottom: 10px;">📋 Assessment Summary</div>
-              <div style="font-size: 13px; color: #475569; margin-bottom: 6px;"><strong>Assessment:</strong> ${assessmentName}</div>
-              <div style="font-size: 13px; color: #475569; margin-bottom: 6px;"><strong>Duration:</strong> ${durationMins} Minutes</div>
-              <div style="font-size: 13px; color: #475569; margin-bottom: 6px;"><strong>Total Questions:</strong> 60 Questions (6 Sections)</div>
-              ${activeUntil ? `<div style="font-size: 13px; color: #475569;"><strong>Valid Until:</strong> ${new Date(activeUntil).toLocaleDateString()} ${new Date(activeUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>` : ''}
-            </div>
-
-            <div class="btn-container">
-              <a href="${examUrl}" class="btn" target="_blank">Start Assessment Now →</a>
-            </div>
-
-            <div class="instructions">
-              <strong>⚠️ Proctoring & Exam Guidelines:</strong>
-              <ul>
-                <li>Ensure you are in a well-lit room with working webcam enabled.</li>
-                <li>Do not switch tabs, minimize the browser, or exit fullscreen during the exam.</li>
-                <li>3 proctoring warnings will automatically lock your exam session.</li>
-                <li>All answers are saved automatically in real-time.</li>
-              </ul>
-            </div>
-
-            <p style="font-size: 12px; color: #94a3b8; margin-top: 24px; word-break: break-all;">
-              If the button above does not work, copy and paste this link into your browser:<br/>
-              <a href="${examUrl}" style="color: #00AEEF;">${examUrl}</a>
-            </p>
-          </div>
-          <div class="footer">
-            &copy; ${new Date().getFullYear()} Niva Bupa Health Insurance Company Limited. Powered by GreatCampus Assessment Platform.
-          </div>
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assessment Invitation — Niva Bupa Health Insurance</title>
+</head>
+<body style="margin:0; padding:24px 12px; background-color:#F1F5F9; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; margin:0 auto; background:#ffffff; border-radius:18px; overflow:hidden; border:1px solid #E2E8F0; box-shadow:0 8px 30px rgba(0,63,114,0.06);">
+    
+    <!-- Top Brand Header -->
+    <tr>
+      <td style="background:linear-gradient(135deg, #003F72 0%, #002244 100%); padding:32px 28px; text-align:center; color:#ffffff;">
+        <div style="display:inline-block; background:#00AEEF; color:#ffffff; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:1px; padding:4px 12px; border-radius:20px; margin-bottom:12px;">
+          Official Assessment Invitation
         </div>
-      </body>
-      </html>
-    `;
+        <h1 style="margin:0; font-size:22px; font-weight:900; letter-spacing:-0.4px; color:#ffffff;">
+          Niva Bupa Health Insurance
+        </h1>
+        <p style="margin:6px 0 0; font-size:13px; color:#93C5FD; font-weight:500;">
+          Agency Unit Manager &amp; ARM Banca Capability Assessment
+        </p>
+      </td>
+    </tr>
+
+    <!-- Main Content Area -->
+    <tr>
+      <td style="padding:32px 28px; color:#1E293B;">
+        <p style="font-size:16px; font-weight:800; color:#0F172A; margin:0 0 12px;">
+          Dear ${candidateName},
+        </p>
+        <p style="font-size:14px; line-height:1.6; color:#334155; margin:0 0 20px;">
+          You have been shortlisted and scheduled to undertake the official <strong>${assessmentName}</strong>. This assessment evaluates core cognitive, customer engagement, insurance acumen, and situational reasoning competencies.
+        </p>
+
+        <!-- Exam Details Card -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:14px; padding:18px; margin:0 0 24px;">
+          <tr>
+            <td>
+              <div style="font-size:13px; font-weight:800; color:#003F72; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">
+                📋 Exam Session Overview
+              </div>
+              
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:13px; color:#475569;">
+                <tr>
+                  <td style="padding:5px 0; font-weight:600; color:#64748B; width:140px;">Candidate Name:</td>
+                  <td style="padding:5px 0; font-weight:700; color:#0F172A;">${candidateName}</td>
+                </tr>
+                ${applicationId ? `<tr>
+                  <td style="padding:5px 0; font-weight:600; color:#64748B;">Application ID:</td>
+                  <td style="padding:5px 0; font-weight:700; font-family:monospace; color:#003F72;">${applicationId}</td>
+                </tr>` : ''}
+                <tr>
+                  <td style="padding:5px 0; font-weight:600; color:#64748B;">Assessment:</td>
+                  <td style="padding:5px 0; font-weight:700; color:#0F172A;">${assessmentName}</td>
+                </tr>
+                <tr>
+                  <td style="padding:5px 0; font-weight:600; color:#64748B;">Duration:</td>
+                  <td style="padding:5px 0; font-weight:700; color:#0F172A;">${durationMins} Minutes</td>
+                </tr>
+                <tr>
+                  <td style="padding:5px 0; font-weight:600; color:#64748B;">Questions:</td>
+                  <td style="padding:5px 0; font-weight:700; color:#0F172A;">60 Questions (6 Sections)</td>
+                </tr>
+                ${activeUntil ? `<tr>
+                  <td style="padding:5px 0; font-weight:600; color:#64748B;">Valid Until:</td>
+                  <td style="padding:5px 0; font-weight:700; color:#D97706;">${new Date(activeUntil).toLocaleDateString()} ${new Date(activeUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                </tr>` : ''}
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Call to Action Button -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:28px 0 24px;">
+          <tr>
+            <td align="center">
+              <a href="${examUrl}" target="_blank" style="display:inline-block; background:linear-gradient(135deg, #00AEEF 0%, #0090C8 100%); color:#ffffff; text-decoration:none; font-size:15px; font-weight:800; padding:15px 36px; border-radius:12px; box-shadow:0 6px 18px rgba(0,174,239,0.35); text-align:center;">
+                Start Assessment Now &rarr;
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Security & Instructions Banner -->
+        <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:12px; padding:16px 20px; margin:0 0 24px; font-size:12px; color:#1E40AF; line-height:1.6;">
+          <div style="font-weight:800; font-size:13px; color:#1E3A8A; margin-bottom:6px;">
+            🛡️ Proctoring &amp; Technical Instructions:
+          </div>
+          <ul style="margin:0; padding-left:18px;">
+            <li>Please ensure a stable internet connection and a functional webcam.</li>
+            <li>Take the exam in a well-lit environment without background interruptions.</li>
+            <li>Do not switch browser tabs or exit fullscreen mode during the examination.</li>
+            <li>Your answers and progress are automatically saved in real-time.</li>
+          </ul>
+        </div>
+
+        <!-- Direct URL Fallback -->
+        <p style="font-size:11px; color:#94A3B8; line-height:1.5; margin:0; word-break:break-all;">
+          If the button above does not open, copy and paste this link into your browser:<br/>
+          <a href="${examUrl}" style="color:#00AEEF; text-decoration:underline;">${examUrl}</a>
+        </p>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background:#F8FAFC; padding:20px 28px; text-align:center; font-size:11px; color:#64748B; border-top:1px solid #E2E8F0; line-height:1.6;">
+        <p style="margin:0 0 4px; font-weight:700; color:#334155;">
+          Niva Bupa Health Insurance Company Limited
+        </p>
+        <p style="margin:0;">
+          This is an automated transactional invitation sent for recruitment evaluation. Please do not reply directly to this email.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
   }
 
-  async sendCandidateInvitation(candidateId: string) {
+  // ─── SEND SINGLE CANDIDATE INVITATION WITH ANTI-SPAM HEADERS & RETRY ───────
+  async sendCandidateInvitation(candidateId: string, retryCount = 0): Promise<{ success: boolean; message: string; emailLogId?: string; error?: string }> {
     const candidate = await this.prisma.candidate.findUnique({
       where: { id: candidateId },
       include: { assessment: true },
@@ -225,12 +328,8 @@ export class EmailService {
       };
     }
 
-    const transporter = await this.createTransporter();
-
     const frontendBaseUrl = process.env.CANDIDATE_PORTAL_URL || process.env.FRONTEND_CANDIDATE_URL || 'https://niva.greatcampus.in';
     const examUrl = `${frontendBaseUrl}/${candidate.assessment.slug}?token=${candidate.secureToken || candidate.id}`;
-    
-    // Unique Subject & Ref ID to prevent Gmail / Outlook from threading multiple candidate emails into one
     const refCode = candidate.applicationId || candidate.referenceId || candidate.id.slice(-6).toUpperCase();
     const subject = `Assessment Invitation: ${candidate.assessment.name} — ${candidate.name} [Ref: ${refCode}]`;
 
@@ -239,6 +338,16 @@ export class EmailService {
       assessmentName: candidate.assessment.name,
       durationMins: candidate.assessment.durationMins || 45,
       examUrl,
+      applicationId: candidate.applicationId || undefined,
+      activeUntil: candidate.assessment.activeUntil ? candidate.assessment.activeUntil.toISOString() : undefined,
+    });
+
+    const textContent = this.buildInvitationEmailText({
+      candidateName: candidate.name,
+      assessmentName: candidate.assessment.name,
+      durationMins: candidate.assessment.durationMins || 45,
+      examUrl,
+      applicationId: candidate.applicationId || undefined,
       activeUntil: candidate.assessment.activeUntil ? candidate.assessment.activeUntil.toISOString() : undefined,
     });
 
@@ -255,15 +364,24 @@ export class EmailService {
     });
 
     try {
+      const transporter = await this.createTransporter();
+      const senderDomain = config.fromEmail.includes('@') ? config.fromEmail.split('@')[1] : 'greatcampus.in';
+      const cleanMessageId = `<niva-bupa-${candidate.id}-${Date.now()}@${senderDomain}>`;
+
       await transporter.sendMail({
         from: `"${config.fromName}" <${config.fromEmail}>`,
         to: candidate.email,
+        replyTo: config.fromEmail,
         subject,
+        text: textContent,
         html: htmlContent,
-        messageId: `<niva-bupa-invite-${candidate.id}-${Date.now()}@greatcampus.in>`,
+        messageId: cleanMessageId,
         headers: {
+          'X-Mailer': 'Niva Bupa Examination Notification Service',
           'X-Entity-Ref-ID': `${candidate.id}-${Date.now()}`,
           'X-Auto-Response-Suppress': 'All',
+          'Auto-Submitted': 'auto-generated',
+          'Precedence': 'bulk',
         },
       });
 
@@ -284,13 +402,21 @@ export class EmailService {
         },
       });
 
+      this.logger.log(`[Email Delivered] Sent invitation to ${candidate.email} (${candidate.name})`);
+
       return {
         success: true,
         message: `Invitation sent successfully to ${candidate.email}`,
         emailLogId: emailLog.id,
       };
     } catch (err: any) {
-      this.logger.error(`Failed to send email to ${candidate.email}: ${err.message}`);
+      this.logger.error(`[Email Failed] Attempt ${retryCount + 1} to ${candidate.email}: ${err.message}`);
+
+      // Auto-retry once after 1000ms delay for transient network/handshake errors
+      if (retryCount < 1) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        return this.sendCandidateInvitation(candidateId, retryCount + 1);
+      }
 
       try {
         await this.prisma.emailLog.update({
@@ -317,6 +443,7 @@ export class EmailService {
     }
   }
 
+  // ─── SMOOTH SEQUENTIAL BULK DISPATCH QUEUE (RATE-LIMITED & ANTI-DROP) ──────
   async sendBulkInvitations(data: { assessmentId: string; candidateIds?: string[] }) {
     const { assessmentId, candidateIds } = data;
 
@@ -336,7 +463,6 @@ export class EmailService {
     }
 
     if (!isSmtpConfigured) {
-      // Mark candidates as FAILED with clear reason
       await this.prisma.candidate.updateMany({
         where: { id: { in: candidates.map((c) => c.id) } },
         data: { emailStatus: 'FAILED' },
@@ -359,26 +485,31 @@ export class EmailService {
     let failed = 0;
     const errors: Array<{ email: string; error: string }> = [];
 
-    // Process in polite batches of 5 with throttle delay to protect SMTP connection
-    const batchSize = 5;
-    for (let i = 0; i < candidates.length; i += batchSize) {
-      const batch = candidates.slice(i, i + batchSize);
-      await Promise.all(
-        batch.map(async (candidate) => {
-          const res = await this.sendCandidateInvitation(candidate.id);
-          if (res.success) {
-            sent++;
-          } else {
-            failed++;
-            errors.push({ email: candidate.email, error: res.message || 'Send error' });
-          }
-        }),
-      );
-      // 200ms throttle between batches to prevent SMTP server connection drops
-      if (i + batchSize < candidates.length) {
-        await new Promise((resolve) => setTimeout(resolve, 200));
+    // Process sequentially with a 500ms delay between candidates to ensure no SMTP rate-limiting or connection drops
+    this.logger.log(`[Bulk Email Queue] Starting smooth dispatch for ${candidates.length} candidate(s)...`);
+
+    for (let i = 0; i < candidates.length; i++) {
+      const candidate = candidates[i];
+      try {
+        const res = await this.sendCandidateInvitation(candidate.id);
+        if (res.success) {
+          sent++;
+        } else {
+          failed++;
+          errors.push({ email: candidate.email, error: res.message || 'Send error' });
+        }
+      } catch (err: any) {
+        failed++;
+        errors.push({ email: candidate.email, error: err.message });
+      }
+
+      // Smooth 500ms throttle between emails to keep SMTP connections clean and VPS load minimal
+      if (i < candidates.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
+
+    this.logger.log(`[Bulk Email Queue] Completed dispatch: ${sent} sent, ${failed} failed.`);
 
     return {
       success: sent > 0,
